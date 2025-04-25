@@ -23,6 +23,8 @@ export interface WalletConfig {
   networkId?: NetworkId;
 }
 
+const CONTAINER_NAME = 'proof-server';
+
 /**
  * Testnet remote configuration
  */
@@ -121,11 +123,22 @@ export class WalletManager {
   private setupDockerEnvironment(): void {
     try {
       const currentDir = getCurrentDir();
+      const configDir = path.resolve(currentDir, './src/wallet/config');
+      console.log('configDir', configDir);
+      // verify the file exists
+      const proofServerYml = path.resolve(configDir, 'proof-server-testnet.yml');
+      console.log('proofServerYml', proofServerYml);
+      if (!fs.existsSync(proofServerYml)) {
+        const filesInConfigDir = fs.readdirSync(configDir);
+        console.error('Files inside configDir:', filesInConfigDir);
+        throw new Error(`Proof server YAML file not found at ${proofServerYml}`);
+      }
+      
       this.dockerEnv = new DockerComposeEnvironment(
-        path.resolve(currentDir, '..'),
+        configDir,
         'proof-server-testnet.yml',
       ).withWaitStrategy(
-        'proof-server', 
+        CONTAINER_NAME, 
         Wait.forLogMessage('Actix runtime found; starting in Actix runtime', 1)
       );
       
@@ -145,11 +158,13 @@ export class WalletManager {
         this.logger.info('Starting Docker environment');
         this.startedEnv = await this.dockerEnv.up();
         
+         console.log('Containers inside startedEnv:', this.startedEnv.getContainer('proof-server'));
+
         // Update config with mapped ports
         this.config.proofServer = mapContainerPort(
           this.startedEnv, 
           this.config.proofServer, 
-          'proof-server'
+          CONTAINER_NAME
         );
         
         this.logger.info(`Docker environment started, proof server at ${this.config.proofServer}`);
