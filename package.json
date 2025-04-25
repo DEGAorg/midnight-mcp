@@ -1,5 +1,6 @@
 {
   "packageManager": "yarn@4.1.0",
+  "type": "module",
   "workspaces": [
     "compact",
     "examples/*",
@@ -17,7 +18,10 @@
     "welcome-participant-ui": "turbo run start --filter=welcome-participant-ui",
     "welcome-organizer-cli": "turbo run start --filter=welcome-organizer-cli",
     "welcome-organizer-ui": "turbo run start --filter=welcome-organizer-ui",
-    "bboard-ui": "turbo run start --filter=bboard-ui"
+    "bboard-ui": "turbo run start --filter=bboard-ui",
+    "build:mcp": "tsc",
+    "start:mcp": "node --experimental-specifier-resolution=node dist/server.js",
+    "dev:mcp": "tsx src/server.ts"
   },
   "resolutions": {
     "@midnight-ntwrk/compact-runtime/@midnight-ntwrk/onchain-runtime": "^0.2.6",
@@ -66,6 +70,7 @@
     "testcontainers": "^10.3.2",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
+    "tsx": "^4.19.3",
     "turbo": "^1.10.16",
     "typescript": "^5.2.2"
   }
