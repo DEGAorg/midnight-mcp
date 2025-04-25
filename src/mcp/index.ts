@@ -1,5 +1,5 @@
 import { WalletManager } from '../wallet/index.js';
-import { setNetworkId, type NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import * as pino from 'pino';
 
 /**
@@ -31,13 +31,15 @@ export type TransactionStatus = 'pending' | 'confirmed' | 'failed';
 export class MCPServer {
   private wallet: WalletManager;
   private logger: pino.Logger;
-  private transactions: Map<string, { status: TransactionStatus; to: string; amount: number }>;
+  private transactions: Map<string, { status: TransactionStatus; to: string; amount: bigint }>;
   
   /**
    * Create a new MCP Server instance
    * @param networkId The Midnight network ID to connect to
+   * @param seedHex Optional hex seed for the wallet
+   * @param walletFilename Optional filename to restore wallet from
    */
-  constructor(networkId?: NetworkId) {
+  constructor(networkId?: NetworkId, seedHex?: string, walletFilename?: string) {
     // Set network ID if provided
     if (networkId) {
       setNetworkId(networkId);
@@ -51,10 +53,12 @@ export class MCPServer {
     });
     
     this.logger.info('Initializing Midnight MCP Server');
-    this.wallet = new WalletManager();
+    
+    // Initialize WalletManager with network ID, seed, and filename
+    this.wallet = new WalletManager(networkId, seedHex, walletFilename);
     this.transactions = new Map();
     
-    this.logger.info('MCP Server initialized, waiting for wallet to be ready');
+    this.logger.info('MCP Server initialized, wallet synchronization started in background');
   }
   
   /**
@@ -75,7 +79,12 @@ export class MCPServer {
       throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
-    return this.wallet.getAddress();
+    try {
+      return this.wallet.getAddress();
+    } catch (error) {
+      this.logger.error('Error getting wallet address', error);
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Error accessing wallet address');
+    }
   }
   
   /**
@@ -83,12 +92,17 @@ export class MCPServer {
    * @returns The wallet balance as a number
    * @throws MCPError if wallet is not ready
    */
-  public getBalance(): number {
+  public getBalance(): bigint {
     if (!this.isReady()) {
       throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
-    return this.wallet.getBalance();
+    try {
+      return this.wallet.getBalance();
+    } catch (error) {
+      this.logger.error('Error getting wallet balance', error);
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Error accessing wallet balance');
+    }
   }
   
   /**
@@ -98,7 +112,7 @@ export class MCPServer {
    * @returns Transaction hash
    * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
    */
-  public sendFunds(destinationAddress: string, amount: number): { txHash: string } {
+  public async sendFunds(destinationAddress: string, amount: bigint): Promise<{ txHash: string }> {
     if (!this.isReady()) {
       throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
@@ -108,10 +122,7 @@ export class MCPServer {
     }
     
     try {
-      const result = this.wallet.sendFunds(destinationAddress, amount);
-      
-      // Generate a mock transaction hash
-      const txHash = `tx_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      const txHash = await this.wallet.sendFunds(destinationAddress, amount);
       
       // Store transaction for later validation
       this.transactions.set(txHash, {
@@ -154,6 +165,18 @@ export class MCPServer {
     }
     
     return { status: transaction.status };
+  }
+  
+  /**
+   * Close the MCP server and associated resources
+   */
+  public async close(): Promise<void> {
+    try {
+      await this.wallet.close();
+      this.logger.info('MCP Server shut down successfully');
+    } catch (error) {
+      this.logger.error('Error shutting down MCP Server', error);
+    }
   }
 }
 
