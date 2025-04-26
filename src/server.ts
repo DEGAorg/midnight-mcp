@@ -1,20 +1,17 @@
 import { MCPServer, MCPErrorType, MCPError } from './mcp/index.js';
-import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { config } from './config.js';
 
 /**
  * Example implementation showing how to use the MCPServer
  */
 async function main() {
-  // Define wallet configuration
-  const networkId = NetworkId.TestNet;
-  // This seed is just for testing - in production a secure seed would be generated or loaded
-  const seedHex = '6206f1dea1553e6551755ba9341e366c94e9d1dbe5d705e9af4a05d3cb322a3b';
-  const walletFilename = 'midnight-wallet';
+  // Configuration is loaded from the config module which handles environment variables
+  console.log(`Using network ID: ${config.networkId}`);
   
   try {
     // Create an instance of the MCP server
     // This will start the Docker environment and begin wallet sync in the background
-    const mcpServer = new MCPServer(networkId, seedHex, walletFilename);
+    const mcpServer = new MCPServer(config.networkId, config.seed, config.walletFilename);
     
     console.log('MCP Server initialized, wallet synchronization started in background');
     console.log('Server is ready to handle API requests, but wallet operations will return "not ready" until sync completes');

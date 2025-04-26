@@ -36,10 +36,10 @@ export class MCPServer {
   /**
    * Create a new MCP Server instance
    * @param networkId The Midnight network ID to connect to
-   * @param seedHex Optional hex seed for the wallet
+   * @param seed The seed for the wallet
    * @param walletFilename Optional filename to restore wallet from
    */
-  constructor(networkId?: NetworkId, seedHex?: string, walletFilename?: string) {
+  constructor(networkId: NetworkId, seed: string, walletFilename?: string) {
     // Set network ID if provided
     if (networkId) {
       setNetworkId(networkId);
@@ -55,7 +55,7 @@ export class MCPServer {
     this.logger.info('Initializing Midnight MCP Server');
     
     // Initialize WalletManager with network ID, seed, and filename
-    this.wallet = new WalletManager(networkId, seedHex, walletFilename);
+    this.wallet = new WalletManager(networkId, seed, walletFilename);
     this.transactions = new Map();
     
     this.logger.info('MCP Server initialized, wallet synchronization started in background');

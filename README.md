@@ -19,6 +19,25 @@ Each agent runs its own Wallet MCP instance, responsible for managing its privat
 
 ---
 
+## Environment Variables
+
+The application uses environment variables for configuration. For development, these are loaded from a `.env` file using dotenv. In production, these should be injected via Docker or the host environment.
+
+### Required Variables
+- `SEED` - Wallet seed (required for initialization)
+
+### Optional Variables
+- `NETWORK_ID` - Network to connect to (`MainNet`, `TestNet`, or `DevNet`). Defaults to `TestNet`
+- `WALLET_FILENAME` - Custom wallet filename. Defaults to `midnight-wallet`
+- `LOG_LEVEL` - Logging level (`debug`, `info`, `warn`, `error`). Defaults to `info`
+
+### Setup
+1. Copy the `.env.example` file to `.env`
+2. Fill in the required values in the `.env` file
+3. For production, inject these environment variables via Docker or the host environment
+
+---
+
 ## MCP API Methods
 
 | Method              | Description                      |

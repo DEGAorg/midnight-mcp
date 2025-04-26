@@ -90,10 +90,10 @@ export class WalletManager {
   /**
    * Create a new WalletManager instance
    * @param networkId Optional network ID to connect to (defaults to TestNet)
-   * @param seedHex Optional hex seed for the wallet
+   * @param seed Optional hex seed for the wallet
    * @param walletFilename Optional filename to restore wallet from
    */
-  constructor(networkId?: NetworkId, seedHex?: string, walletFilename?: string) {
+  constructor(networkId: NetworkId, seed: string, walletFilename?: string) {
     // Set network ID if provided, default to TestNet
     this.config = new TestnetRemoteConfig();
     if (networkId) {
@@ -114,7 +114,7 @@ export class WalletManager {
     this.setupDockerEnvironment();
     
     // Initialize wallet asynchronously to not block MCP server startup
-    this.walletInitPromise = this.initializeWallet(seedHex, walletFilename);
+    this.walletInitPromise = this.initializeWallet(seed, walletFilename);
   }
   
   /**
@@ -151,14 +151,14 @@ export class WalletManager {
   /**
    * Initialize wallet by starting Docker and configuring wallet
    */
-  private async initializeWallet(seedHex?: string, walletFilename?: string): Promise<void> {
+  private async initializeWallet(seed: string, walletFilename?: string): Promise<void> {
     try {
       // Start Docker environment
       if (this.dockerEnv) {
         this.logger.info('Starting Docker environment');
         this.startedEnv = await this.dockerEnv.up();
         
-         console.log('Containers inside startedEnv:', this.startedEnv.getContainer('proof-server'));
+        //  console.log('Containers inside startedEnv:', this.startedEnv.getContainer('proof-server'));
 
         // Update config with mapped ports
         this.config.proofServer = mapContainerPort(
@@ -171,12 +171,11 @@ export class WalletManager {
       }
       
       // Generate a random seed if not provided
-      const finalSeedHex = seedHex || toHex(randomBytes(32));
       const finalFilename = walletFilename || '';
       
       // Initialize wallet
       try {
-        this.wallet = await this.buildWalletFromSeed(finalSeedHex, finalFilename);
+        this.wallet = await this.buildWalletFromSeed(seed, finalFilename);
         
         if (this.wallet) {
           // Subscribe to wallet state changes
@@ -222,15 +221,17 @@ export class WalletManager {
   /**
    * Build wallet from seed and optionally restore from file
    */
-  private async buildWalletFromSeed(seedHex: string, filename: string): Promise<Wallet & Resource> {
+  private async buildWalletFromSeed(seed: string, filename: string): Promise<Wallet & Resource> {
     const { indexer, indexerWS, node, proofServer } = this.config;
     let wallet: Wallet & Resource;
+
+    const formattedFilename = `${filename}.json`;
     
     // Try to restore wallet from file if filename is provided
-    if (filename && fs.existsSync(`./files/${filename}`)) {
-      this.logger.info(`Attempting to restore wallet from ./files/${filename}`);
+    if (filename && fs.existsSync(`./files/${formattedFilename}`)) {
+      this.logger.info(`Attempting to restore wallet from ./files/${formattedFilename}`);
       try {
-        const serializedStream = fs.createReadStream(`./files/${filename}`, 'utf-8');
+        const serializedStream = fs.createReadStream(`./files/${formattedFilename}`, 'utf-8');
         const serialized = await streamToString(serializedStream);
         serializedStream.on('finish', () => {
           serializedStream.close();
@@ -241,13 +242,13 @@ export class WalletManager {
           : serialized;
         
         // Restore wallet from serialized state
-        this.logger.info(`Restoring wallet with seed: ${seedHex}`);
+        this.logger.info(`Restoring wallet with seed: ${seed}`);
         wallet = await WalletBuilder.restore(
           indexer, 
           indexerWS, 
           proofServer, 
           node, 
-          seedHex, 
+          seed, 
           cleanSerialized, 
           'info'
         );
@@ -261,7 +262,7 @@ export class WalletManager {
           indexerWS,
           proofServer,
           node,
-          seedHex,
+          seed,
           getZswapNetworkId(),
           'info'
         );
@@ -275,7 +276,7 @@ export class WalletManager {
         indexerWS,
         proofServer,
         node,
-        seedHex,
+        seed,
         getZswapNetworkId(),
         'info'
       );
