@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Midnight MCP (Midnight Coordination Point) server
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: midnight-mcp
+    environment:
+      - NODE_ENV=production
+      - USE_EXTERNAL_PROOF_SERVER=true
+      - PROOF_SERVER=http://proof-server:6300
+      - INDEXER=${INDEXER:-https://indexer.testnet-02.midnight.network/api/v1/graphql}
+      - INDEXER_WS=${INDEXER_WS:-wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws}
+      - NODE=${NODE:-https://rpc.testnet-02.midnight.network}
+      - SEED=${SEED:?SEED environment variable is required}
+      - NETWORK_ID=${NETWORK_ID:-TestNet}
+      - WALLET_FILENAME=${WALLET_FILENAME:-midnight-wallet}
+      - WALLET_BACKUP_FOLDER=/app/wallet-backups
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    ports:
+      - "${MCP_PORT:-3000}:3000"
+    depends_on:
+      - proof-server
+    volumes:
+      - wallet-backups:/app/wallet-backups
+      - logs:/app/logs
+    networks:
+      - midnight-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Proof server for zero-knowledge proofs
+  proof-server:
+    image: midnightlabs/proof-server:latest
+    container_name: midnight-proof-server
+    environment:
+      - RUST_LOG=info
+      - NETWORK=${NETWORK_ID:-testnet}
+    ports:
+      - "${PROOF_SERVER_PORT:-6300}:6300"
+    volumes:
+      - proof-server-data:/var/lib/proof-server
+    networks:
+      - midnight-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:6300/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  wallet-backups:
+    driver: local
+  logs:
+    driver: local
+  proof-server-data:
+    driver: local
+
+networks:
+  midnight-network:
+    driver: bridge 

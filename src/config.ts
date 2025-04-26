@@ -18,6 +18,11 @@ interface Config {
   walletBackupFolder: string;
   walletFilename: string;
   logLevel: string;
+  useExternalProofServer: boolean;
+  proofServer?: string;
+  indexer?: string;
+  indexerWS?: string;
+  node?: string;
 }
 
 /**
@@ -46,12 +51,24 @@ export function loadConfig(): Config {
   // Default wallet backup folder
   const walletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'wallet-backups';
 
+  // External proof server configuration
+  const useExternalProofServer = process.env.USE_EXTERNAL_PROOF_SERVER === 'true';
+  const proofServer = process.env.PROOF_SERVER;
+  const indexer = process.env.INDEXER;
+  const indexerWS = process.env.INDEXER_WS;
+  const node = process.env.NODE;
+
   return {
     seed,
     networkId,
     walletBackupFolder,
     walletFilename,
-    logLevel
+    logLevel,
+    useExternalProofServer,
+    proofServer,
+    indexer,
+    indexerWS,
+    node
   };
 }
 

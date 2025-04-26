@@ -27,6 +27,7 @@ export interface WalletConfig {
   proofServer: string;
   logDir?: string;
   networkId?: NetworkId;
+  useExternalProofServer?: boolean; // Flag to indicate if we should use an external proof server
 }
 
 /**
@@ -120,10 +121,11 @@ export class WalletManager {
    * @param networkId Optional network ID to connect to (defaults to TestNet)
    * @param seed Optional hex seed for the wallet
    * @param walletFilename Optional filename to restore wallet from
+   * @param externalConfig Optional external configuration for connecting to a proof server
    */
-  constructor(networkId: NetworkId, seed: string, walletFilename: string) {
+  constructor(networkId: NetworkId, seed: string, walletFilename: string, externalConfig?: WalletConfig) {
     // Set network ID if provided, default to TestNet
-    this.config = new TestnetRemoteConfig();
+    this.config = externalConfig || new TestnetRemoteConfig();
     if (networkId) {
       setNetworkId(networkId);
     }
@@ -137,8 +139,12 @@ export class WalletManager {
     this.walletFilename = walletFilename;
     this.walletSeed = seed;
     
-    // Create Docker environment
-    this.setupDockerEnvironment();
+    // Create Docker environment only if we're not using an external proof server
+    if (!externalConfig?.useExternalProofServer) {
+      this.setupDockerEnvironment();
+    } else {
+      this.logger.info(`Using external proof server at ${this.config.proofServer}`);
+    }
     
     // Initialize wallet asynchronously to not block MCP server startup
     this.walletInitPromise = this.initializeWallet(seed, this.walletFilename);
@@ -182,8 +188,8 @@ export class WalletManager {
    */
   private async initializeWallet(seed: string, walletFilename?: string): Promise<void> {
     try {
-      // Start Docker environment
-      if (this.dockerEnv) {
+      // Start Docker environment if not using external proof server
+      if (this.dockerEnv && !this.config.useExternalProofServer) {
         this.logger.info('Starting Docker environment');
         this.startedEnv = await this.dockerEnv.up();
         
@@ -195,6 +201,8 @@ export class WalletManager {
         );
         
         this.logger.info(`Docker environment started, proof server at ${this.config.proofServer}`);
+      } else if (this.config.useExternalProofServer) {
+        this.logger.info(`Using external proof server at ${this.config.proofServer}`);
       }
       
       // Generate a random seed if not provided
@@ -605,8 +613,8 @@ export class WalletManager {
         this.logger.info('Wallet closed successfully');
       }
       
-      // Shutdown Docker environment
-      if (this.startedEnv) {
+      // Shutdown Docker environment only if we started it
+      if (this.startedEnv && !this.config.useExternalProofServer) {
         await this.startedEnv.down();
         this.logger.info('Docker environment shut down successfully');
       }

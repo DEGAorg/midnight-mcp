@@ -1,4 +1,4 @@
-import { WalletManager } from '../wallet/index.js';
+import { WalletManager, WalletConfig } from '../wallet/index.js';
 import { setNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '../logger/index.js';
 import type { Logger } from 'pino';
@@ -40,8 +40,9 @@ export class MCPServer {
    * @param networkId The Midnight network ID to connect to
    * @param seed The seed for the wallet
    * @param walletFilename filename to restore wallet from
+   * @param externalConfig Optional external configuration for connecting to a proof server
    */
-  constructor(networkId: NetworkId, seed: string, walletFilename: string) {
+  constructor(networkId: NetworkId, seed: string, walletFilename: string, externalConfig?: WalletConfig) {
     // Set network ID if provided
     if (networkId) {
       setNetworkId(networkId);
@@ -51,8 +52,8 @@ export class MCPServer {
     
     this.logger.info('Initializing Midnight MCP Server');
     
-    // Initialize WalletManager with network ID, seed, and filename
-    this.wallet = new WalletManager(networkId, seed, walletFilename);
+    // Initialize WalletManager with network ID, seed, filename, and optional external config
+    this.wallet = new WalletManager(networkId, seed, walletFilename, externalConfig);
     this.transactions = new Map();
     
     this.logger.info('MCP Server initialized, wallet synchronization started in background');
