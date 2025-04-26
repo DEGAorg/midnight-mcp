@@ -29,6 +29,17 @@ export interface WalletConfig {
   networkId?: NetworkId;
 }
 
+/**
+ * Transaction history entry as available in the wallet state
+ */
+interface TransactionHistoryEntry {
+  applyStage: string;
+  deltas: Record<string, bigint>;
+  identifiers: string[];
+  transactionHash: string;
+  transaction: { __wbg_ptr: number }; // WebAssembly pointer, not directly usable
+}
+
 const CONTAINER_NAME = 'proof-server';
 
 /**
@@ -102,6 +113,7 @@ export class WalletManager {
   private isRecovering: boolean = false;
   private syncedIndices: bigint = 0n;
   private totalIndices: bigint = 0n;
+  private walletState: any = null;
   
   /**
    * Create a new WalletManager instance
@@ -225,6 +237,9 @@ export class WalletManager {
     this.walletSyncSubscription = this.wallet.state().subscribe({
       next: async (state) => {
         try {
+          // Store the entire wallet state for later use
+          this.walletState = state;
+          
           // Reset recovery attempts on successful state update
           this.recoveryAttempts = 0;
           this.recoveryBackoffMs = 5000; // Reset backoff time
@@ -489,10 +504,15 @@ export class WalletManager {
    * Send funds to the specified destination address
    * @param to Address to send the funds to
    * @param amount Amount of funds to send
-   * @returns Transaction result
+   * @returns Transaction result with hash and sync status
    * @throws Error if wallet is not ready
    */
-  public async sendFunds(to: string, amount: bigint): Promise<string> {
+  public async sendFunds(to: string, amount: bigint): Promise<{
+    txHash: string;
+    syncedIndices: bigint;
+    totalIndices: bigint;
+    isFullySynced: boolean;
+  }> {
     if (!this.ready) throw new Error('Wallet not ready');
     if (!this.wallet) throw new Error('Wallet instance not available');
     
@@ -511,7 +531,13 @@ export class WalletManager {
       const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
       
       this.logger.info(`Transaction submitted: ${submittedTransaction}`);
-      return submittedTransaction;
+      
+      return {
+        txHash: submittedTransaction,
+        syncedIndices: this.syncedIndices,
+        totalIndices: this.totalIndices,
+        isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
+      };
     } catch (error) {
       this.logger.error('Failed to send funds', error);
       throw error;
@@ -601,6 +627,51 @@ export class WalletManager {
     
     // Wait a bit to let the recovery process start
     return new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  /**
+   * Verifies if the wallet has received a transaction with the specified identifier
+   * 
+   * @param identifier The transaction identifier to look for
+   * @returns Object containing verification result and current sync status
+   * @throws Error if wallet is not ready or not initialized
+   */
+  public hasReceivedTransactionByIdentifier(identifier: string): { 
+    exists: boolean; 
+    syncedIndices: bigint; 
+    totalIndices: bigint;
+    isFullySynced: boolean;
+  } {
+    if (!this.ready) throw new Error('Wallet not ready');
+    if (!this.wallet) throw new Error('Wallet instance not available');
+    
+    try {
+      // Use the stored wallet state to check transaction history
+      if (!this.walletState || !this.walletState.transactionHistory || !Array.isArray(this.walletState.transactionHistory)) {
+        this.logger.warn('Transaction history not available in stored wallet state');
+        return {
+          exists: false, 
+          syncedIndices: this.syncedIndices, 
+          totalIndices: this.totalIndices,
+          isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
+        };
+      }
+      
+      // Check if any transaction contains the identifier
+      const exists = this.walletState.transactionHistory.some((tx: TransactionHistoryEntry) => 
+        Array.isArray(tx.identifiers) && tx.identifiers.includes(identifier)
+      );
+      
+      return {
+        exists,
+        syncedIndices: this.syncedIndices,
+        totalIndices: this.totalIndices,
+        isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
+      };
+    } catch (error) {
+      this.logger.error(`Error verifying transaction receipt: ${error}`);
+      throw error;
+    }
   }
 }
 

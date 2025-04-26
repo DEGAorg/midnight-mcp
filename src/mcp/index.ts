@@ -11,6 +11,7 @@ export enum MCPErrorType {
   INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
   TX_SUBMISSION_FAILED = 'TX_SUBMISSION_FAILED',
   TX_NOT_FOUND = 'TX_NOT_FOUND',
+  IDENTIFIER_VERIFICATION_FAILED = 'IDENTIFIER_VERIFICATION_FAILED',
 }
 
 /**
@@ -106,10 +107,17 @@ export class MCPServer {
    * Send funds to the specified destination address
    * @param destinationAddress Address to send the funds to
    * @param amount Amount of funds to send
-   * @returns Transaction hash
+   * @returns Transaction hash and sync status
    * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
    */
-  public async sendFunds(destinationAddress: string, amount: bigint): Promise<{ txHash: string }> {
+  public async sendFunds(destinationAddress: string, amount: bigint): Promise<{ 
+    txHash: string;
+    syncStatus: {
+      syncedIndices: bigint;
+      totalIndices: bigint;
+      isFullySynced: boolean;
+    }
+  }> {
     if (!this.isReady()) {
       throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
@@ -119,10 +127,10 @@ export class MCPServer {
     }
     
     try {
-      const txHash = await this.wallet.sendFunds(destinationAddress, amount);
+      const result = await this.wallet.sendFunds(destinationAddress, amount);
       
       // Store transaction for later validation
-      this.transactions.set(txHash, {
+      this.transactions.set(result.txHash, {
         status: 'pending',
         to: destinationAddress,
         amount
@@ -130,15 +138,22 @@ export class MCPServer {
       
       // Simulate transaction confirmation after a delay
       setTimeout(() => {
-        const tx = this.transactions.get(txHash);
+        const tx = this.transactions.get(result.txHash);
         if (tx) {
           tx.status = 'confirmed';
-          this.transactions.set(txHash, tx);
-          this.logger.info(`Transaction ${txHash} confirmed`);
+          this.transactions.set(result.txHash, tx);
+          this.logger.info(`Transaction ${result.txHash} confirmed`);
         }
       }, 5000);
       
-      return { txHash };
+      return { 
+        txHash: result.txHash,
+        syncStatus: {
+          syncedIndices: result.syncedIndices,
+          totalIndices: result.totalIndices,
+          isFullySynced: result.isFullySynced
+        }
+      };
     } catch (error) {
       this.logger.error('Failed to send funds', error);
       throw new MCPError(MCPErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
@@ -162,6 +177,45 @@ export class MCPServer {
     }
     
     return { status: transaction.status };
+  }
+  
+  /**
+   * Verify if a transaction with the specified identifier has been received by the wallet
+   * 
+   * @param identifier The transaction identifier to verify (not the transaction hash)
+   * @returns Verification result with transaction existence and sync status
+   * @throws MCPError if wallet is not ready or verification fails
+   */
+  public hasReceivedTransactionByIdentifier(identifier: string): { 
+    exists: boolean;
+    syncStatus: {
+      syncedIndices: bigint;
+      totalIndices: bigint;
+      isFullySynced: boolean;
+    }
+  } {
+    if (!this.isReady()) {
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      const result = this.wallet.hasReceivedTransactionByIdentifier(identifier);
+      
+      return {
+        exists: result.exists,
+        syncStatus: {
+          syncedIndices: result.syncedIndices,
+          totalIndices: result.totalIndices,
+          isFullySynced: result.isFullySynced
+        }
+      };
+    } catch (error) {
+      this.logger.error('Error verifying transaction by identifier', error);
+      throw new MCPError(
+        MCPErrorType.IDENTIFIER_VERIFICATION_FAILED, 
+        `Failed to verify transaction with identifier: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
   
   /**
