@@ -1,7 +1,7 @@
 import { createLogger } from '../logger/index.js';
 import type { Logger } from 'pino';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
-import { randomBytes } from 'crypto';
+import { webcrypto } from 'crypto';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as Rx from 'rxjs';
@@ -11,6 +11,10 @@ import { nativeToken } from '@midnight-ntwrk/ledger';
 import { WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { type Resource } from '@midnight-ntwrk/wallet';
+
+// Set up crypto for Scala.js
+// @ts-expect-error: It's needed to make Scala.js and WASM code able to use cryptography
+globalThis.crypto = webcrypto;
 
 /**
  * Configuration for wallet connection to Midnight network
@@ -394,13 +398,14 @@ export class WalletManager {
         this.logger.info('Wallet closed successfully');
       }
       
-      // Shut down Docker environment
+      // Shutdown Docker environment
       if (this.startedEnv) {
         await this.startedEnv.down();
-        this.logger.info('Docker environment shut down');
+        this.logger.info('Docker environment shut down successfully');
       }
     } catch (error) {
-      this.logger.error('Error closing wallet manager', error);
+      this.logger.error('Error during shutdown', error);
+      throw error;
     }
   }
 }
