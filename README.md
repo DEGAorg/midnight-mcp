@@ -38,6 +38,50 @@ The application uses environment variables for configuration. For development, t
 
 ---
 
+## Seed Generation
+
+The project includes a `generate-seed.ts` script in the `scripts` directory to help generate secure BIP39 mnemonics and wallet seeds for Midnight.
+
+### Using the Generate Seed Script
+
+```bash
+# Run the script with default options (24-word mnemonic)
+yarn generate-seed
+
+# Generate a 12-word mnemonic
+yarn generate-seed --words 12
+
+# Add a password for additional security
+yarn generate-seed --password "your-secure-password"
+
+# Convert existing Midnight wallet seed to BIP39 mnemonic
+yarn generate-seed --midnight-seed "your-hex-seed"
+
+# Generate mnemonic from specific entropy
+yarn generate-seed --entropy "your-hex-entropy"
+
+# Derive a seed from an existing mnemonic
+yarn generate-seed --mnemonic "your mnemonic phrase here"
+```
+
+### Available Options
+
+| Option | Description |
+|--------|-------------|
+| `-w, --words <number>` | Number of words in mnemonic (12 or 24). Default: 24 |
+| `-p, --password <string>` | Optional password for additional security |
+| `-f, --format <string>` | Seed format: "full" (64 bytes) or "compact" (32 bytes). Default: full |
+| `-e, --entropy <hex>` | Use provided hex entropy to generate mnemonic |
+| `-s, --seed <hex>` | Treat the provided hex as seed, verify by converting to mnemonic and back |
+| `-m, --mnemonic <string>` | Use provided mnemonic to generate seed |
+| `-M, --midnight-seed <hex>` | Generate a compatible BIP39 mnemonic for a Midnight wallet seed |
+
+### Midnight Wallet Seed Note
+
+For Midnight wallet, the seed is the entropy value used to generate the BIP39 mnemonic. When using the script, you should save both the seed and the mnemonic for complete wallet recovery.
+
+---
+
 ## MCP API Methods
 
 | Method              | Description                      |

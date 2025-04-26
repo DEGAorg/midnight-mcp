@@ -21,7 +21,8 @@
     "bboard-ui": "turbo run start --filter=bboard-ui",
     "build:mcp": "tsc",
     "start:mcp": "node --experimental-specifier-resolution=node dist/server.js",
-    "dev:mcp": "tsx src/server.ts"
+    "dev:mcp": "tsx src/server.ts",
+    "generate-seed": "tsx scripts/generate-seed.ts"
   },
   "resolutions": {
     "@midnight-ntwrk/compact-runtime/@midnight-ntwrk/onchain-runtime": "^0.2.6",
@@ -43,6 +44,9 @@
     "@midnight-ntwrk/wallet": "4.0.0",
     "@midnight-ntwrk/wallet-api": "4.0.0",
     "@midnight-ntwrk/wallet-sdk-address-format": "1.0.0",
+    "bip39": "^3.1.0",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
     "dotenv": "^16.5.0",
     "fp-ts": "^2.16.1",
     "io-ts": "^2.2.20",
@@ -76,8 +80,8 @@
     "typescript": "^5.2.2"
   },
   "optionalDependencies": {
-    "pino-stackdriver": "^4.1.0",
-    "pino-cloudwatch": "^1.2.0",
-    "pino-applicationinsights": "^8.2.0"
+    "pino-applicationinsights": "^2.1.0",
+    "pino-cloudwatch": "^0.7.0",
+    "pino-stackdriver": "^3.0.0"
   }
 }
