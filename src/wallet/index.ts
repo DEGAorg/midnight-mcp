@@ -11,6 +11,7 @@ import { nativeToken } from '@midnight-ntwrk/ledger';
 import { WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { type Resource } from '@midnight-ntwrk/wallet';
+import { config } from '../config.js';
 
 // Set up crypto for Scala.js
 // @ts-expect-error: It's needed to make Scala.js and WASM code able to use cryptography
@@ -91,6 +92,16 @@ export class WalletManager {
   private walletInitPromise: Promise<void>;
   private walletAddress: string = '';
   private walletBalance: bigint = 0n;
+  private walletFilename: string = '';
+  private lastSaveTime: number = 0;
+  private saveInterval: number = 5000; // Save at most every 5 seconds
+  private recoveryAttempts: number = 0;
+  private maxRecoveryAttempts: number = 5;
+  private recoveryBackoffMs: number = 5000; // Start with 5 seconds backoff
+  private walletSeed: string = '';
+  private isRecovering: boolean = false;
+  private syncedIndices: bigint = 0n;
+  private totalIndices: bigint = 0n;
   
   /**
    * Create a new WalletManager instance
@@ -98,7 +109,7 @@ export class WalletManager {
    * @param seed Optional hex seed for the wallet
    * @param walletFilename Optional filename to restore wallet from
    */
-  constructor(networkId: NetworkId, seed: string, walletFilename?: string) {
+  constructor(networkId: NetworkId, seed: string, walletFilename: string) {
     // Set network ID if provided, default to TestNet
     this.config = new TestnetRemoteConfig();
     if (networkId) {
@@ -110,11 +121,15 @@ export class WalletManager {
     
     this.logger.info('Initializing WalletManager');
     
+    // Store wallet filename and seed for recovery
+    this.walletFilename = walletFilename;
+    this.walletSeed = seed;
+    
     // Create Docker environment
     this.setupDockerEnvironment();
     
     // Initialize wallet asynchronously to not block MCP server startup
-    this.walletInitPromise = this.initializeWallet(seed, walletFilename);
+    this.walletInitPromise = this.initializeWallet(seed, this.walletFilename);
   }
   
   /**
@@ -178,33 +193,8 @@ export class WalletManager {
         this.wallet = await this.buildWalletFromSeed(seed, finalFilename);
         
         if (this.wallet) {
-          // Subscribe to wallet state changes
-          this.walletSyncSubscription = this.wallet.state().subscribe({
-            next: (state) => {
-              // Get indices sync status from the wallet state
-              const synced = state.syncProgress?.synced ?? 0n;
-              const total = state.syncProgress?.total ?? 0n;
-              
-              // Update wallet information
-              this.walletAddress = state.address || '';
-              this.walletBalance = state.balances[nativeToken()] ?? 0n;
-              
-              // Check if wallet is fully synced
-              if (total > 0n && synced === total) {
-                if (!this.ready) {
-                  this.ready = true;
-                  this.logger.info('Wallet is fully synced and ready!');
-                  this.logger.info(`Wallet address: ${this.walletAddress}`);
-                  this.logger.info(`Wallet balance: ${this.walletBalance}`);
-                }
-              } else {
-                this.logger.info(`Wallet syncing: ${synced}/${total}`);
-              }
-            },
-            error: (err) => {
-              this.logger.error(`Wallet state subscription error: ${err}`);
-            }
-          });
+          // Subscribe to wallet state changes with error recovery
+          this.setupWalletSubscription();
           
           this.logger.info('Wallet initialized successfully, syncing in progress');
         } else {
@@ -219,19 +209,183 @@ export class WalletManager {
   }
   
   /**
+   * Sets up the wallet subscription with error handling and recovery
+   */
+  private setupWalletSubscription(): void {
+    if (!this.wallet) {
+      this.logger.error('Cannot setup subscription: wallet is null');
+      return;
+    }
+    
+    // Clean up existing subscription if it exists
+    if (this.walletSyncSubscription) {
+      this.walletSyncSubscription.unsubscribe();
+    }
+    
+    this.walletSyncSubscription = this.wallet.state().subscribe({
+      next: async (state) => {
+        try {
+          // Reset recovery attempts on successful state update
+          this.recoveryAttempts = 0;
+          this.recoveryBackoffMs = 5000; // Reset backoff time
+          
+          // Get indices sync status from the wallet state
+          const synced = state.syncProgress?.synced ?? 0n;
+          const total = state.syncProgress?.total ?? 0n;
+          
+          // Update wallet information
+          this.walletAddress = state.address || '';
+          this.walletBalance = state.balances[nativeToken()] ?? 0n;
+          this.syncedIndices = synced;
+          this.totalIndices = total;
+          
+          // Check if wallet is fully synced
+          if (total > 0n && synced === total) {
+            if (!this.ready) {
+              this.ready = true;
+              this.logger.info('Wallet is fully synced and ready!');
+              this.logger.info(`Wallet address: ${this.walletAddress}`);
+              this.logger.info(`Wallet balance: ${this.walletBalance}`);
+              
+              // Save the fully synced wallet state
+              await this.saveWalletToFile(this.walletFilename);
+            }
+          } else {
+            this.logger.info(`Wallet syncing: ${synced}/${total}`);
+            
+            // Throttle save operations to avoid excessive file writes
+            const now = Date.now();
+            if (now - this.lastSaveTime >= this.saveInterval) {
+              this.lastSaveTime = now;
+              // Save wallet state during sync with incremental progress
+              await this.saveWalletToFile(this.walletFilename);
+            }
+          }
+        } catch (error) {
+          this.logger.error('Error processing wallet state update', error);
+          this.attemptWalletRecovery('State processing error');
+        }
+      },
+      error: (err) => {
+        this.logger.error(`Wallet state subscription error: ${err}`);
+        this.attemptWalletRecovery('Subscription error');
+      },
+      complete: () => {
+        this.logger.warn('Wallet state subscription completed unexpectedly');
+        this.attemptWalletRecovery('Subscription completed');
+      }
+    });
+  }
+  
+  /**
+   * Attempts to recover the wallet after an error
+   * @param reason Reason for recovery attempt
+   */
+  private async attemptWalletRecovery(reason: string): Promise<void> {
+    // Prevent multiple recovery attempts running concurrently
+    if (this.isRecovering) {
+      this.logger.info('Recovery already in progress, skipping new attempt');
+      return;
+    }
+    
+    this.isRecovering = true;
+    
+    try {
+      this.recoveryAttempts++;
+      this.ready = false; // Mark wallet as not ready during recovery
+      
+      // Reset synchronization metrics during recovery
+      this.syncedIndices = 0n;
+      this.totalIndices = 0n;
+      
+      this.logger.warn(`Attempting wallet recovery (${this.recoveryAttempts}/${this.maxRecoveryAttempts}). Reason: ${reason}`);
+      
+      // Check if we've exceeded max recovery attempts
+      if (this.recoveryAttempts > this.maxRecoveryAttempts) {
+        this.logger.error(`Max recovery attempts (${this.maxRecoveryAttempts}) exceeded. Wallet may need manual intervention.`);
+        return;
+      }
+      
+      // Unsubscribe from current subscription
+      if (this.walletSyncSubscription) {
+        this.walletSyncSubscription.unsubscribe();
+        this.walletSyncSubscription = undefined;
+      }
+      
+      // Try to save current wallet state if possible
+      if (this.wallet) {
+        try {
+          await this.saveWalletToFile(this.walletFilename);
+          this.logger.info('Successfully saved wallet state before recovery');
+        } catch (saveError) {
+          this.logger.warn('Failed to save wallet state before recovery', saveError);
+        }
+        
+        // Close the current wallet
+        try {
+          await this.wallet.close();
+          this.logger.info('Successfully closed wallet for recovery');
+        } catch (closeError) {
+          this.logger.warn('Error closing wallet during recovery', closeError);
+        }
+        
+        this.wallet = null;
+      }
+      
+      // Apply exponential backoff before reconnecting
+      const backoffTime = Math.min(this.recoveryBackoffMs * Math.pow(1.5, this.recoveryAttempts - 1), 60000); // Max 1 minute
+      this.logger.info(`Waiting ${backoffTime}ms before attempting recovery`);
+      
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+      
+      // Attempt to rebuild the wallet
+      try {
+        this.wallet = await this.buildWalletFromSeed(this.walletSeed, this.walletFilename);
+        
+        if (this.wallet) {
+          this.setupWalletSubscription();
+          this.logger.info('Wallet recovered successfully');
+        } else {
+          this.logger.error('Failed to rebuild wallet during recovery');
+        }
+      } catch (rebuildError) {
+        this.logger.error('Error rebuilding wallet during recovery', rebuildError);
+        
+        // Schedule another recovery attempt with backoff if we haven't exceeded max attempts
+        if (this.recoveryAttempts < this.maxRecoveryAttempts) {
+          this.recoveryBackoffMs = Math.min(this.recoveryBackoffMs * 2, 60000); // Double backoff time, max 1 minute
+          this.logger.info(`Scheduling another recovery attempt in ${this.recoveryBackoffMs}ms`);
+          
+          setTimeout(() => {
+            this.isRecovering = false;
+            this.attemptWalletRecovery('Previous recovery failed');
+          }, this.recoveryBackoffMs);
+        }
+      }
+    } finally {
+      this.isRecovering = false;
+    }
+  }
+  
+  /**
    * Build wallet from seed and optionally restore from file
    */
   private async buildWalletFromSeed(seed: string, filename: string): Promise<Wallet & Resource> {
     const { indexer, indexerWS, node, proofServer } = this.config;
     let wallet: Wallet & Resource;
 
+    // Store the filename for future saves
+    if (filename) {
+      this.walletFilename = filename;
+    }
+
     const formattedFilename = `${filename}.json`;
     
     // Try to restore wallet from file if filename is provided
-    if (filename && fs.existsSync(`./files/${formattedFilename}`)) {
-      this.logger.info(`Attempting to restore wallet from ./files/${formattedFilename}`);
+    if (filename && fs.existsSync(`${config.walletBackupFolder}/${formattedFilename}`)) {
+      this.logger.info(`Attempting to restore wallet from ${config.walletBackupFolder}/${formattedFilename}`);
       try {
-        const serializedStream = fs.createReadStream(`./files/${formattedFilename}`, 'utf-8');
+        const serializedStream = fs.createReadStream(`${config.walletBackupFolder}/${formattedFilename}`, 'utf-8');
         const serialized = await streamToString(serializedStream);
         serializedStream.on('finish', () => {
           serializedStream.close();
@@ -288,9 +442,26 @@ export class WalletManager {
   
   /**
    * Check if the wallet is ready for operations
-   * @returns true if wallet is synced and ready
+   * @param withDetails Whether to return detailed status information
+   * @returns true if wallet is synced and ready, or status object if withDetails is true
    */
-  public isReady(): boolean {
+  public isReady(withDetails: boolean = false): boolean | { 
+    ready: boolean; 
+    recovering: boolean; 
+    recoveryAttempts: number;
+    synced?: bigint;
+    total?: bigint; 
+  } {
+    if (withDetails) {
+      return {
+        ready: this.ready,
+        recovering: this.isRecovering,
+        recoveryAttempts: this.recoveryAttempts,
+        synced: this.syncedIndices,
+        total: this.totalIndices
+      };
+    }
+    
     return this.ready;
   }
   
@@ -359,7 +530,7 @@ export class WalletManager {
     }
     
     try {
-      const directoryPath = path.resolve('./files');
+      const directoryPath = path.resolve(config.walletBackupFolder);
       
       // Create directory if it doesn't exist
       if (!fs.existsSync(directoryPath)) {
@@ -367,8 +538,8 @@ export class WalletManager {
         this.logger.info(`Created directory: ${directoryPath}`);
       }
       
-      // Use provided filename or generate a default one
-      const walletFilename = filename || `wallet-${Date.now()}`;
+      // Use provided filename or use the one stored in the class
+      const walletFilename = filename || this.walletFilename || `wallet-${Date.now()}`;
       const filePath = path.join(directoryPath, `${walletFilename}.json`);
       
       this.logger.info(`Saving wallet to file ${filePath}`);
@@ -387,6 +558,16 @@ export class WalletManager {
    */
   public async close(): Promise<void> {
     try {
+      // Save wallet state before closing
+      if (this.wallet) {
+        try {
+          await this.saveWalletToFile(this.walletFilename);
+          this.logger.info('Wallet state saved before shutdown');
+        } catch (saveError) {
+          this.logger.warn('Could not save wallet before shutdown', saveError);
+        }
+      }
+      
       // Unsubscribe from wallet state updates
       if (this.walletSyncSubscription) {
         this.walletSyncSubscription.unsubscribe();
@@ -407,6 +588,19 @@ export class WalletManager {
       this.logger.error('Error during shutdown', error);
       throw error;
     }
+  }
+
+  /**
+   * Manually triggers wallet recovery
+   * Useful when external systems detect issues with the wallet
+   * @returns Promise that resolves when recovery attempt is complete
+   */
+  public async recoverWallet(): Promise<void> {
+    this.logger.info('Manual wallet recovery triggered');
+    await this.attemptWalletRecovery('Manual recovery request');
+    
+    // Wait a bit to let the recovery process start
+    return new Promise(resolve => setTimeout(resolve, 100));
   }
 }
 

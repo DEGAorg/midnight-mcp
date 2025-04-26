@@ -38,9 +38,9 @@ export class MCPServer {
    * Create a new MCP Server instance
    * @param networkId The Midnight network ID to connect to
    * @param seed The seed for the wallet
-   * @param walletFilename Optional filename to restore wallet from
+   * @param walletFilename filename to restore wallet from
    */
-  constructor(networkId: NetworkId, seed: string, walletFilename?: string) {
+  constructor(networkId: NetworkId, seed: string, walletFilename: string) {
     // Set network ID if provided
     if (networkId) {
       setNetworkId(networkId);
@@ -62,7 +62,8 @@ export class MCPServer {
    * @returns true if wallet is synced and ready
    */
   public isReady(): boolean {
-    return this.wallet.isReady();
+    // Pass false to ensure we get a boolean back from the wallet manager
+    return this.wallet.isReady(false) as boolean;
   }
   
   /**

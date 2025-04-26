@@ -15,6 +15,7 @@ dotenv.config({ path: path.join(rootDir, '.env') });
 interface Config {
   seed: string;
   networkId: NetworkId;
+  walletBackupFolder: string;
   walletFilename: string;
   logLevel: string;
 }
@@ -42,9 +43,13 @@ export function loadConfig(): Config {
   // Logging configuration
   const logLevel = process.env.LOG_LEVEL || 'info';
 
+  // Default wallet backup folder
+  const walletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'wallet-backups';
+
   return {
     seed,
     networkId,
+    walletBackupFolder,
     walletFilename,
     logLevel
   };
