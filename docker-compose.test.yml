@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Mock Midnight node for testing - assuming it exposes the necessary APIs
+  midnight-node:
+    image: midnight/node:test
+    ports:
+      - "9944:9944"  # Network API port
+    environment:
+      - NODE_ENV=test
+      - LOG_LEVEL=info
+    volumes:
+      - midnight-node-data:/data
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9944/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mock Proof server for testing
+  proof-server:
+    image: midnight/proof-server:test
+    ports:
+      - "6300:6300"  # Proof server port
+    environment:
+      - NODE_ENV=test
+      - LOG_LEVEL=info
+      - API_KEY=test-api-key
+    depends_on:
+      - midnight-node
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6300/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+  # Mock Indexer for testing
+  indexer:
+    image: midnight/indexer:test
+    ports:
+      - "8088:8088"  # Indexer port
+    environment:
+      - NODE_ENV=test
+      - LOG_LEVEL=info
+    depends_on:
+      - midnight-node
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MCP integration tests
+  integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - NODE_ENV=test
+      - TEST_NETWORK_ID=Undeployed
+      # If set to true, will skip integration tests that require network
+      - SKIP_INTEGRATION_TESTS=${SKIP_INTEGRATION_TESTS:-false}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    working_dir: /app
+    command: yarn test:integration
+    depends_on:
+      midnight-node:
+        condition: service_healthy
+      proof-server:
+        condition: service_healthy
+      indexer:
+        condition: service_healthy
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  midnight-node-data:
+  node_modules: 
