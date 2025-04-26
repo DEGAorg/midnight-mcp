@@ -74,5 +74,10 @@
     "tsx": "^4.19.3",
     "turbo": "^1.10.16",
     "typescript": "^5.2.2"
+  },
+  "optionalDependencies": {
+    "pino-stackdriver": "^4.1.0",
+    "pino-cloudwatch": "^1.2.0",
+    "pino-applicationinsights": "^8.2.0"
   }
 }

@@ -1,4 +1,5 @@
-import * as pino from 'pino';
+import { createLogger } from '../logger/index.js';
+import type { Logger } from 'pino';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import * as path from 'node:path';
@@ -79,7 +80,7 @@ export class WalletManager {
   private wallet: (Wallet & Resource) | null = null;
   private ready: boolean = false;
   private config: WalletConfig;
-  private logger: pino.Logger;
+  private logger: Logger;
   private dockerEnv?: DockerComposeEnvironment;
   private startedEnv?: StartedDockerComposeEnvironment;
   private walletSyncSubscription?: Rx.Subscription;
@@ -101,12 +102,7 @@ export class WalletManager {
     }
     
     // Initialize logger
-    this.logger = pino.pino({ 
-      level: process.env.LOG_LEVEL || 'info',
-      transport: {
-        target: 'pino-pretty'
-      }
-    });
+    this.logger = createLogger('wallet-manager');
     
     this.logger.info('Initializing WalletManager');
     
@@ -124,13 +120,15 @@ export class WalletManager {
     try {
       const currentDir = getCurrentDir();
       const configDir = path.resolve(currentDir, './src/wallet/config');
-      console.log('configDir', configDir);
+      this.logger.debug('Config directory: %s', configDir);
+      
       // verify the file exists
       const proofServerYml = path.resolve(configDir, 'proof-server-testnet.yml');
-      console.log('proofServerYml', proofServerYml);
+      this.logger.debug('Proof server YAML path: %s', proofServerYml);
+      
       if (!fs.existsSync(proofServerYml)) {
         const filesInConfigDir = fs.readdirSync(configDir);
-        console.error('Files inside configDir:', filesInConfigDir);
+        this.logger.error('Files inside configDir:', filesInConfigDir);
         throw new Error(`Proof server YAML file not found at ${proofServerYml}`);
       }
       
@@ -158,8 +156,6 @@ export class WalletManager {
         this.logger.info('Starting Docker environment');
         this.startedEnv = await this.dockerEnv.up();
         
-        //  console.log('Containers inside startedEnv:', this.startedEnv.getContainer('proof-server'));
-
         // Update config with mapped ports
         this.config.proofServer = mapContainerPort(
           this.startedEnv, 

@@ -1,6 +1,7 @@
 import { WalletManager } from '../wallet/index.js';
 import { setNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import * as pino from 'pino';
+import { createLogger } from '../logger/index.js';
+import type { Logger } from 'pino';
 
 /**
  * Error types for the MCP API
@@ -30,7 +31,7 @@ export type TransactionStatus = 'pending' | 'confirmed' | 'failed';
  */
 export class MCPServer {
   private wallet: WalletManager;
-  private logger: pino.Logger;
+  private logger: Logger;
   private transactions: Map<string, { status: TransactionStatus; to: string; amount: bigint }>;
   
   /**
@@ -45,12 +46,7 @@ export class MCPServer {
       setNetworkId(networkId);
     }
     
-    this.logger = pino.pino({ 
-      level: process.env.LOG_LEVEL || 'info',
-      transport: {
-        target: 'pino-pretty'
-      }
-    });
+    this.logger = createLogger('mcp-server');
     
     this.logger.info('Initializing Midnight MCP Server');
     
