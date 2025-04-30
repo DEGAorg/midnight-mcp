@@ -90,18 +90,26 @@ node dist/stdio-server.js
 
 The stdio-server provides a standard input/output interface that conforms to the Model Context Protocol, allowing AI models to communicate with the Midnight network.
 
-## Server Configuration
+## MCP Server Configuration for AI Models
 
-The `stdio-server.ts` file initializes a Midnight wallet instance using configuration from `config.js`. It provides:
+JSON Config:
 
-- STDIO transport for seamless integration with AI models
-- Error handling for both MCP and Midnight-specific errors
-- Tool registration and management
-- Clean shutdown on process termination
+```json
+"mcp": {
+    "servers": {
+      "midnight-mcp-server": {
+        "type": "stdio",
+        "name": "Midnight MCP Server",
+        "command": "node",
+        "args": ["<path>/dist/stdio-server.js"]
+      }
+    }
+  }
+```
 
 ## Docker Compose Deployment
 
-The project includes a `docker-compose.yml` file that configures both the MCP server and its required proof server:
+The project includes a `docker-compose.yml` file that configures the Midnight proof server:
 
 ```bash
 # Start the services in detached mode
