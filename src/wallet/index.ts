@@ -396,8 +396,8 @@ export class WalletManager {
           };
           
           // Log balances in human-readable format
-          this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
-          this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
+          // this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
+          // this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
           
           this.syncedIndices = synced;
           this.totalIndices = total;
@@ -414,7 +414,7 @@ export class WalletManager {
               await this.saveWalletToFile(this.walletFilename);
             }
           } else {
-            this.logger.info(`Wallet syncing: ${synced}/${total}`);
+            // this.logger.info(`Wallet syncing: ${synced}/${total}`);
             
             // Throttle save operations to avoid excessive file writes
             const now = Date.now();
@@ -749,10 +749,10 @@ export class WalletManager {
       const walletFilename = filename || this.walletFilename || `wallet-${Date.now()}`;
       const filePath = path.join(directoryPath, `${walletFilename}.json`);
       
-      this.logger.info(`Saving wallet to file ${filePath}`);
+      // this.logger.info(`Saving wallet to file ${filePath}`);
       const walletJson = await this.wallet.serializeState();
       fs.writeFileSync(filePath, walletJson, { mode: 0o644 });
-      this.logger.info(`Wallet saved to ${filePath}`);
+      // this.logger.info(`Wallet saved to ${filePath}`);
       return filePath;
     } catch (error) {
       this.logger.error(`Failed to save wallet: ${error}`);
