@@ -163,7 +163,7 @@ export class MCPServer {
   
   /**
    * Get the wallet's current balance
-   * @returns The wallet balance details as strings
+   * @returns The wallet balance details including available and pending balances
    * @throws MCPError if wallet is not ready
    */
   public getBalance(): WalletBalances {
@@ -180,11 +180,13 @@ export class MCPServer {
   }
   
   /**
-   * Send funds to the specified destination address
+   * Initiate a transaction to send funds to the specified destination address
+   * This method is non-blocking and returns immediately after creating the transaction record
+   * 
    * @param destinationAddress Address to send the funds to
    * @param amount Amount of funds to send as a string (decimal value)
-   * @returns Transaction hash, sync status, and amount sent
-   * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
+   * @returns Transaction initiation details including ID, state, and amount
+   * @throws MCPError if wallet is not ready or transaction initialization fails
    */
   public async sendFunds(destinationAddress: string, amount: string): Promise<InitiateTransactionResult> {
     if (!this.isReady()) {
@@ -203,10 +205,12 @@ export class MCPServer {
   }
   
   /**
-   * For backward compatibility - this method waits for the transaction to be sent
+   * Send funds and wait for the transaction to be submitted
+   * This method is blocking and waits for the transaction to be fully processed
+   * 
    * @param destinationAddress Address to send the funds to
    * @param amount Amount of funds to send as a string (decimal value)
-   * @returns Transaction hash, sync status, and amount sent
+   * @returns Transaction details including identifier, sync status, and amount sent
    * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
    * @deprecated Use sendFunds for non-blocking transactions
    */
@@ -232,7 +236,7 @@ export class MCPServer {
   /**
    * Get the status of a transaction by its ID
    * @param transactionId The ID of the transaction to check
-   * @returns The current status of the transaction
+   * @returns The current status of the transaction including blockchain status if available
    * @throws MCPError if transaction is not found or wallet is not ready
    */
   public getTransactionStatus(transactionId: string): TransactionStatusResult | null {
@@ -262,8 +266,8 @@ export class MCPServer {
   
   /**
    * Get all transactions, optionally filtered by state
-   * @param state Optional state to filter transactions by
-   * @returns Array of transaction records
+   * @param state Optional state to filter transactions by (INITIATED, SENT, COMPLETED, FAILED)
+   * @returns Array of transaction records matching the specified state or all transactions if no state provided
    * @throws MCPError if wallet is not ready
    */
   public getTransactions(state?: TransactionState): TransactionRecord[] {
@@ -328,7 +332,7 @@ export class MCPServer {
   
   /**
    * Get detailed wallet status including sync progress, readiness, and recovery state
-   * @returns Detailed wallet status with sync information
+   * @returns Detailed wallet status with sync information, address, and balances
    * @throws MCPError if there's an issue retrieving wallet status
    */
   public getWalletStatus(): WalletStatus {

@@ -176,6 +176,7 @@ function getServer() {
 // MCP POST endpoint (streamable)
 app.post('/mcp', (async (req, res) => {
   try {
+    logger.info('Received MCP POST request');
     // handle request authentication
     const authHeader = req.headers['Authorization'] || req.headers['authorization'];
     if (shouldCheckAuth && authHeader !== `Bearer ${API_KEY}`) {
@@ -186,18 +187,21 @@ app.post('/mcp', (async (req, res) => {
       });
     }
 
+    logger.info('Getting MCP server');
     const server = getServer();
+    logger.info('Getting MCP transport');
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined
     });
-
+    logger.info('Transport created');
     res.on('close', () => {
       logger.info('Request closed');
       transport.close();
       server.close();
     });
-
+    logger.info('Connecting server to transport');
     await server.connect(transport);
+    logger.info('Transport handling request');
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
     logger.error('Error handling MCP request:', error);

@@ -20,6 +20,7 @@
     "build:mcp": "tsc",
     "start:mcp": "node --experimental-specifier-resolution=node dist/server.js",
     "dev:mcp": "tsx src/server.ts",
+    "dev:mcp:stdio": "tsx src/stdio-server.ts",
     "generate-seed": "tsx scripts/generate-seed.ts",
     "dev-tool": "tsx scripts/dev-tool.ts",
     "test:unit": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts'",
