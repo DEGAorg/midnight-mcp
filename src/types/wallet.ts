@@ -42,8 +42,8 @@ export interface WalletStatus {
 export interface TransactionVerificationResult {
   exists: boolean;
   syncStatus: {
-    syncedIndices: bigint;
-    totalIndices: bigint;
+    syncedIndices: string;
+    totalIndices: string;
     isFullySynced: boolean;
   }
 }
@@ -54,19 +54,60 @@ export interface TransactionVerificationResult {
 export interface SendFundsResult {
   txIdentifier: string;
   syncStatus: {
-    syncedIndices: bigint;
-    totalIndices: bigint;
+    syncedIndices: string;
+    totalIndices: string;
     isFullySynced: boolean;
   }
   amount: string; // Amount sent in dust format
-} 
+}
 
 /**
- * Send funds processing result
+ * Transaction state enum representing the lifecycle of a transaction
  */
-export interface SendFundsProcessingResult {
-  status: 'pending' | 'failed';
-  processIdentifier: string;
-  destinationAddress?: string;
-  amount?: string;
+export enum TransactionState {
+  INITIATED = 'initiated',  // Transaction has been initiated but not yet broadcast
+  SENT = 'sent',            // Transaction has been broadcast with txIdentifier
+  COMPLETED = 'completed',  // Transaction appears in transaction history
+  FAILED = 'failed'         // Transaction failed for some reason
+}
+
+/**
+ * Transaction record for storing in the database
+ */
+export interface TransactionRecord {
+  id: string;                    // UUID for the transaction
+  state: TransactionState;       // Current state of the transaction
+  fromAddress: string;           // Sender address
+  toAddress: string;             // Recipient address
+  amount: string;                // Amount in dust format
+  txIdentifier?: string;         // Transaction identifier (once available)
+  createdAt: number;             // Timestamp of creation
+  updatedAt: number;             // Timestamp of last update
+  errorMessage?: string;         // Error message if transaction failed
+}
+
+/**
+ * Result when initiating a transaction
+ */
+export interface InitiateTransactionResult {
+  id: string;                    // UUID for the transaction record
+  state: TransactionState;       // Current state (should be INITIATED)
+  toAddress: string;             // Recipient address
+  amount: string;                // Amount in dust format
+  createdAt: number;             // Timestamp of creation
+}
+
+/**
+ * Result when checking transaction status
+ */
+export interface TransactionStatusResult {
+  transaction: TransactionRecord;
+  blockchainStatus?: {
+    exists: boolean;
+    syncStatus: {
+      syncedIndices: string;
+      totalIndices: string;
+      isFullySynced: boolean;
+    }
+  }
 } 

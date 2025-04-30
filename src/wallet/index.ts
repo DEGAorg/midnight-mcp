@@ -14,7 +14,17 @@ import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { type Resource } from '@midnight-ntwrk/wallet';
 import { config } from '../config.js';
 import { convertBigIntToDecimal, convertDecimalToBigInt } from './utils.js';
-import { WalletStatus, WalletBalances, SendFundsResult, TransactionVerificationResult } from '../types/wallet.js';
+import { 
+  WalletStatus, 
+  WalletBalances, 
+  SendFundsResult, 
+  TransactionVerificationResult,
+  TransactionState,
+  TransactionRecord,
+  InitiateTransactionResult, 
+  TransactionStatusResult
+} from '../types/wallet.js';
+import { TransactionDatabase } from './db/TransactionDatabase.js';
 
 // Set up crypto for Scala.js
 // @ts-expect-error: It's needed to make Scala.js and WASM code able to use cryptography
@@ -145,6 +155,11 @@ export class WalletManager {
   private totalIndices: bigint = 0n;
   private walletState: any = null;
   
+  // Transaction tracking
+  private transactionDb: TransactionDatabase;
+  private transactionPoller?: NodeJS.Timeout;
+  private pollingInterval: number = 15000; // Poll for completed transactions every 15 seconds
+  
   // Track different balance types for the wallet (using bigint internally)
   private walletBalances: InternalWalletBalances = {
     balance: 0n,
@@ -175,9 +190,21 @@ export class WalletManager {
     this.walletFilename = walletFilename;
     this.walletSeed = seed;
     
+    // Initialize the transaction database
+    const dbPath = path.join(config.walletBackupFolder, `${walletFilename}-transactions.db`);
+    this.transactionDb = new TransactionDatabase(dbPath);
+    this.logger.info(`Transaction database initialized at ${dbPath}`);
+    
     // Initialize wallet asynchronously to not block MCP server startup
     // Properly chain the async operations
     this.walletInitPromise = this.initWalletWithProperSetup(seed, walletFilename, externalConfig);
+    
+    // Start transaction status poller when wallet is ready
+    this.walletInitPromise.then(() => {
+      this.startTransactionPoller();
+    }).catch(err => {
+      this.logger.error('Failed to start transaction poller due to wallet init error', err);
+    });
   }
   
   /**
@@ -585,16 +612,16 @@ export class WalletManager {
     ready: boolean; 
     recovering: boolean; 
     recoveryAttempts: number;
-    synced?: bigint;
-    total?: bigint; 
+    synced?: string;
+    total?: string; 
   } {
     if (withDetails) {
       return {
         ready: this.ready,
         recovering: this.isRecovering,
         recoveryAttempts: this.recoveryAttempts,
-        synced: this.syncedIndices,
-        total: this.totalIndices
+        synced: this.syncedIndices.toString(),
+        total: this.totalIndices.toString()
       };
     }
     
@@ -673,11 +700,21 @@ export class WalletManager {
       
       const isFullySynced = this.totalIndices > 0n && this.syncedIndices === this.totalIndices;
       
+      // Create a transaction record in the database
+      const transaction = this.transactionDb.createTransaction(
+        this.walletAddress,
+        to,
+        amount
+      );
+      
+      // Update the transaction to SENT state with the identifier
+      this.transactionDb.markTransactionAsSent(transaction.id, submittedTransaction);
+      
       return {
         txIdentifier: submittedTransaction,
         syncStatus: {
-          syncedIndices: this.syncedIndices,
-          totalIndices: this.totalIndices,
+          syncedIndices: this.syncedIndices.toString(),
+          totalIndices: this.totalIndices.toString(),
           isFullySynced
         },
         amount // Return the original dust string input
@@ -728,6 +765,20 @@ export class WalletManager {
    */
   public async close(): Promise<void> {
     try {
+      // Stop transaction poller
+      if (this.transactionPoller) {
+        clearInterval(this.transactionPoller);
+        this.transactionPoller = undefined;
+      }
+      
+      // Close transaction database
+      try {
+        this.transactionDb.close();
+        this.logger.info('Transaction database closed');
+      } catch (dbError) {
+        this.logger.warn('Error closing transaction database', dbError);
+      }
+      
       // Save wallet state before closing
       if (this.wallet) {
         try {
@@ -791,8 +842,8 @@ export class WalletManager {
         return {
           exists: false, 
           syncStatus: {
-            syncedIndices: this.syncedIndices, 
-            totalIndices: this.totalIndices,
+            syncedIndices: this.syncedIndices.toString(), 
+            totalIndices: this.totalIndices.toString(),
             isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
           }
         };
@@ -806,8 +857,8 @@ export class WalletManager {
       return {
         exists,
         syncStatus: {
-          syncedIndices: this.syncedIndices,
-          totalIndices: this.totalIndices,
+          syncedIndices: this.syncedIndices.toString(),
+          totalIndices: this.totalIndices.toString(),
           isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
         }
       };
@@ -847,6 +898,227 @@ export class WalletManager {
       maxRecoveryAttempts: this.maxRecoveryAttempts,
       isFullySynced
     };
+  }
+
+  /**
+   * Start the transaction poller to check for completed transactions
+   */
+  private startTransactionPoller(): void {
+    if (this.transactionPoller) {
+      clearInterval(this.transactionPoller);
+    }
+
+    this.logger.info(`Starting transaction poller with interval of ${this.pollingInterval}ms`);
+    
+    // Check for any pending sent transactions that might have completed during downtime
+    this.checkPendingTransactions();
+
+    this.transactionPoller = setInterval(() => {
+      this.checkPendingTransactions();
+    }, this.pollingInterval);
+  }
+
+  /**
+   * Check for pending transactions that might have been completed
+   */
+  private async checkPendingTransactions(): Promise<void> {
+    if (!this.ready || !this.wallet) {
+      return;
+    }
+
+    try {
+      // Get all transactions in SENT state that need to be checked
+      const sentTransactions = this.transactionDb.getTransactionsByState(TransactionState.SENT);
+      
+      if (sentTransactions.length === 0) {
+        return;
+      }
+
+      this.logger.info(`Checking ${sentTransactions.length} sent transactions for completion`);
+
+      for (const tx of sentTransactions) {
+        if (!tx.txIdentifier) continue;
+
+        // Check if transaction appears in wallet history
+        const verificationResult = this.hasReceivedTransactionByIdentifier(tx.txIdentifier);
+        
+        if (verificationResult.exists) {
+          this.logger.info(`Transaction ${tx.id} with txIdentifier ${tx.txIdentifier} found in blockchain history, marking as completed`);
+          this.transactionDb.markTransactionAsCompleted(tx.txIdentifier);
+        } else {
+          this.logger.debug(`Transaction ${tx.id} with txIdentifier ${tx.txIdentifier} not yet found in blockchain history`);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error checking pending transactions', error);
+    }
+  }
+
+  /**
+   * Initiate a transaction to send funds, but don't wait for completion
+   * @param to Address to send the funds to
+   * @param amount Amount of funds to send (as a string with decimal value in dust)
+   * @returns Object containing the initiated transaction details
+   * @throws Error if wallet is not ready or if there are insufficient funds
+   */
+  public async initiateSendFunds(to: string, amount: string): Promise<InitiateTransactionResult> {
+    if (!this.ready) throw new Error('Wallet not ready');
+    if (!this.wallet) throw new Error('Wallet instance not available');
+
+    try {
+      // Convert decimal amount string to BigInt for internal calculations
+      const amountBigInt = convertDecimalToBigInt(amount);
+      
+      // First check if there are enough available funds
+      if (this.walletBalances.balance < amountBigInt) {
+        // If available balance is insufficient, check if pending funds would be enough
+        if (this.walletBalances.balance >= amountBigInt) {
+          const pendingAmount = this.walletBalances.pendingBalance;
+          const formattedAvailableBalance = convertBigIntToDecimal(this.walletBalances.balance);
+          const formattedPendingAmount = convertBigIntToDecimal(pendingAmount);
+          throw new Error(
+            `Insufficient available funds for transaction. You have ${formattedAvailableBalance} available, ` +
+            `but ${formattedPendingAmount} is still pending. Please wait for pending transactions to complete.`
+          );
+        }
+        // If total balance is also insufficient
+        const formattedTotalBalance = convertBigIntToDecimal(this.walletBalances.balance);
+        throw new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
+      }
+
+      // Create transaction record in database
+      const transaction = this.transactionDb.createTransaction(
+        this.walletAddress,
+        to,
+        amount
+      );
+
+      this.logger.info(`Initiated transaction ${transaction.id} to ${to} for ${amount}`);
+
+      // Start the async process to send funds, but don't await it
+      this.processSendFundsAsync(transaction.id, to, amount).catch(err => {
+        this.logger.error(`Async transaction processing error for ${transaction.id}`, err);
+        this.transactionDb.markTransactionAsFailed(transaction.id, err.message || 'Unknown error processing transaction');
+      });
+
+      return {
+        id: transaction.id,
+        state: TransactionState.INITIATED,
+        toAddress: to,
+        amount,
+        createdAt: transaction.createdAt
+      };
+    } catch (error) {
+      this.logger.error('Failed to initiate funds transfer', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Async process to send funds after initiation (doesn't block the caller)
+   * @param transactionId UUID of the transaction record
+   * @param to Recipient address
+   * @param amount Amount to send in dust string format
+   */
+  private async processSendFundsAsync(transactionId: string, to: string, amount: string): Promise<void> {
+    if (!this.wallet) throw new Error('Wallet instance not available');
+
+    try {
+      // Convert decimal amount string to BigInt for internal calculations
+      const amountBigInt = convertDecimalToBigInt(amount);
+
+      // Create a transfer transaction
+      const transferRecipe = await this.wallet.transferTransaction([
+        {
+          amount: amountBigInt,
+          type: nativeToken(),
+          receiverAddress: to
+        }
+      ]);
+      
+      // Prove and submit the transaction
+      const provenTransaction = await this.wallet.proveTransaction(transferRecipe);
+      const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
+      
+      this.logger.info(`Transaction submitted for ${transactionId}: ${submittedTransaction}`);
+      
+      // Update transaction record with txIdentifier and set state to SENT
+      this.transactionDb.markTransactionAsSent(transactionId, submittedTransaction);
+    } catch (error) {
+      this.logger.error(`Failed to process send funds for transaction ${transactionId}`, error);
+      // Mark the transaction as failed in the database
+      this.transactionDb.markTransactionAsFailed(transactionId, error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get transaction status by ID
+   * @param id Transaction ID
+   * @returns Transaction status including blockchain verification
+   */
+  public getTransactionStatus(id: string): TransactionStatusResult | null {
+    try {
+      const transaction = this.transactionDb.getTransactionById(id);
+      
+      if (!transaction) {
+        return null;
+      }
+      
+      // If we have a txIdentifier and transaction is in SENT state, check blockchain status
+      if (transaction.txIdentifier && transaction.state === TransactionState.SENT) {
+        const blockchainStatus = this.hasReceivedTransactionByIdentifier(transaction.txIdentifier);
+        
+        // Convert BigInt values to strings for safe JSON serialization
+        return {
+          transaction,
+          blockchainStatus: {
+            exists: blockchainStatus.exists,
+            syncStatus: {
+              syncedIndices: blockchainStatus.syncStatus.syncedIndices.toString(),
+              totalIndices: blockchainStatus.syncStatus.totalIndices.toString(),
+              isFullySynced: blockchainStatus.syncStatus.isFullySynced
+            }
+          }
+        };
+      }
+      
+      return { transaction };
+    } catch (error) {
+      this.logger.error(`Failed to get transaction status for ${id}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all transactions with a specific state
+   * @param state Optional transaction state to filter by
+   * @returns Array of transaction records
+   */
+  public getTransactions(state?: TransactionState): TransactionRecord[] {
+    try {
+      if (state) {
+        return this.transactionDb.getTransactionsByState(state);
+      }
+      
+      return this.transactionDb.getAllTransactions();
+    } catch (error) {
+      this.logger.error('Failed to get transactions', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending transactions (INITIATED or SENT)
+   * @returns Array of pending transaction records
+   */
+  public getPendingTransactions(): TransactionRecord[] {
+    try {
+      return this.transactionDb.getPendingTransactions();
+    } catch (error) {
+      this.logger.error('Failed to get pending transactions', error);
+      throw error;
+    }
   }
 }
 

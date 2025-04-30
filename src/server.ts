@@ -5,13 +5,10 @@ import { z } from 'zod';
 import { 
   MCPServer as MidnightMCPServer,
   createSimpleToolHandler,
-  createParameterizedToolHandler,
-  TransactionNotification
+  createParameterizedToolHandler
 } from './mcp/index.js';
 import { CloudProvider, configureGlobalLogging, createLogger, logger } from './logger/index.js';
 import { config } from './config.js';
-import { randomUUID } from 'node:crypto';
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 
 const app = express();
 app.use(express.json());
@@ -96,13 +93,6 @@ function getServer() {
     version: '1.0.0'
   });
 
-  // test notification
-  server.tool(
-    'testNotification',
-    'Test notification',
-    createSimpleToolHandler(() => midnightServer.sendNotification())
-  );
-
   // Add wallet status tool
   server.tool(
     'walletStatus',
@@ -149,86 +139,105 @@ function getServer() {
     )
   );
 
+  // Add transaction status tool
+  server.tool(
+    'getTransactionStatus',
+    'Get the status of a transaction by ID',
+    {
+      transactionId: z.string().min(1)
+    },
+    createParameterizedToolHandler((args: { transactionId: string }) => 
+      midnightServer.getTransactionStatus(args.transactionId)
+    )
+  );
+
+  // Add get all transactions tool
+  server.tool(
+    'getTransactions',
+    'Get all transactions, optionally filtered by state',
+    {
+      state: z.string().optional()
+    },
+    createParameterizedToolHandler((args: { state?: string }) => 
+      midnightServer.getTransactions(args.state as any)
+    )
+  );
+
+  // Add get pending transactions tool
+  server.tool(
+    'getPendingTransactions',
+    'Get all pending transactions (INITIATED or SENT)',
+    createSimpleToolHandler(() => midnightServer.getPendingTransactions())
+  );
+
   return server;
 }
 
-// // MCP POST endpoint (streamable)
-// app.post('/mcp', (async (req, res) => {
-//   try {
-//     // handle request authentication
-//     const authHeader = req.headers['Authorization'] || req.headers['authorization'];
-//     if (shouldCheckAuth && authHeader !== `Bearer ${API_KEY}`) {
-//       return res.status(401).json({
-//         jsonrpc: '2.0',
-//         error: { code: -32000, message: 'Unauthorized' },
-//         id: null
-//       });
-//     }
+// MCP POST endpoint (streamable)
+app.post('/mcp', (async (req, res) => {
+  try {
+    // handle request authentication
+    const authHeader = req.headers['Authorization'] || req.headers['authorization'];
+    if (shouldCheckAuth && authHeader !== `Bearer ${API_KEY}`) {
+      return res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Unauthorized' },
+        id: null
+      });
+    }
 
-//     const server = getServer();
-//     const transport = new StreamableHTTPServerTransport({
-//       sessionIdGenerator: undefined
-//     });
+    const server = getServer();
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined
+    });
 
-//     res.on('close', () => {
-//       logger.info('Request closed');
-//       transport.close();
-//       server.close();
-//     });
+    res.on('close', () => {
+      logger.info('Request closed');
+      transport.close();
+      server.close();
+    });
 
-//     await server.connect(transport);
-//     await transport.handleRequest(req, res, req.body);
-//     // sample message
-//     await transport.send(
-//       {
-//         jsonrpc: '2.0',
-//         method: 'walletStatus',
-//         params: {
-//           destinationAddress: '0x1234567890abcdef',
-//           amount: '1000000000000000000'
-//         },
-//         id: '1'
-//       }
-//     )
-//   } catch (error) {
-//     logger.error('Error handling MCP request:', error);
-//     if (!res.headersSent) {
-//       res.status(500).json({
-//         jsonrpc: '2.0',
-//         error: {
-//           code: -32603,
-//           message: 'Internal server error',
-//         },
-//         id: null,
-//       });
-//     }
-//   }
-// }) as express.RequestHandler);
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (error) {
+    logger.error('Error handling MCP request:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Internal server error',
+        },
+        id: null,
+      });
+    }
+  }
+}) as express.RequestHandler);
 
-// // Disallow GET and DELETE
-// app.get('/mcp', (async (req, res) => {
-//   logger.info('Received GET MCP request');
-//   res.status(405).json({
-//     jsonrpc: '2.0',
-//     error: {
-//       code: -32000,
-//       message: 'Method not allowed.'
-//     },
-//     id: null
-//   });
-// }) as express.RequestHandler);
+// Disallow GET and DELETE
+app.get('/mcp', (async (req, res) => {
+  logger.info('Received GET MCP request');
+  res.status(405).json({
+    jsonrpc: '2.0',
+    error: {
+      code: -32000,
+      message: 'Method not allowed.'
+    },
+    id: null
+  });
+}) as express.RequestHandler);
 
-// app.delete('/mcp', (async (req, res) => {
-//   logger.info('Received DELETE MCP request');
-//   res.status(405).json({
-//     jsonrpc: '2.0',
-//     error: {
-//       code: -32000,
-//       message: 'Method not allowed.'
-//     },
-//     id: null
-//   });
-// }) as express.RequestHandler);
+app.delete('/mcp', (async (req, res) => {
+  logger.info('Received DELETE MCP request');
+  res.status(405).json({
+    jsonrpc: '2.0',
+    error: {
+      code: -32000,
+      message: 'Method not allowed.'
+    },
+    id: null
+  });
+}) as express.RequestHandler);
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
@@ -243,90 +252,8 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// // Start the server
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//   logger.info(`Midnight MCP Server listening on port ${PORT}`);
-// });
-
-// Map to store transports by session ID
-const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
-
-// Handle POST requests for client-to-server communication
-app.post('/mcp', async (req, res) => {
-  // Check for existing session ID
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  let transport: StreamableHTTPServerTransport;
-
-  if (sessionId && transports[sessionId]) {
-    // Reuse existing transport
-    transport = transports[sessionId];
-  } else if (!sessionId && isInitializeRequest(req.body)) {
-    // New initialization request
-    transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized: (sessionId) => {
-        // Store the transport by session ID
-        transports[sessionId] = transport;
-      }
-    });
-
-    // Clean up transport when closed
-    transport.onclose = () => {
-      if (transport.sessionId) {
-        delete transports[transport.sessionId];
-      }
-    };
-    const server = getServer();
-
-    midnightServer.setNotificationHandler(
-      (notification: TransactionNotification) => {
-        // Send notification to the client
-        transport.send({
-          jsonrpc: '2.0',
-          method: 'transactionNotification',
-          params: {
-            notifications: [notification]
-          },
-          id: '1'
-        });
-      }
-    )
-    // Connect to the MCP server
-    await server.connect(transport);
-  } else {
-    // Invalid request
-    res.status(400).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Bad Request: No valid session ID provided',
-      },
-      id: null,
-    });
-    return;
-  }
-
-  // Handle the request
-  await transport.handleRequest(req, res, req.body);
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  logger.info(`Midnight MCP Server listening on port ${PORT}`);
 });
-
-// Reusable handler for GET and DELETE requests
-const handleSessionRequest = async (req: express.Request, res: express.Response) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !transports[sessionId]) {
-    res.status(400).send('Invalid or missing session ID');
-    return;
-  }
-  
-  const transport = transports[sessionId];
-  await transport.handleRequest(req, res);
-};
-
-// Handle GET requests for server-to-client notifications via SSE
-app.get('/mcp', handleSessionRequest);
-
-// Handle DELETE requests for session termination
-app.delete('/mcp', handleSessionRequest);
-
-app.listen(3000);

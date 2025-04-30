@@ -6,8 +6,11 @@ import {
   WalletStatus, 
   WalletBalances, 
   SendFundsResult as WalletSendFundsResult,
-  TransactionVerificationResult,  
-  SendFundsProcessingResult
+  TransactionVerificationResult,
+  InitiateTransactionResult,
+  TransactionStatusResult,
+  TransactionRecord,
+  TransactionState
 } from '../types/wallet.js';
 
 /**
@@ -105,34 +108,13 @@ export function createParameterizedToolHandler<T extends Record<string, any>>(ha
 }
 
 /**
- * Transaction status type for notifications
- */
-export enum TransactionStatus {
-  PENDING = 'PENDING',
-  SUCCESS = 'SUCCESS',
-  FAILED = 'FAILED'
-}
-
-/**
- * Transaction notification payload
- */
-export interface TransactionNotification {
-  txIdentifier: string;
-  status: TransactionStatus;
-  message: string;
-  amount?: string;
-  destinationAddress?: string;
-  error?: string;
-}
-
-/**
  * MCP Server that provides a secure interface to interact with the Midnight blockchain
  * through the wallet implementation
  */
 export class MCPServer {
   private wallet: WalletManager;
   private logger: Logger;
-  private notificationHandler: ((notification: TransactionNotification) => void) | undefined;
+  
   /**
    * Create a new MCP Server instance
    * @param networkId The Midnight network ID to connect to
@@ -198,142 +180,126 @@ export class MCPServer {
   }
   
   /**
-   * Validates parameters for sending funds without actually sending them
+   * Send funds to the specified destination address
    * @param destinationAddress Address to send the funds to
    * @param amount Amount of funds to send as a string (decimal value)
-   * @throws Error if parameters are invalid
+   * @returns Transaction hash, sync status, and amount sent
+   * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
    */
-  private async validateSendFundsParams(destinationAddress: string, amount: string): Promise<void> {
-    if (!destinationAddress || !amount) {
-      throw new Error('Destination address and amount are required');
-    }
-    
-    // Check if the amount is a valid number
-    const amountValue = parseFloat(amount);
-    if (isNaN(amountValue) || amountValue <= 0) {
-      throw new Error('Amount must be a positive number');
-    }
-    
-    // Check if we have enough balance (if wallet provides this method)
-    const balances = this.getBalance();
-    if (amountValue > parseFloat(balances.balance)) {
-      throw new MCPError(MCPErrorType.INSUFFICIENT_FUNDS, 'Insufficient funds for this transaction');
-    }
-  }
-  
-  /**
-   * Send funds to the specified destination address with async processing
-   * @param destinationAddress Address to send the funds to
-   * @param amount Amount of funds to send as a string (decimal value)
-   * @returns Initial transaction information with identifier
-   * @throws MCPError if wallet is not ready or basic validation fails
-   */
-  public async sendFunds(destinationAddress: string, amount: string): Promise<SendFundsProcessingResult> {
+  public async sendFunds(destinationAddress: string, amount: string): Promise<InitiateTransactionResult> {
     if (!this.isReady()) {
       throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
-      // Quick validation before returning
-      await this.validateSendFundsParams(destinationAddress, amount);
+      // Use initiateSendFunds instead of sendFunds
+      const result = await this.wallet.initiateSendFunds(destinationAddress, amount);
       
-      // Generate a transaction identifier
-      const txIdentifier = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-      
-      // Prepare initial result to return immediately
-      const initialResult: SendFundsProcessingResult = {
-        status: 'pending',
-        processIdentifier: txIdentifier,
-        destinationAddress,
-        amount
-      };
-      
-      // Process the transaction asynchronously
-      this.processFundsTransferAsync(txIdentifier, destinationAddress, amount);
-      
-      return initialResult;
+      return result;
     } catch (error) {
-      this.logger.error('Failed to initiate funds transfer', error);
-      throw new MCPError(MCPErrorType.TX_SUBMISSION_FAILED, 'Failed to initiate transaction');
+      this.logger.error('Failed to send funds', error);
+      throw new MCPError(MCPErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
     }
   }
   
   /**
-   * Process a funds transfer asynchronously
-   * @param txIdentifier The transaction identifier
+   * For backward compatibility - this method waits for the transaction to be sent
    * @param destinationAddress Address to send the funds to
-   * @param amount Amount of funds to send
+   * @param amount Amount of funds to send as a string (decimal value)
+   * @returns Transaction hash, sync status, and amount sent
+   * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
+   * @deprecated Use sendFunds for non-blocking transactions
    */
-  private async processFundsTransferAsync(
-    txIdentifier: string, 
-    destinationAddress: string, 
-    amount: string
-  ): Promise<void> {
+  public async sendFundsAndWait(destinationAddress: string, amount: string): Promise<WalletSendFundsResult> {
+    if (!this.isReady()) {
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
     try {
-      // Send notification that transaction is pending
-      this.sendTransactionStatusNotification({
-        txIdentifier,
-        status: TransactionStatus.PENDING,
-        message: 'Transaction processing started',
-        destinationAddress,
-        amount
-      });
-      
-      // Perform the actual transaction
       const result = await this.wallet.sendFunds(destinationAddress, amount);
       
-      // Update the transaction identifier with the real one
-      const finalTxIdentifier = result.txIdentifier || txIdentifier;
-      
-      // Send success notification
-      this.sendTransactionStatusNotification({
-        txIdentifier: finalTxIdentifier,
-        status: TransactionStatus.SUCCESS,
-        message: 'Transaction completed successfully',
-        destinationAddress,
+      return {
+        txIdentifier: result.txIdentifier,
+        syncStatus: result.syncStatus,
         amount: result.amount
-      });
+      };
     } catch (error) {
-      this.logger.error(`Transaction ${txIdentifier} failed:`, error);
-      
-      // Send failure notification
-      this.sendTransactionStatusNotification({
-        txIdentifier,
-        status: TransactionStatus.FAILED,
-        message: 'Transaction failed',
-        destinationAddress,
-        amount,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      this.logger.error('Failed to send funds', error);
+      throw new MCPError(MCPErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
     }
-  }
-
-  // set notification handler
-  public setNotificationHandler(handler: (notification: TransactionNotification) => void): void {
-    this.notificationHandler = handler;
-  }
-
-  // send notification
-  public sendNotification(): void {
-    this.sendTransactionStatusNotification({
-      txIdentifier: 'test',
-      status: TransactionStatus.SUCCESS,
-      message: 'Test notification',
-      destinationAddress: '0x1234567890abcdef',
-      amount: '1000000000000000000'
-    });
   }
   
   /**
-   * Send a transaction status notification to connected clients
-   * @param notification The transaction notification payload
+   * Get the status of a transaction by its ID
+   * @param transactionId The ID of the transaction to check
+   * @returns The current status of the transaction
+   * @throws MCPError if transaction is not found or wallet is not ready
    */
-  public sendTransactionStatusNotification(notification: TransactionNotification): void {
-    this.logger.info(`Transaction status update: ${notification.txIdentifier} - ${notification.status}`);
-    if (this.notificationHandler) {
-      this.notificationHandler(notification);
-    } else {
-      this.logger.warn('No notification handler set, skipping notification');
+  public getTransactionStatus(transactionId: string): TransactionStatusResult | null {
+    if (!this.isReady()) {
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      const status = this.wallet.getTransactionStatus(transactionId);
+      
+      if (!status) {
+        throw new MCPError(MCPErrorType.TX_NOT_FOUND, `Transaction with ID ${transactionId} not found`);
+      }
+      
+      return status;
+    } catch (error) {
+      if (error instanceof MCPError) {
+        throw error;
+      }
+      this.logger.error(`Failed to get transaction status for ${transactionId}`, error);
+      throw new MCPError(
+        MCPErrorType.TX_NOT_FOUND,
+        `Failed to get transaction status: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  
+  /**
+   * Get all transactions, optionally filtered by state
+   * @param state Optional state to filter transactions by
+   * @returns Array of transaction records
+   * @throws MCPError if wallet is not ready
+   */
+  public getTransactions(state?: TransactionState): TransactionRecord[] {
+    if (!this.isReady()) {
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return this.wallet.getTransactions(state);
+    } catch (error) {
+      this.logger.error('Failed to get transactions', error);
+      throw new MCPError(
+        MCPErrorType.WALLET_NOT_READY,
+        `Failed to get transactions: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  
+  /**
+   * Get all pending transactions (INITIATED or SENT)
+   * @returns Array of pending transaction records
+   * @throws MCPError if wallet is not ready
+   */
+  public getPendingTransactions(): TransactionRecord[] {
+    if (!this.isReady()) {
+      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return this.wallet.getPendingTransactions();
+    } catch (error) {
+      this.logger.error('Failed to get pending transactions', error);
+      throw new MCPError(
+        MCPErrorType.WALLET_NOT_READY,
+        `Failed to get pending transactions: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
   
