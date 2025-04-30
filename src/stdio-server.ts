@@ -6,7 +6,9 @@ import {
   McpError,
   ErrorCode,
   CallToolRequestSchema,
-  ListToolsRequestSchema
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import { 
   MCPServer as MidnightMCPServer,
@@ -14,6 +16,7 @@ import {
 } from './mcp/index.js';
 import { config } from './config.js';
 import { ALL_TOOLS, handleToolCall } from './tools.js';
+import { handleListResources, handleReadResource } from './resources.js';
 
 /**
  * Simple logging function
@@ -65,6 +68,7 @@ export function createServer() {
     version: "1.0.0"
   }, {
     capabilities: {
+      resources: {},
       tools: {}
     }
   });
@@ -135,6 +139,33 @@ function setupRequestHandlers(server: Server) {
       return await handleToolCall(toolName, toolArgs, midnightServer, log);
     } catch (error) {
       return handleError("handling tool call", error);
+    }
+  });
+
+  // Handle resource listing
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    try {
+      return { resources: handleListResources() };
+    } catch (error) {
+      return handleError("listing resources", error);
+    }
+  });
+
+  // Handle resource reading
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    try {
+      const resourceUri = request.params.uri;
+      const resource = handleReadResource(resourceUri);
+      
+      return {
+        contents: [{
+          uri: resourceUri,
+          mimeType: resource.mimeType || "application/json",
+          text: JSON.stringify(resource)
+        }]
+      };
+    } catch (error) {
+      handleError("reading resource", error);
     }
   });
 
