@@ -11,7 +11,7 @@ This server implements the Model Context Protocol for integration with the Midni
 - Node.js (v18.20.5)
 - Yarn package manager
 - Docker and Docker Compose (for running the proof server)
-- A secure environment for storing sensitive wallet seeds and API keys
+- A secure environment for storing sensitive wallet seeds
 
 ## Setup and Installation
 
@@ -21,9 +21,9 @@ This server implements the Model Context Protocol for integration with the Midni
 yarn install
 ```
 
-### 2. Generate Wallet Seed and API Key
+### 2. Generate Wallet Seed
 
-Generate a wallet seed and API key for authentication:
+Generate a wallet seed:
 
 ```bash
 # Run the generate-seed script
@@ -33,9 +33,8 @@ yarn generate-seed
 The script will generate and display:
 - A **Midnight Seed** (a hex string) - The entropy value used for your wallet
 - A **BIP39 Mnemonic** - The word sequence corresponding to your seed
-- A **Secure API Key** - Required for authenticating API requests to your MCP server
 
-**IMPORTANT:** Save all of these values securely. The seed and mnemonic provide access to your funds, and the API key controls access to your MCP API.
+**IMPORTANT:** Save these values securely. The seed and mnemonic provide access to your funds.
 
 **NOTE:** The BIP39 mnemonic can be imported into any GUI wallet that supports the Midnight blockchain, providing direct access to your funds.
 
@@ -48,12 +47,11 @@ Create a `.env` file with the necessary configuration values:
 cp .env.example .env
 ```
 
-Edit the `.env` file to include your generated seed and API key:
+Edit the `.env` file to include your generated seed:
 
 ```
 # Required
 SEED=your_generated_seed_here
-API_KEY=your_generated_api_key_here
 ```
 
 ### 4. Start the Proof Server
