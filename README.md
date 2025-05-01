@@ -11,7 +11,6 @@ This server implements the Model Context Protocol for integration with the Midni
 - Node.js (v18.20.5)
 - Yarn package manager
 - Docker and Docker Compose (for running the proof server)
-- A secure environment for storing sensitive wallet seeds
 
 ## Setup and Installation
 
@@ -66,16 +65,6 @@ This will start a container running the Midnight proof server on port 6300.
 
 ### 5. Building and Running the Server
 
-#### For Development
-
-For development purposes, you can run the server with:
-
-```bash
-yarn dev:mcp
-```
-
-This will run the server in development mode with hot reloading.
-
 #### For Production
 
 For production environments, build the server and run from the dist directory:
@@ -83,9 +72,6 @@ For production environments, build the server and run from the dist directory:
 ```bash
 # Build the MCP server
 yarn build:mcp
-
-# Run the server
-node dist/stdio-server.js
 ```
 
 The stdio-server provides a standard input/output interface that conforms to the Model Context Protocol, allowing AI models to communicate with the Midnight network.
@@ -101,28 +87,10 @@ JSON Config:
         "type": "stdio",
         "name": "Midnight MCP Server",
         "command": "node",
-        "args": ["<path>/dist/stdio-server.js"]
+        "args": ["<path>/midnight-mcp/dist/stdio-server.js"]
       }
     }
   }
 ```
 
-## Docker Compose Deployment
-
-The project includes a `docker-compose.yml` file that configures the Midnight proof server:
-
-```bash
-# Start the services in detached mode
-docker-compose up -d
-```
-
-This will:
-- Start the Midnight proof server containers
-
-### Data Persistence and Backups
-
-The Docker Compose configuration creates volumes to persist data:
-
-- `wallet-backups`: Stores wallet backup files
-
-Make sure to implement a backup strategy for these volumes to prevent data loss.
+NOTE: Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.
