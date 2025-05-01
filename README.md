@@ -94,3 +94,66 @@ JSON Config:
 ```
 
 NOTE: Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.
+
+## Integrating with ElizaOS
+
+### Install ElizaOS
+
+Install Node.js: Ensure you have Node.js 23.3.0+ installed on your system. You can download and install it from the official Node.js website: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
+
+Install the ElizaOS CLI: Run the following command in your terminal:
+
+```bash
+npm install -g @elizaos/cli@beta
+```
+
+This will install the ElizaOS CLI globally on your system.
+
+Verify the Installation: After the installation is complete, verify that the ElizaOS CLI is working by running the following command:
+
+```bash
+elizaos --version
+```
+
+This should display the version of the ElizaOS CLI installed on your system.
+
+To create a new Eliza project using the eliza create command, follow these steps:
+
+1. Open a Terminal: Open a terminal window on your system.
+2. Run the eliza create Command: Run the following command in the terminal:
+
+```bash
+elizaos create
+```
+
+This will launch the ElizaOS project creation wizard:
+
+3. Follow the Wizard: Follow the prompts in the wizard to configure your new Eliza project. You will be asked to provide some basic project information, such as the project name and description.
+4. Create the Project: After filling in the required information, the wizard will create a new Eliza project for you. This may take a few seconds to complete.
+5. Navigate to the Project Directory: Once the project is created, navigate to the project directory using the cd command:
+
+```bash
+cd my-project-name
+```
+
+Replace my-project-name with the actual name of your project.
+
+```bash
+elizaos start
+```
+
+This will launch the ElizaOS server and make the agent accessible via the web interface at https://localhost:3000.
+
+You now have a new Eliza project up and running!
+
+### Install the MCP Plugin for ElizaOS
+
+Inside your eliza project run:
+
+```bash
+bun add @fleek-platform/eliza-plugin-mcp
+```
+
+Now in the character.json file that you'll use to create your AI Agent add the mcp json structure shown above.
+
+All set! You're ready to use AI agents with on-chain capabilities for the Midnight blockchain.
