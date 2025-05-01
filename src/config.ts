@@ -64,9 +64,9 @@ export function loadConfig(): Config {
   const proofServer = process.env.PROOF_SERVER;
   const indexer = process.env.INDEXER;
   const indexerWS = process.env.INDEXER_WS;
-  const node = process.env.NODE;
+  const mnNode = process.env.MN_NODE;
 
-  if (!proofServer || !indexer || !indexerWS || !node) {
+  if (!proofServer || !indexer || !indexerWS || !mnNode) {
     throw new Error('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
   }
 
@@ -80,7 +80,7 @@ export function loadConfig(): Config {
     proofServer,
     indexer,
     indexerWS,
-    node
+    node: mnNode
   };
 }
 

@@ -1,4 +1,4 @@
-import { WalletManager, WalletConfig } from '../wallet/index.js';
+import { WalletManager, WalletConfig, TestnetRemoteConfig } from '../wallet/index.js';
 import { setNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '../logger/index.js';
 import type { Logger } from 'pino';
@@ -114,6 +114,7 @@ export function createParameterizedToolHandler<T extends Record<string, any>>(ha
 export class MCPServer {
   private wallet: WalletManager;
   private logger: Logger;
+  private externalConfig: WalletConfig;
   
   /**
    * Create a new MCP Server instance
@@ -131,6 +132,8 @@ export class MCPServer {
     this.logger = createLogger('mcp-server');
     
     this.logger.info('Initializing Midnight MCP Server');
+
+    this.externalConfig = externalConfig || new TestnetRemoteConfig();
     
     // Initialize WalletManager with network ID, seed, filename, and optional external config
     this.wallet = new WalletManager(networkId, seed, walletFilename, externalConfig);
@@ -345,6 +348,11 @@ export class MCPServer {
         `Failed to retrieve wallet status: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }
+
+  // Get the wallet config
+  public getWalletConfig(): WalletConfig {
+    return this.externalConfig;
   }
   
   /**

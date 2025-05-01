@@ -83,6 +83,15 @@ export const ALL_TOOLS = [
       properties: {},
       required: []
     }
+  },
+  {
+    name:"getWalletConfig",
+    description: "Get the configuration of the wallet NODE and Indexer",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
+    },
   }
 ];
 
@@ -204,6 +213,18 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             {
               "type": "text",
               "text": JSON.stringify(pendingTransactions, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "getWalletConfig":
+        const config = midnightServer.getWalletConfig();
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(config, null, 2),
               "mimeType": "application/json"
             }
           ]

@@ -996,10 +996,7 @@ export class WalletManager {
       this.logger.info(`Initiated transaction ${transaction.id} to ${to} for ${amount}`);
 
       // Start the async process to send funds, but don't await it
-      this.processSendFundsAsync(transaction.id, to, amount).catch(err => {
-        this.logger.error(`Async transaction processing error for ${transaction.id}`, err);
-        this.transactionDb.markTransactionAsFailed(transaction.id, err.message || 'Unknown error processing transaction');
-      });
+      this.processSendFundsAsync(transaction.id, to, amount);
 
       return {
         id: transaction.id,
@@ -1047,7 +1044,7 @@ export class WalletManager {
     } catch (error) {
       this.logger.error(`Failed to process send funds for transaction ${transactionId}`, error);
       // Mark the transaction as failed in the database
-      this.transactionDb.markTransactionAsFailed(transactionId, error instanceof Error ? error.message : 'Unknown error');
+      this.transactionDb.markTransactionAsFailed(transactionId, error instanceof Error ? `Failed at processing transaction: ${error.message}` : 'Unknown error processing transaction');
       throw error;
     }
   }
