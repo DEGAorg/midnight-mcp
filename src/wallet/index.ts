@@ -27,8 +27,7 @@ import {
 import { TransactionDatabase } from './db/TransactionDatabase.js';
 
 // Set up crypto for Scala.js
-// @ts-expect-error: It's needed to make Scala.js and WASM code able to use cryptography
-globalThis.crypto = webcrypto;
+// globalThis.crypto = webcrypto;
 
 // Define necessary types for testcontainers to keep TypeScript happy
 // These will be used only for type annotations, not in runtime
@@ -152,7 +151,8 @@ export class WalletManager {
   private walletSeed: string = '';
   private isRecovering: boolean = false;
   private syncedIndices: bigint = 0n;
-  private totalIndices: bigint = 0n;
+  private applyGap: bigint = 0n;
+  private sourceGap: bigint = 0n;
   private walletState: any = null;
   
   // Transaction tracking
@@ -363,7 +363,6 @@ export class WalletManager {
       return;
     }
     
-    // Clean up existing subscription if it exists
     if (this.walletSyncSubscription) {
       this.walletSyncSubscription.unsubscribe();
     }
@@ -371,56 +370,46 @@ export class WalletManager {
     this.walletSyncSubscription = this.wallet.state().subscribe({
       next: async (state) => {
         try {
-          // Store the entire wallet state for later use
           this.walletState = state;
-          
-          // Reset recovery attempts on successful state update
           this.recoveryAttempts = 0;
-          this.recoveryBackoffMs = 5000; // Reset backoff time
-          
-          // Get indices sync status from the wallet state
-          const synced = state.syncProgress?.synced ?? 0n;
-          const total = state.syncProgress?.total ?? 0n;
-          
-          // Update wallet information
+          this.recoveryBackoffMs = 5000;
+
+          // Only use lag for progress, synced is now a boolean
+          const applyGap = state.syncProgress?.lag?.applyGap ?? 0n;
+          const sourceGap = state.syncProgress?.lag?.sourceGap ?? 0n;
+          const isSynced = state.syncProgress?.synced ?? false;
+
           this.walletAddress = state.address || '';
-          
-          // Update wallet balances with detailed information - keep these as bigint internally
+
           const nativeBalance = state.balances[nativeToken()] ?? 0n;
           const pendingBalance = state.pendingCoins.filter(coin => coin.type === nativeToken()).reduce((acc, coin) => acc + coin.value, 0n);
-          
-          // Store all balance types as bigint internally for calculations
+
           this.walletBalances = {
             balance: nativeBalance,
             pendingBalance: pendingBalance
           };
-          
-          // Log balances in human-readable format
+
           this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
           this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
-          
-          this.syncedIndices = synced;
-          this.totalIndices = total;
-          
-          // Check if wallet is fully synced
-          if (total > 0n && synced === total) {
+
+          // No more total/syncedIndices, just lag
+          this.applyGap = applyGap;
+          this.sourceGap = sourceGap;
+
+          // Check if wallet is fully synced (no gaps)
+          if (isSynced) {
             if (!this.ready) {
               this.ready = true;
               this.logger.info('Wallet is fully synced and ready!');
               this.logger.info(`Wallet address: ${this.walletAddress}`);
               this.logger.info(`Wallet balance: ${convertBigIntToDecimal(this.walletBalances.balance)}`);
-              
-              // Save the fully synced wallet state
               await this.saveWalletToFile(this.walletFilename);
             }
           } else {
-            this.logger.info(`Wallet syncing: ${synced}/${total}`);
-            
-            // Throttle save operations to avoid excessive file writes
+            this.logger.info(`Wallet syncing: applyGap=${applyGap}, sourceGap=${sourceGap}`);
             const now = Date.now();
             if (now - this.lastSaveTime >= this.saveInterval) {
               this.lastSaveTime = now;
-              // Save wallet state during sync with incremental progress
               await this.saveWalletToFile(this.walletFilename);
             }
           }
@@ -445,7 +434,6 @@ export class WalletManager {
    * @param reason Reason for recovery attempt
    */
   private async attemptWalletRecovery(reason: string): Promise<void> {
-    // Prevent multiple recovery attempts running concurrently
     if (this.isRecovering) {
       this.logger.info('Recovery already in progress, skipping new attempt');
       return;
@@ -455,11 +443,11 @@ export class WalletManager {
     
     try {
       this.recoveryAttempts++;
-      this.ready = false; // Mark wallet as not ready during recovery
+      this.ready = false;
       
-      // Reset synchronization metrics during recovery
       this.syncedIndices = 0n;
-      this.totalIndices = 0n;
+      this.applyGap = 0n;
+      this.sourceGap = 0n;
       
       this.logger.warn(`Attempting wallet recovery (${this.recoveryAttempts}/${this.maxRecoveryAttempts}). Reason: ${reason}`);
       
@@ -613,7 +601,8 @@ export class WalletManager {
     recovering: boolean; 
     recoveryAttempts: number;
     synced?: string;
-    total?: string; 
+    applyGap?: string;
+    sourceGap?: string;
   } {
     if (withDetails) {
       return {
@@ -621,7 +610,8 @@ export class WalletManager {
         recovering: this.isRecovering,
         recoveryAttempts: this.recoveryAttempts,
         synced: this.syncedIndices.toString(),
-        total: this.totalIndices.toString()
+        applyGap: this.applyGap.toString(),
+        sourceGap: this.sourceGap.toString()
       };
     }
     
@@ -663,12 +653,9 @@ export class WalletManager {
     if (!this.wallet) throw new Error('Wallet instance not available');
     
     try {
-      // Convert decimal amount string to BigInt for internal calculations
       const amountBigInt = convertDecimalToBigInt(amount);
       
-      // First check if there are enough available funds
       if (this.walletBalances.balance < amountBigInt) {
-        // If available balance is insufficient, check if pending funds would be enough
         if (this.walletBalances.balance >= amountBigInt) {
           const pendingAmount = this.walletBalances.pendingBalance;
           const formattedAvailableBalance = convertBigIntToDecimal(this.walletBalances.balance);
@@ -678,12 +665,10 @@ export class WalletManager {
             `but ${formattedPendingAmount} is still pending. Please wait for pending transactions to complete.`
           );
         }
-        // If total balance is also insufficient
         const formattedTotalBalance = convertBigIntToDecimal(this.walletBalances.balance);
         throw new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
       }
       
-      // Create a transfer transaction - still using bigint for SDK interface
       const transferRecipe = await this.wallet.transferTransaction([
         {
           amount: amountBigInt,
@@ -692,32 +677,32 @@ export class WalletManager {
         }
       ]);
       
-      // Prove and submit the transaction
       const provenTransaction = await this.wallet.proveTransaction(transferRecipe);
       const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
       
       this.logger.info(`Transaction submitted: ${submittedTransaction}`);
       
-      const isFullySynced = this.totalIndices > 0n && this.syncedIndices === this.totalIndices;
+      const isFullySynced = this.walletState?.syncProgress?.synced ?? false;
       
-      // Create a transaction record in the database
       const transaction = this.transactionDb.createTransaction(
         this.walletAddress,
         to,
         amount
       );
       
-      // Update the transaction to SENT state with the identifier
       this.transactionDb.markTransactionAsSent(transaction.id, submittedTransaction);
       
       return {
         txIdentifier: submittedTransaction,
         syncStatus: {
           syncedIndices: this.syncedIndices.toString(),
-          totalIndices: this.totalIndices.toString(),
+          lag: {
+            applyGap: this.applyGap.toString(),
+            sourceGap: this.sourceGap.toString()
+          },
           isFullySynced
         },
-        amount // Return the original dust string input
+        amount
       };
     } catch (error) {
       this.logger.error('Failed to send funds', error);
@@ -836,20 +821,21 @@ export class WalletManager {
     if (!this.wallet) throw new Error('Wallet instance not available');
     
     try {
-      // Use the stored wallet state to check transaction history
       if (!this.walletState || !this.walletState.transactionHistory || !Array.isArray(this.walletState.transactionHistory)) {
         this.logger.warn('Transaction history not available in stored wallet state');
         return {
           exists: false, 
           syncStatus: {
-            syncedIndices: this.syncedIndices.toString(), 
-            totalIndices: this.totalIndices.toString(),
-            isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
+            syncedIndices: this.syncedIndices.toString(),
+            lag: {
+              applyGap: this.applyGap.toString(),
+              sourceGap: this.sourceGap.toString()
+            },
+            isFullySynced: this.walletState?.syncProgress?.synced ?? false
           }
         };
       }
       
-      // Check if any transaction contains the identifier
       const exists = this.walletState.transactionHistory.some((tx: TransactionHistoryEntry) => 
         Array.isArray(tx.identifiers) && tx.identifiers.includes(identifier)
       );
@@ -858,8 +844,11 @@ export class WalletManager {
         exists,
         syncStatus: {
           syncedIndices: this.syncedIndices.toString(),
-          totalIndices: this.totalIndices.toString(),
-          isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
+          lag: {
+            applyGap: this.applyGap.toString(),
+            sourceGap: this.sourceGap.toString()
+          },
+          isFullySynced: this.walletState?.syncProgress?.synced ?? false
         }
       };
     } catch (error) {
@@ -873,19 +862,23 @@ export class WalletManager {
    * @returns Detailed wallet status object with balances as dust strings
    */
   public getWalletStatus(): WalletStatus {
-    // Calculate sync percentage for better UI representation
-    const syncPercentage = this.totalIndices > 0n
-      ? Number((this.syncedIndices * 100n) / this.totalIndices)
-      : 0;
-      
-    const isFullySynced = this.totalIndices > 0n && this.syncedIndices === this.totalIndices;
-    
+    // Only use lag for progress, synced is a boolean
+    const applyGap = this.applyGap;
+    const sourceGap = this.sourceGap;
+    const isSynced = this.walletState?.syncProgress?.synced ?? false;
+    // Percentage: 100 if fully synced, 0 otherwise (or you can use a custom logic)
+    const syncPercentage = isSynced ? 100 : 0;
+    const isFullySynced = isSynced;
+
     return {
       ready: this.ready,
-      syncing: this.totalIndices > 0n && this.syncedIndices < this.totalIndices,
+      syncing: applyGap > 0n || sourceGap > 0n,
       syncProgress: {
-        synced: this.syncedIndices.toString(),
-        total: this.totalIndices.toString(),
+        synced: isSynced,
+        lag: {
+          applyGap: applyGap.toString(),
+          sourceGap: sourceGap.toString()
+        },
         percentage: syncPercentage
       },
       address: this.walletAddress,
@@ -966,12 +959,9 @@ export class WalletManager {
     if (!this.wallet) throw new Error('Wallet instance not available');
 
     try {
-      // Convert decimal amount string to BigInt for internal calculations
       const amountBigInt = convertDecimalToBigInt(amount);
       
-      // First check if there are enough available funds
       if (this.walletBalances.balance < amountBigInt) {
-        // If available balance is insufficient, check if pending funds would be enough
         if (this.walletBalances.balance >= amountBigInt) {
           const pendingAmount = this.walletBalances.pendingBalance;
           const formattedAvailableBalance = convertBigIntToDecimal(this.walletBalances.balance);
@@ -981,7 +971,6 @@ export class WalletManager {
             `but ${formattedPendingAmount} is still pending. Please wait for pending transactions to complete.`
           );
         }
-        // If total balance is also insufficient
         const formattedTotalBalance = convertBigIntToDecimal(this.walletBalances.balance);
         throw new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
       }
@@ -1021,7 +1010,6 @@ export class WalletManager {
     if (!this.wallet) throw new Error('Wallet instance not available');
 
     try {
-      // Convert decimal amount string to BigInt for internal calculations
       const amountBigInt = convertDecimalToBigInt(amount);
 
       // Create a transfer transaction
@@ -1073,7 +1061,7 @@ export class WalletManager {
             exists: blockchainStatus.exists,
             syncStatus: {
               syncedIndices: blockchainStatus.syncStatus.syncedIndices.toString(),
-              totalIndices: blockchainStatus.syncStatus.totalIndices.toString(),
+              lag: blockchainStatus.syncStatus.lag,
               isFullySynced: blockchainStatus.syncStatus.isFullySynced
             }
           }

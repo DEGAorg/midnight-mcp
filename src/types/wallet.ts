@@ -16,8 +16,11 @@ export interface WalletBalances {
  * Wallet sync progress information
  */
 export interface WalletSyncProgress {
-  synced: string;
-  total: string;
+  synced: boolean; // true if fully synced (applyGap and sourceGap are zero)
+  lag: {
+    applyGap: string;
+    sourceGap: string;
+  };
   percentage: number;
 }
 
@@ -43,7 +46,10 @@ export interface TransactionVerificationResult {
   exists: boolean;
   syncStatus: {
     syncedIndices: string;
-    totalIndices: string;
+    lag: {
+      applyGap: string;
+      sourceGap: string;
+    };
     isFullySynced: boolean;
   }
 }
@@ -55,7 +61,10 @@ export interface SendFundsResult {
   txIdentifier: string;
   syncStatus: {
     syncedIndices: string;
-    totalIndices: string;
+    lag: {
+      applyGap: string;
+      sourceGap: string;
+    };
     isFullySynced: boolean;
   }
   amount: string; // Amount sent in dust format
@@ -106,7 +115,10 @@ export interface TransactionStatusResult {
     exists: boolean;
     syncStatus: {
       syncedIndices: string;
-      totalIndices: string;
+      lag: {
+        applyGap: string;
+        sourceGap: string;
+      };
       isFullySynced: boolean;
     }
   }

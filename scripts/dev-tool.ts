@@ -206,8 +206,11 @@ interface WalletStatusResponse {
   ready: boolean;
   syncing: boolean;
   syncProgress: {
-    synced: string; // bigint comes as string in JSON
-    total: string;  // bigint comes as string in JSON
+    synced: string;
+    lag: {
+      applyGap: string;
+      sourceGap: string;
+    };
     percentage: number;
   };
   address: string;
@@ -241,7 +244,10 @@ async function getWalletStatus() {
     console.log(chalk.cyan('Ready:'), formattedStatus.ready ? chalk.green('Yes') : chalk.red('No'));
     
     if (formattedStatus.syncing) {
-      console.log(chalk.cyan('Sync Progress:'), chalk.yellow(`${formattedStatus.syncProgress.percentage} (${formattedStatus.syncProgress.synced}/${formattedStatus.syncProgress.total})`));
+      console.log(chalk.cyan('Sync Progress:'), chalk.yellow(`${formattedStatus.syncProgress.percentage}`));
+      console.log(chalk.cyan('  Synced:'), formattedStatus.syncProgress.synced);
+      console.log(chalk.cyan('  Apply Gap:'), formattedStatus.syncProgress.lag.applyGap);
+      console.log(chalk.cyan('  Source Gap:'), formattedStatus.syncProgress.lag.sourceGap);
     } else if (formattedStatus.isFullySynced) {
       console.log(chalk.cyan('Sync Status:'), chalk.green('Fully Synced'));
     } else {

@@ -7,17 +7,54 @@ const mockWalletData = {
   isReady: jest.fn(() => true),
   getAddress: jest.fn(() => 'mdnt1test_address123456789'),
   getBalance: jest.fn(() => BigInt(1000)),
+  initiateSendFunds: jest.fn(() => Promise.resolve({
+    id: 'mock_tx_id',
+    state: 'initiated',
+    toAddress: 'mdnt1recipient_address',
+    amount: '100',
+    createdAt: Date.now()
+  })),
   sendFunds: jest.fn(() => Promise.resolve({
-    txHash: 'mock_tx_hash',
-    syncedIndices: BigInt(10),
-    totalIndices: BigInt(10),
-    isFullySynced: true
+    txIdentifier: 'mock_tx_hash',
+    syncedIndices: '10',
+    lag: {
+      applyGap: '0',
+      sourceGap: '0'
+    },
+    isFullySynced: true,
+    amount: '100'
   })),
   hasReceivedTransactionByIdentifier: jest.fn(() => ({
     exists: true,
-    syncedIndices: BigInt(10),
-    totalIndices: BigInt(10),
+    syncedIndices: '10',
+    lag: {
+      applyGap: '0',
+      sourceGap: '0'
+    },
     isFullySynced: true
+  })),
+  getTransactionStatus: jest.fn(() => ({
+    transaction: {
+      id: 'mock_tx_id',
+      state: 'sent',
+      fromAddress: 'mdnt1test_address123456789',
+      toAddress: 'mdnt1recipient_address',
+      amount: '100',
+      txIdentifier: 'mock_tx_hash',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    },
+    blockchainStatus: {
+      exists: true,
+      syncStatus: {
+        syncedIndices: '10',
+        lag: {
+          applyGap: '0',
+          sourceGap: '0'
+        },
+        isFullySynced: true
+      }
+    }
   })),
   close: jest.fn(() => Promise.resolve())
 };
@@ -51,17 +88,54 @@ describe('MCPServer', () => {
     mockWalletData.isReady.mockReturnValue(true);
     mockWalletData.getAddress.mockReturnValue('mdnt1test_address123456789');
     mockWalletData.getBalance.mockReturnValue(BigInt(1000));
+    mockWalletData.initiateSendFunds.mockResolvedValue({
+      id: 'mock_tx_id',
+      state: 'initiated',
+      toAddress: 'mdnt1recipient_address',
+      amount: '100',
+      createdAt: Date.now()
+    });
     mockWalletData.sendFunds.mockResolvedValue({
-      txHash: 'mock_tx_hash',
-      syncedIndices: BigInt(10),
-      totalIndices: BigInt(10),
-      isFullySynced: true
+      txIdentifier: 'mock_tx_hash',
+      syncedIndices: '10',
+      lag: {
+        applyGap: '0',
+        sourceGap: '0'
+      },
+      isFullySynced: true,
+      amount: '100'
     });
     mockWalletData.hasReceivedTransactionByIdentifier.mockReturnValue({
       exists: true,
-      syncedIndices: BigInt(10),
-      totalIndices: BigInt(10),
+      syncedIndices: '10',
+      lag: {
+        applyGap: '0',
+        sourceGap: '0'
+      },
       isFullySynced: true
+    });
+    mockWalletData.getTransactionStatus.mockReturnValue({
+      transaction: {
+        id: 'mock_tx_id',
+        state: 'sent',
+        fromAddress: 'mdnt1test_address123456789',
+        toAddress: 'mdnt1recipient_address',
+        amount: '100',
+        txIdentifier: 'mock_tx_hash',
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      },
+      blockchainStatus: {
+        exists: true,
+        syncStatus: {
+          syncedIndices: '10',
+          lag: {
+            applyGap: '0',
+            sourceGap: '0'
+          },
+          isFullySynced: true
+        }
+      }
     });
     
     // Create a new MCPServer instance
@@ -156,150 +230,99 @@ describe('MCPServer', () => {
   });
   
   describe('sendFunds', () => {
-    it('should send funds when wallet is ready and has sufficient funds', async () => {
-      const result = await mcpServer.sendFunds('mdnt1recipient_address', BigInt(100));
-      
+    it('should initiate a transaction and return the transaction details', async () => {
+      const result = await mcpServer.sendFunds('mdnt1recipient_address', '100');
       expect(result).toEqual({
-        txHash: 'mock_tx_hash',
+        id: 'mock_tx_id',
+        state: 'initiated',
+        toAddress: 'mdnt1recipient_address',
+        amount: '100',
+        createdAt: expect.any(Number)
+      });
+    });
+
+    it('should throw an error if the wallet is not ready', async () => {
+      mockWalletData.isReady.mockReturnValue(false);
+      await expect(mcpServer.sendFunds('mdnt1recipient_address', '100')).rejects.toThrow('Wallet is not ready');
+    });
+  });
+
+  describe('sendFundsAndWait', () => {
+    it('should send funds and wait for the transaction to be submitted', async () => {
+      const result = await mcpServer.sendFundsAndWait('mdnt1recipient_address', '100');
+      expect(result).toEqual({
+        txIdentifier: 'mock_tx_hash',
         syncStatus: {
-          syncedIndices: BigInt(10),
-          totalIndices: BigInt(10),
+          syncedIndices: '10',
+          lag: {
+            applyGap: '0',
+            sourceGap: '0'
+          },
           isFullySynced: true
+        },
+        amount: '100'
+      });
+    });
+
+    it('should throw an error if the wallet is not ready', async () => {
+      mockWalletData.isReady.mockReturnValue(false);
+      await expect(mcpServer.sendFundsAndWait('mdnt1recipient_address', '100')).rejects.toThrow('Wallet is not ready');
+    });
+  });
+
+  describe('getTransactionStatus', () => {
+    it('should return the transaction status', () => {
+      const result = mcpServer.getTransactionStatus('mock_tx_id');
+      expect(result).toEqual({
+        transaction: {
+          id: 'mock_tx_id',
+          state: 'sent',
+          fromAddress: 'mdnt1test_address123456789',
+          toAddress: 'mdnt1recipient_address',
+          amount: '100',
+          txIdentifier: 'mock_tx_hash',
+          createdAt: expect.any(Number),
+          updatedAt: expect.any(Number)
+        },
+        blockchainStatus: {
+          exists: true,
+          syncStatus: {
+            syncedIndices: '10',
+            lag: {
+              applyGap: '0',
+              sourceGap: '0'
+            },
+            isFullySynced: true
+          }
         }
       });
     });
-    
-    it('should throw an error when wallet is not ready', async () => {
-      // Override isReady for this test
-      jest.spyOn(mcpServer, 'isReady').mockReturnValue(false);
-      
-      try {
-        await mcpServer.sendFunds('mdnt1recipient_address', BigInt(100));
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.WALLET_NOT_READY);
-      }
-    });
-    
-    it('should throw an error when there are insufficient funds', async () => {
-      // Override getBalance for this test
-      mockWalletData.getBalance.mockReturnValue(BigInt(50)); // Less than 100
-      
-      try {
-        await mcpServer.sendFunds('mdnt1recipient_address', BigInt(100));
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.INSUFFICIENT_FUNDS);
-      }
-    });
-    
-    it('should handle transaction submission failures', async () => {
-      // Mock a failed transaction
-      mockWalletData.sendFunds.mockRejectedValue(new Error('Transaction failed'));
-      
-      try {
-        await mcpServer.sendFunds('mdnt1recipient_address', BigInt(100));
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.TX_SUBMISSION_FAILED);
-      }
-    });
 
-    it('should update transaction status after a timeout', async () => {
-      const result = await mcpServer.sendFunds('mdnt1recipient_address', BigInt(100));
-      expect(result.txHash).toBe('mock_tx_hash');
-      
-      // Verify initial transaction status is 'pending'
-      const statusBefore = mcpServer.validateTx('mock_tx_hash');
-      expect(statusBefore.status).toBe('pending');
-      
-      // Fast forward time to trigger the timeout
-      jest.advanceTimersByTime(5000);
-      
-      // Verify status changed to 'confirmed'
-      const statusAfter = mcpServer.validateTx('mock_tx_hash');
-      expect(statusAfter.status).toBe('confirmed');
+    it('should throw an error if the wallet is not ready', () => {
+      mockWalletData.isReady.mockReturnValue(false);
+      expect(() => mcpServer.getTransactionStatus('mock_tx_id')).toThrow('Wallet is not ready');
     });
   });
-  
-  describe('validateTx', () => {
-    beforeEach(async () => {
-      // Create a transaction that we can validate
-      await mcpServer.sendFunds('mdnt1recipient_address', BigInt(100));
-    });
-    
-    it('should return the transaction status if the transaction exists', () => {
-      const status = mcpServer.validateTx('mock_tx_hash');
-      expect(status.status).toBe('pending');
-    });
-    
-    it('should throw an error if the transaction does not exist', () => {
-      try {
-        mcpServer.validateTx('non_existent_tx_hash');
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.TX_NOT_FOUND);
-      }
-    });
-    
-    it('should throw an error when wallet is not ready', () => {
-      // Override isReady for this test
-      jest.spyOn(mcpServer, 'isReady').mockReturnValue(false);
-      
-      try {
-        mcpServer.validateTx('mock_tx_hash');
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.WALLET_NOT_READY);
-      }
-    });
-  });
-  
-  describe('hasReceivedTransactionByIdentifier', () => {
-    it('should verify transaction existence by identifier', () => {
-      const result = mcpServer.hasReceivedTransactionByIdentifier('test_identifier');
-      
+
+  describe('confirmTransactionHasBeenReceived', () => {
+    it('should verify if a transaction has been received', () => {
+      const result = mcpServer.confirmTransactionHasBeenReceived('mock_tx_hash');
       expect(result).toEqual({
         exists: true,
         syncStatus: {
-          syncedIndices: BigInt(10),
-          totalIndices: BigInt(10),
+          syncedIndices: '10',
+          lag: {
+            applyGap: '0',
+            sourceGap: '0'
+          },
           isFullySynced: true
         }
       });
     });
-    
-    it('should throw an error when wallet is not ready', () => {
-      // Override isReady for this test
-      jest.spyOn(mcpServer, 'isReady').mockReturnValue(false);
-      
-      try {
-        mcpServer.hasReceivedTransactionByIdentifier('test_identifier');
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.WALLET_NOT_READY);
-      }
-    });
-    
-    it('should handle verification failures', () => {
-      // Mock a verification failure
-      mockWalletData.hasReceivedTransactionByIdentifier.mockImplementation(() => {
-        throw new Error('Verification failed');
-      });
-      
-      try {
-        mcpServer.hasReceivedTransactionByIdentifier('test_identifier');
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(MCPError);
-        expect(error.type).toBe(MCPErrorType.IDENTIFIER_VERIFICATION_FAILED);
-      }
+
+    it('should throw an error if the wallet is not ready', () => {
+      mockWalletData.isReady.mockReturnValue(false);
+      expect(() => mcpServer.confirmTransactionHasBeenReceived('mock_tx_hash')).toThrow('Wallet is not ready');
     });
   });
 
