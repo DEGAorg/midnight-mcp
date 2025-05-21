@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: midnightnetwork/proof-server:3.0.7
+    image: midnightnetwork/proof-server:4.0.0
     container_name: midnight-proof-server
     environment:
       - RUST_LOG=info
