@@ -83,14 +83,54 @@ JSON Config:
 ```json
 "mcp": {
     "servers": {
-      "midnight-mcp-server": {
+      "midnight-mcp": {
         "type": "stdio",
-        "name": "Midnight MCP Server",
-        "command": "node",
-        "args": ["<path>/midnight-mcp/dist/stdio-server.js"]
-      }
+        "name": "Midnight MCP",
+        "command": "bash",
+        "args": [
+          "-c",
+          "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=<gent-id> <path>/midnight-mcp/dist/stdio-server.js"
+        ]
+      },
     }
   }
+```
+
+### Agent ID Configuration
+
+The MCP server supports multiple agents running simultaneously through the use of agent IDs. Each agent gets its own isolated storage space for wallet data and transactions.
+
+#### Setting Agent ID
+
+You can set the agent ID in two ways:
+
+1. **Through Environment Variable** (Recommended):
+```json
+"args": [
+  "-c",
+  "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=agent-123 yarn start:mcp"
+]
+```
+
+#### Storage Structure
+
+Each agent's data is stored in an isolated directory:
+```
+wallet-backups/
+  ├── agent-123/
+  │   ├── wallet-1.json
+  │   ├── wallet-1-transactions.db
+  │   └── ...
+  ├── agent-456/
+  │   ├── wallet-1.json
+  │   ├── wallet-1-transactions.db
+  │   └── ...
+  └── ...
+```
+
+For development, you can run with an agent ID:
+```bash
+AGENT_ID=agent-123 yarn dev:mcp:stdio
 ```
 
 NOTE: Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.

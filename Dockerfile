@@ -41,6 +41,7 @@ RUN addgroup -S appuser && adduser -S -G appuser appuser
 
 # Create wallet backup directory and logs directory with proper permissions
 RUN mkdir -p /app/wallet-backups /app/logs && \
+    chmod 755 /app/wallet-backups && \
     chown -R appuser:appuser /app
 
 # Copy package files

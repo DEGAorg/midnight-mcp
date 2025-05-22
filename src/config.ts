@@ -4,7 +4,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Calculate root directory path for finding .env file
-// Use let for compatibility with testing environments
 let rootDir;
 
 try {
@@ -12,12 +11,10 @@ try {
   const __dirname = path.dirname(__filename);
   rootDir = path.resolve(__dirname, '..');
 } catch (err) {
-  // Fallback for test environments that might not support import.meta.url
   rootDir = process.cwd();
 }
 
 // Load environment variables from .env file if present
-// In production, these will be provided by Docker or the host environment
 dotenv.config({ path: path.join(rootDir, '.env') });
 
 interface Config {
@@ -31,6 +28,7 @@ interface Config {
   indexer: string;
   indexerWS: string;
   node: string;
+  agentId: string;
 }
 
 /**
@@ -56,8 +54,15 @@ export function loadConfig(): Config {
   // Logging configuration
   const logLevel = process.env.LOG_LEVEL || 'info';
 
-  // Default wallet backup folder
-  const walletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'wallet-backups';
+  // Get agent ID from environment or generate a unique one
+  const agentId = process.env.AGENT_ID;
+  if (!agentId) {
+    throw new Error('AGENT_ID environment variable is required');
+  }
+
+  // Default wallet backup folder - now includes agent ID
+  const baseWalletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'storage/wallets';
+  const walletBackupFolder = path.join(baseWalletBackupFolder, agentId);
 
   // External proof server configuration
   const useExternalProofServer = process.env.USE_EXTERNAL_PROOF_SERVER === 'true';
@@ -80,7 +85,8 @@ export function loadConfig(): Config {
     proofServer,
     indexer,
     indexerWS,
-    node: mnNode
+    node: mnNode,
+    agentId
   };
 }
 

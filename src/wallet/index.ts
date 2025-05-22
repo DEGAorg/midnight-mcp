@@ -154,6 +154,7 @@ export class WalletManager {
   private applyGap: bigint = 0n;
   private sourceGap: bigint = 0n;
   private walletState: any = null;
+  private agentId: string;
   
   // Transaction tracking
   private transactionDb: TransactionDatabase;
@@ -174,9 +175,11 @@ export class WalletManager {
    * @param externalConfig Optional external configuration for connecting to a proof server
    */
   constructor(networkId: NetworkId, seed: string, walletFilename: string, externalConfig?: WalletConfig) {
+    this.agentId = config.agentId;
     this.logger = createLogger('wallet-manager');
     // Set network ID if provided, default to TestNet
-    this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s', networkId, walletFilename, externalConfig?.useExternalProofServer);
+    this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s', 
+      networkId, walletFilename, externalConfig?.useExternalProofServer, this.agentId);
     this.config = externalConfig || new TestnetRemoteConfig();
     if (networkId) {
       setNetworkId(networkId);
@@ -190,7 +193,7 @@ export class WalletManager {
     this.walletFilename = walletFilename;
     this.walletSeed = seed;
     
-    // Initialize the transaction database
+    // Initialize the transaction database with agent-specific path
     const dbPath = path.join(config.walletBackupFolder, `${walletFilename}-transactions.db`);
     this.transactionDb = new TransactionDatabase(dbPath);
     this.logger.info(`Transaction database initialized at ${dbPath}`);
@@ -734,7 +737,7 @@ export class WalletManager {
       const walletFilename = filename || this.walletFilename || `wallet-${Date.now()}`;
       const filePath = path.join(directoryPath, `${walletFilename}.json`);
       
-      this.logger.info(`Saving wallet to file ${filePath}`);
+      this.logger.info(`Saving wallet to file ${filePath} for agent ${this.agentId}`);
       const walletJson = await this.wallet.serializeState();
       fs.writeFileSync(filePath, walletJson, { mode: 0o644 });
       this.logger.info(`Wallet saved to ${filePath}`);

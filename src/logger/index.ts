@@ -180,6 +180,11 @@ export interface LoggerOptions {
     version?: string;
     
     /**
+     * Agent ID for multi-agent setups
+     */
+    agentId?: string;
+    
+    /**
      * Custom fields to include with every log
      */
     custom?: Record<string, any>;
@@ -208,7 +213,7 @@ export const LoggerConfig = {
   /**
    * Default log file location
    */
-  defaultLogFile: './logs/app.log',
+  defaultLogFile: './storage/logs/wallet-app.log',
   
   /**
    * Cloud provider configuration
@@ -352,6 +357,9 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
     ...LoggerConfig.standardFields,
     ...options.standardFields,
   };
+
+  // Get agent ID from environment or standard fields
+  const agentId = process.env.AGENT_ID || standardFields.agentId || 'default';
   
   // Base logger options
   let baseOptions: pino.LoggerOptions = {
@@ -395,7 +403,8 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
   }
   
   // Add file transport if enabled and file path provided
-  const outputFile = options.outputFile || (LoggerConfig.enableFileOutput ? LoggerConfig.defaultLogFile : undefined);
+  const outputFile = options.outputFile || (LoggerConfig.enableFileOutput ? 
+    LoggerConfig.defaultLogFile.replace('.log', `-${agentId}.log`) : undefined);
   if (outputFile) {
     // Ensure the directory exists before creating the log file
     ensureLogDirectoryExists(outputFile);
