@@ -2,14 +2,11 @@
 import { program } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createLogger } from '../src/logger/index.js';
 import { FileManager, FileType } from '../src/utils/file-manager.js';
 import { SeedManager } from '../src/utils/seed-manager.js';
 import * as bip39 from 'bip39';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes } from 'crypto';
 import chalk from 'chalk';
-
-const logger = createLogger('setup-agent');
 
 program
   .name('setup-agent')
@@ -95,9 +92,8 @@ async function createFolderStructure(baseDir: string): Promise<void> {
   for (const dir of directories) {
     try {
       fileManager.ensureDirectoryExists(dir);
-      logger.info(`Created directory: ${dir}`);
     } catch (error) {
-      logger.error(`Failed to create directory ${dir}:`, error);
+      console.error(chalk.red(`Failed to create directory ${dir}:`), error);
       throw error;
     }
   }
@@ -115,11 +111,7 @@ async function main() {
 
     // Check if .storage directory exists
     if (!fs.existsSync(storageDir)) {
-      console.log(chalk.yellow(`\n.storage directory not found in ${projectRoot}. Creating folder structure...`));
       await createFolderStructure(storageDir);
-      console.log(chalk.green('Folder structure created successfully!'));
-    } else {
-      console.log(chalk.green(`\n.storage directory found at ${storageDir}`));
     }
 
     const agentId = options.agentId;
@@ -150,18 +142,15 @@ async function main() {
       finalSeed = generated.seed;
       mnemonic = generated.mnemonic;
       derivedSeed = generated.derivedSeed;
-      logger.info('Generated new seed');
     } else {
       // Verify provided seed
       const verified = await verifySeed(finalSeed, password);
       mnemonic = verified.mnemonic;
       derivedSeed = verified.derivedSeed;
-      logger.info('Verified provided seed');
     }
 
     // Initialize the seed
     await SeedManager.initializeAgentSeed(agentId, finalSeed);
-    logger.info(`Seed file created for agent ${agentId}`);
 
     // Display success message with instructions
     console.log('\nAgent setup completed successfully!');
@@ -187,15 +176,29 @@ async function main() {
       }
     }
 
-    console.log('\nNext steps:');
-    console.log('1. Use the AGENT_ID environment variable to identify this agent when calling the MCP server:');
-    console.log(`   AGENT_ID=${agentId}`);
+    console.log('\n=== ElizaOS Server Configuration ===');
+    console.log(chalk.cyan('Add this configuration to your character.json file:'));
+    console.log(chalk.white(`
+"mcp": {
+    "servers": {
+      "midnight-mcp": {
+        "type": "stdio",
+        "name": "Midnight MCP",
+        "command": "bash",
+        "args": [
+          "-c",
+          "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=${agentId} ${process.cwd()}/dist/stdio-server.js"
+        ]
+      }
+    }
+}`));
+
     console.log('\nIMPORTANT: Keep your seed secure and never share it!');
     console.log('Consider backing up your seed file securely.');
 
   } catch (error) {
-    logger.error('Failed to set up agent:');
-    logger.error(error);
+    console.error(chalk.red('\nError: Failed to set up agent:'));
+    console.error(chalk.red(error));
     process.exit(1);
   }
 }
