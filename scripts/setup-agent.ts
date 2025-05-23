@@ -237,7 +237,7 @@ async function main() {
         "command": "bash",
         "args": [
           "-c",
-          "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=${agentId} ${process.cwd()}/dist/stdio-server.js"
+          "source ~/.nvm/nvm.sh && AGENT_ID=${agentId} nvm exec 22.15.1 node ${process.cwd()}/dist/stdio-server.js"
         ]
       }
     }

@@ -106,9 +106,9 @@ JSON Config:
         "command": "bash",
         "args": [
           "-c",
-          "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=<agent-id> <path>/midnight-mcp/dist/stdio-server.js"
+          "source ~/.nvm/nvm.sh && AGENT_ID=<agent-id> nvm exec 22.15.1 node <path>/midnight-mcp/dist/stdio-server.js"
         ]
-      },
+      }
     }
   }
 ```

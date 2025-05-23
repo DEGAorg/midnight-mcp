@@ -18,7 +18,6 @@ try {
 dotenv.config({ path: path.join(rootDir, '.env') });
 
 interface Config {
-  seed: string;
   networkId: NetworkId;
   walletBackupFolder: string;
   walletFilename: string;
@@ -35,11 +34,6 @@ interface Config {
  * Load and validate configuration from environment variables
  */
 export function loadConfig(): Config {
-  // Required configurations
-  const seed = process.env.SEED;
-  if (!seed) {
-    throw new Error('SEED environment variable is required');
-  }
 
   // Optional configurations with defaults
   const configuredNetworkId = process.env.NETWORK_ID;
@@ -76,7 +70,6 @@ export function loadConfig(): Config {
   }
 
   return {
-    seed,
     networkId,
     walletBackupFolder,
     walletFilename,
