@@ -78,10 +78,38 @@ async function verifySeed(seed: string, password: string = ''): Promise<{ isVali
   };
 }
 
+async function validateDirectory(dir: string, isRoot: boolean = false): Promise<void> {
+  if (!fs.existsSync(dir)) {
+    throw new Error(`Directory not found: ${dir}`);
+  }
+
+  const stats = fs.statSync(dir);
+  if (!stats.isDirectory()) {
+    throw new Error(`Path exists but is not a directory: ${dir}`);
+  }
+
+  // Check if directory is writable
+  try {
+    const testFile = path.join(dir, `.test-${Date.now()}`);
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+  } catch (error) {
+    throw new Error(`Directory is not writable: ${dir}`);
+  }
+
+  if (isRoot) {
+    // Check for package.json in root directory
+    const packageJsonPath = path.join(dir, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      throw new Error('Root directory must contain a package.json file');
+    }
+  }
+}
+
 async function createFolderStructure(baseDir: string): Promise<void> {
   const fileManager = FileManager.getInstance({ baseDir });
   
-  // Create all required directories
+  // Define all required directories
   const directories = [
     fileManager.getPath(FileType.SEED, ''),
     fileManager.getPath(FileType.WALLET_BACKUP, ''),
@@ -89,11 +117,27 @@ async function createFolderStructure(baseDir: string): Promise<void> {
     fileManager.getPath(FileType.TRANSACTION_DB, '')
   ];
 
+  // Create and validate each directory
   for (const dir of directories) {
     try {
-      fileManager.ensureDirectoryExists(dir);
+      // Create parent directories if they don't exist
+      const parentDir = path.dirname(dir);
+      if (!fs.existsSync(parentDir)) {
+        console.log(chalk.cyan(`Creating parent directory: ${parentDir}`));
+        fs.mkdirSync(parentDir, { recursive: true, mode: 0o755 });
+      }
+
+      // Create the directory if it doesn't exist
+      if (!fs.existsSync(dir)) {
+        console.log(chalk.cyan(`Creating directory: ${dir}`));
+        fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+      }
+
+      // Validate the created directory
+      await validateDirectory(dir);
+      console.log(chalk.green(`✓ Directory validated: ${dir}`));
     } catch (error) {
-      console.error(chalk.red(`Failed to create directory ${dir}:`), error);
+      console.error(chalk.red(`Failed to create/validate directory ${dir}:`), error);
       throw error;
     }
   }
@@ -104,15 +148,21 @@ async function main() {
     const projectRoot = path.resolve(options.dir);
     const storageDir = path.join(projectRoot, '.storage');
 
-    // Check if project root exists
-    if (!fs.existsSync(projectRoot)) {
-      throw new Error(`Project root directory not found: ${projectRoot}`);
-    }
+    // Validate project root
+    console.log(chalk.cyan('Validating project root...'));
+    await validateDirectory(projectRoot, true);
+    console.log(chalk.green('✓ Project root validated'));
 
-    // Check if .storage directory exists
+    // Create and validate .storage directory
     if (!fs.existsSync(storageDir)) {
-      await createFolderStructure(storageDir);
+      console.log(chalk.cyan('Creating .storage directory...'));
+      fs.mkdirSync(storageDir, { recursive: true, mode: 0o755 });
     }
+    await validateDirectory(storageDir);
+    console.log(chalk.green('✓ .storage directory validated'));
+
+    // Create and validate all subdirectories
+    await createFolderStructure(storageDir);
 
     const agentId = options.agentId;
     const force = options.force;
