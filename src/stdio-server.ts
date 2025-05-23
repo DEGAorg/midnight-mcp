@@ -17,6 +17,7 @@ import {
 import { config } from './config.js';
 import { ALL_TOOLS, handleToolCall } from './tools.js';
 import { handleListResources, handleReadResource } from './resources.js';
+import { SeedManager } from './utils/seed-manager.js';
 
 /**
  * Simple logging function
@@ -48,10 +49,26 @@ const externalConfig = {
   networkId: config.networkId
 };
 
+// Get agent ID from environment
+const agentId = process.env.AGENT_ID;
+if (!agentId) {
+  throw new Error('AGENT_ID environment variable is required');
+}
+
+// Get seed from file
+let seed: string;
+try {
+  seed = SeedManager.getAgentSeed(agentId);
+  log('Seed loaded from file for agent:', agentId);
+} catch (error) {
+  log('Failed to load seed from file:', error);
+  throw new Error('Seed file not found. Please ensure the seed file exists for this agent.');
+}
+
 // Initialize Midnight wallet instance
 const midnightServer = new MidnightMCPServer(
   config.networkId,
-  config.seed,
+  seed,
   config.walletFilename,
   externalConfig
 );

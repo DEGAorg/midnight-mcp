@@ -25,6 +25,7 @@ import {
   TransactionStatusResult
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
+import { FileManager, FileType } from '../utils/file-manager';
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;
@@ -133,6 +134,7 @@ interface InternalWalletBalances {
  * WalletManager that handles wallet operations, initialization, and Docker containers
  */
 export class WalletManager {
+  private readonly fileManager = FileManager.getInstance();
   private wallet: (Wallet & Resource) | null = null;
   private ready: boolean = false;
   private config: WalletConfig;
@@ -536,14 +538,10 @@ export class WalletManager {
     const formattedFilename = `${filename}.json`;
     
     // Try to restore wallet from file if filename is provided
-    if (filename && fs.existsSync(`${config.walletBackupFolder}/${formattedFilename}`)) {
-      this.logger.info(`Attempting to restore wallet from ${config.walletBackupFolder}/${formattedFilename}`);
+    if (filename && this.fileManager.fileExists(FileType.WALLET_BACKUP, this.agentId, formattedFilename)) {
+      this.logger.info(`Attempting to restore wallet from ${formattedFilename}`);
       try {
-        const serializedStream = fs.createReadStream(`${config.walletBackupFolder}/${formattedFilename}`, 'utf-8');
-        const serialized = await streamToString(serializedStream);
-        serializedStream.on('finish', () => {
-          serializedStream.close();
-        });
+        const serialized = this.fileManager.readFile(FileType.WALLET_BACKUP, this.agentId, formattedFilename);
         
         const cleanSerialized = serialized.trim().startsWith('"') 
           ? JSON.parse(serialized) 
@@ -725,21 +723,16 @@ export class WalletManager {
     }
     
     try {
-      const directoryPath = path.resolve(config.walletBackupFolder);
-      
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(directoryPath)) {
-        fs.mkdirSync(directoryPath, { recursive: true, mode: 0o755 });
-        this.logger.info(`Created directory: ${directoryPath}`);
-      }
-      
       // Use provided filename or use the one stored in the class
       const walletFilename = filename || this.walletFilename || `wallet-${Date.now()}`;
-      const filePath = path.join(directoryPath, `${walletFilename}.json`);
+      const formattedFilename = `${walletFilename}.json`;
       
-      this.logger.info(`Saving wallet to file ${filePath} for agent ${this.agentId}`);
+      this.logger.info(`Saving wallet to file ${formattedFilename} for agent ${this.agentId}`);
       const walletJson = await this.wallet.serializeState();
-      fs.writeFileSync(filePath, walletJson, { mode: 0o644 });
+      
+      this.fileManager.writeFile(FileType.WALLET_BACKUP, this.agentId, walletJson, formattedFilename);
+      
+      const filePath = this.fileManager.getPath(FileType.WALLET_BACKUP, this.agentId, formattedFilename);
       this.logger.info(`Wallet saved to ${filePath}`);
       return filePath;
     } catch (error) {

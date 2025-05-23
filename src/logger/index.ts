@@ -1,6 +1,7 @@
 import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
+import { FileManager, FileType } from '../utils/file-manager';
 
 /**
  * Available log levels in ascending order of importance.
@@ -213,7 +214,7 @@ export const LoggerConfig = {
   /**
    * Default log file location
    */
-  defaultLogFile: './storage/logs/wallet-app.log',
+  defaultLogFile: 'wallet-app.log',
   
   /**
    * Cloud provider configuration
@@ -237,17 +238,9 @@ export const LoggerConfig = {
  * @param filePath Path to the log file
  */
 function ensureLogDirectoryExists(filePath: string): void {
-  const dirPath = path.dirname(filePath);
-  
-  if (!fs.existsSync(dirPath)) {
-    try {
-      fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`Created log directory: ${dirPath}`);
-    } catch (error) {
-      console.error(`Failed to create log directory ${dirPath}:`, error);
-      throw error;
-    }
-  }
+  const fileManager = FileManager.getInstance();
+  const dirPath = filePath.split('/').slice(0, -1).join('/');
+  fileManager.ensureDirectoryExists(dirPath);
 }
 
 /**
@@ -405,10 +398,12 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
   // Add file transport if enabled and file path provided
   const outputFile = options.outputFile || (LoggerConfig.enableFileOutput ? 
     LoggerConfig.defaultLogFile.replace('.log', `-${agentId}.log`) : undefined);
+  
   if (outputFile) {
-    // Ensure the directory exists before creating the log file
-    ensureLogDirectoryExists(outputFile);
-    destinations.push(pino.destination(outputFile));
+    const fileManager = FileManager.getInstance();
+    const logPath = fileManager.getPath(FileType.LOG, agentId, outputFile);
+    ensureLogDirectoryExists(logPath);
+    destinations.push(pino.destination(logPath));
   }
   
   // Add cloud transport if configured

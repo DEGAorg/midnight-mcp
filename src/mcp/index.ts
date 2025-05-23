@@ -2,6 +2,7 @@ import { WalletManager, WalletConfig, TestnetRemoteConfig } from '../wallet/inde
 import { setNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '../logger/index.js';
 import type { Logger } from 'pino';
+import { SeedManager } from '../utils/seed-manager.js';
 import { 
   WalletStatus, 
   WalletBalances, 
@@ -115,6 +116,7 @@ export class MCPServer {
   private wallet: WalletManager;
   private logger: Logger;
   private externalConfig: WalletConfig;
+  private agentId: string;
   
   /**
    * Create a new MCP Server instance
@@ -130,6 +132,7 @@ export class MCPServer {
     }
     
     this.logger = createLogger('mcp-server');
+    this.agentId = process.env.AGENT_ID || 'default';
     
     this.logger.info('Initializing Midnight MCP Server');
 
@@ -356,14 +359,14 @@ export class MCPServer {
   }
   
   /**
-   * Close the MCP server and associated resources
+   * Close the MCP server and clean up resources
    */
   public async close(): Promise<void> {
     try {
       await this.wallet.close();
-      this.logger.info('MCP Server shut down successfully');
     } catch (error) {
-      this.logger.error('Error shutting down MCP Server', error);
+      this.logger.error('Error closing MCP server:', error);
+      throw error;
     }
   }
 }
