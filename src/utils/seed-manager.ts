@@ -1,4 +1,5 @@
-import { FileManager, FileType } from './file-manager';
+import { FileManager, FileType } from './file-manager.js';
+import path from 'path';
 
 export class SeedManager {
   private static fileManager: FileManager;
@@ -6,9 +7,11 @@ export class SeedManager {
   /**
    * Initialize the SeedManager with a custom storage path
    */
-  static initialize(storagePath: string = './storage'): void {
+  static initialize(storagePath: string = '.storage'): void {
+    // Convert relative path to absolute path based on process execution directory
+    // const absoluteStoragePath = path.resolve(process.cwd(), storagePath);
+
     this.fileManager = FileManager.getInstance({
-      baseDir: storagePath,
       dirMode: 0o700,  // More restrictive for seed directories
       fileMode: 0o600  // More restrictive for seed files
     });

@@ -17,7 +17,7 @@ export enum FileType {
 export interface FileConfig {
   /**
    * Base directory for all files
-   * @default './storage'
+   * @default '.storage'
    */
   baseDir?: string;
   
@@ -54,8 +54,14 @@ export class FileManager {
   private config: Required<FileConfig>;
   
   private constructor(config: FileConfig = {}) {
+    // Convert relative path to absolute path based on process execution directory
+    const baseDir = config.baseDir || '.storage';
+    const absoluteBaseDir = path.isAbsolute(baseDir) 
+      ? baseDir 
+      : path.resolve(process.cwd(), baseDir);
+
     this.config = {
-      baseDir: config.baseDir || './storage',
+      baseDir: absoluteBaseDir,
       createDirs: config.createDirs ?? true,
       dirMode: config.dirMode || 0o755,
       fileMode: config.fileMode || 0o644,

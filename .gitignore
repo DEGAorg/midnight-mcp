@@ -51,6 +51,7 @@ wallet-backups
 
 # Storage directory - contains all runtime data
 /storage/
+.storage/
 
 # Node.js
 node_modules/

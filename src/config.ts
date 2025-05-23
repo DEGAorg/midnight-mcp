@@ -61,7 +61,7 @@ export function loadConfig(): Config {
   }
 
   // Default wallet backup folder - now includes agent ID
-  const baseWalletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'storage/wallets';
+  const baseWalletBackupFolder = process.env.WALLET_BACKUP_FOLDER || '.storage/wallet-backups';
   const walletBackupFolder = path.join(baseWalletBackupFolder, agentId);
 
   // External proof server configuration

@@ -25,7 +25,7 @@ import {
   TransactionStatusResult
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
-import { FileManager, FileType } from '../utils/file-manager';
+import { FileManager, FileType } from '../utils/file-manager.js';
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;

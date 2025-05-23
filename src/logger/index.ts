@@ -1,7 +1,7 @@
 import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileManager, FileType } from '../utils/file-manager';
+import { FileManager, FileType } from '../utils/file-manager.js';
 
 /**
  * Available log levels in ascending order of importance.
