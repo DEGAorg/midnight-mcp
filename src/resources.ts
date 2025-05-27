@@ -53,8 +53,8 @@ export const WALLET_BALANCE_RESOURCE: Resource = {
  */
 export const TRANSACTIONS_RESOURCE: Resource = {
   uri: "midnight://transactions",
-  name: "Transactions History",
-  description: "History of transactions for the Midnight wallet",
+  name: "All Transactions",
+  description: "All transactions for the Midnight wallet",
   mimeType: "application/json"
 };
 
@@ -77,7 +77,6 @@ export const RESOURCES = [
   WALLET_ADDRESS_RESOURCE,
   WALLET_BALANCE_RESOURCE,
   TRANSACTIONS_RESOURCE,
-  PENDING_TRANSACTIONS_RESOURCE
 ];
 
 /**

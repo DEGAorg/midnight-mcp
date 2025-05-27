@@ -1076,13 +1076,13 @@ export class WalletManager {
    * @param state Optional transaction state to filter by
    * @returns Array of transaction records
    */
-  public getTransactions(state?: TransactionState): TransactionRecord[] {
+  public getTransactions(): TransactionRecord[] {
     try {
-      if (state) {
-        return this.transactionDb.getTransactionsByState(state);
-      }
-      
-      return this.transactionDb.getAllTransactions();
+      const transactions = this.transactionDb.getAllTransactions();
+      return transactions.map(tx => ({
+        ...tx,
+        id: tx.txIdentifier ?? tx.id ?? ''
+      }));
     } catch (error) {
       this.logger.error('Failed to get transactions', error);
       throw error;

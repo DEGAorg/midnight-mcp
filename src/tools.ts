@@ -69,17 +69,6 @@ export const ALL_TOOLS = [
     description: "Get all transactions, optionally filtered by state",
     inputSchema: {
       type: "object",
-      properties: {
-        state: { type: "string" }
-      },
-      required: []
-    }
-  },
-  {
-    name: "getPendingTransactions",
-    description: "Get all pending transactions (INITIATED or SENT)",
-    inputSchema: {
-      type: "object",
       properties: {},
       required: []
     }
@@ -194,8 +183,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
         };
         
       case "getTransactions":
-        const { state } = toolArgs || {};
-        const transactions = midnightServer.getTransactions(state);
+        const transactions = midnightServer.getTransactions();
         return {
           "content": [
             {

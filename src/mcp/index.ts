@@ -276,13 +276,13 @@ export class MCPServer {
    * @returns Array of transaction records matching the specified state or all transactions if no state provided
    * @throws MCPError if wallet is not ready
    */
-  public getTransactions(state?: TransactionState): TransactionRecord[] {
+  public getTransactions(): TransactionRecord[] {
     if (!this.isReady()) {
       throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
-      return this.wallet.getTransactions(state);
+      return this.wallet.getTransactions();
     } catch (error) {
       this.logger.error('Failed to get transactions', error);
       throw new MCPError(
