@@ -8,20 +8,21 @@ import * as Rx from 'rxjs';
 // Remove direct import of testcontainers
 // import { DockerComposeEnvironment, Wait, type StartedDockerComposeEnvironment } from 'testcontainers';
 import { setNetworkId, NetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { nativeToken } from '@midnight-ntwrk/ledger';
+import { nativeToken, sampleSigningKey, SecretKeys, signatureVerifyingKey, signData, verifySignature } from '@midnight-ntwrk/ledger';
+import { LocalState } from '@midnight-ntwrk/ledger';
 import { WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { type Resource } from '@midnight-ntwrk/wallet';
 import { config } from '../config.js';
 import { convertBigIntToDecimal, convertDecimalToBigInt } from './utils.js';
-import { 
-  WalletStatus, 
-  WalletBalances, 
-  SendFundsResult, 
+import {
+  WalletStatus,
+  WalletBalances,
+  SendFundsResult,
   TransactionVerificationResult,
   TransactionState,
   TransactionRecord,
-  InitiateTransactionResult, 
+  InitiateTransactionResult,
   TransactionStatusResult
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
@@ -84,7 +85,7 @@ export class TestnetRemoteConfig implements WalletConfig {
   public node = 'https://rpc.testnet-02.midnight.network';
   public proofServer = 'http://127.0.0.1:6300';
   public logDir: string;
-  
+
   constructor() {
     this.logDir = path.resolve('./logs', `${new Date().toISOString()}.log`);
     setNetworkId(NetworkId.TestNet);
@@ -157,18 +158,18 @@ export class WalletManager {
   private sourceGap: bigint = 0n;
   private walletState: any = null;
   private agentId: string;
-  
+
   // Transaction tracking
   private transactionDb: TransactionDatabase;
   private transactionPoller?: NodeJS.Timeout;
   private pollingInterval: number = 15000; // Poll for completed transactions every 15 seconds
-  
+
   // Track different balance types for the wallet (using bigint internally)
   private walletBalances: InternalWalletBalances = {
     balance: 0n,
     pendingBalance: 0n
   };
-  
+
   /**
    * Create a new WalletManager instance
    * @param networkId Optional network ID to connect to (defaults to TestNet)
@@ -180,30 +181,34 @@ export class WalletManager {
     this.agentId = config.agentId;
     this.logger = createLogger('wallet-manager');
     // Set network ID if provided, default to TestNet
-    this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s', 
+    this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s',
       networkId, walletFilename, externalConfig?.useExternalProofServer, this.agentId);
     this.config = externalConfig || new TestnetRemoteConfig();
     if (networkId) {
       setNetworkId(networkId);
     }
-    
+
+    this.testSigningAndVerifying(seed);
+
+    return;
+
     // Initialize logger
-    
+
     this.logger.info('Initializing WalletManager');
-    
+
     // Store wallet filename and seed for recovery
     this.walletFilename = walletFilename;
     this.walletSeed = seed;
-    
+
     // Initialize the transaction database with agent-specific path
     const dbPath = path.join(config.walletBackupFolder, `${walletFilename}-transactions.db`);
     this.transactionDb = new TransactionDatabase(dbPath);
     this.logger.info(`Transaction database initialized at ${dbPath}`);
-    
+
     // Initialize wallet asynchronously to not block MCP server startup
     // Properly chain the async operations
     this.walletInitPromise = this.initWalletWithProperSetup(seed, walletFilename, externalConfig);
-    
+
     // Start transaction status poller when wallet is ready
     this.walletInitPromise.then(() => {
       this.startTransactionPoller();
@@ -211,7 +216,43 @@ export class WalletManager {
       this.logger.error('Failed to start transaction poller due to wallet init error', err);
     });
   }
-  
+
+  // Testing the signing and verifying
+  private testSigningAndVerifying(seed: string) {
+    try {
+      console.log(`Testing signing and verifying with seed: ${seed}`);
+      // const signingKey = '0100acd994d0a3b99ecd5a0547d979c16bedb82ce003cad42b44ce60d51609aca9c4d9';
+      // const lstate = new LocalState     
+      
+      // Create a test message to sign
+      const message = new Uint8Array([1, 2, 3]);
+      console.log(`Test message: ${message}`);
+      
+      // Generate a sample signing key
+      const signingKey = sampleSigningKey();
+      console.log(`Generated sample signing key: ${signingKey}`);
+      
+      // Sign the message
+      const signature = signData(signingKey, message);
+      console.log(`Generated signature: ${signature}`);
+      
+      // Get the verifying key
+      const verifyingKey = signatureVerifyingKey(signingKey);
+      console.log(`Generated verifying key: ${verifyingKey}`);
+      
+      // Verify the signature
+      const verified = verifySignature(verifyingKey, message, signature);
+      console.log(`Signature verification result: ${verified}`);
+      
+      if (!verified) {
+        throw new Error('Signature verification failed');
+      }
+    } catch (error) {
+      this.logger.error('Error in testSigningAndVerifying:', error);
+      throw error;
+    }
+  }
+
   /**
    * Private method to handle the proper setup sequence
    * This ensures Docker environment is fully set up before wallet initialization
@@ -237,7 +278,7 @@ export class WalletManager {
           this.logger.warn('WARNING: Running in production without external proof server configuration.');
         }
       }
-      
+
       // Now that environment is properly set up, initialize the wallet
       try {
         await this.initializeWallet(seed, walletFilename);
@@ -255,7 +296,7 @@ export class WalletManager {
       throw error; // Propagate error for higher-level handling
     }
   }
-  
+
   /**
    * Configure Docker environment for proof server
    */
@@ -266,33 +307,33 @@ export class WalletManager {
         this.logger.info('Skipping Docker environment setup in production mode');
         return;
       }
-      
+
       const currentDir = getCurrentDir();
       const configDir = path.resolve(currentDir, './src/wallet/config');
       this.logger.debug('Config directory: %s', configDir);
-      
+
       // verify the file exists
       const proofServerYml = path.resolve(configDir, 'proof-server-testnet.yml');
       this.logger.debug('Proof server YAML path: %s', proofServerYml);
-      
+
       if (!fs.existsSync(proofServerYml)) {
         const filesInConfigDir = fs.readdirSync(configDir);
         this.logger.error('Files inside configDir:', filesInConfigDir);
         throw new Error(`Proof server YAML file not found at ${proofServerYml}`);
       }
-      
+
       try {
         // Dynamically import testcontainers only in development mode
         const { DockerComposeEnvironment, Wait } = await import('testcontainers');
-        
+
         this.dockerEnv = new DockerComposeEnvironment(
           configDir,
           'proof-server-testnet.yml',
         ).withWaitStrategy(
-          CONTAINER_NAME, 
+          CONTAINER_NAME,
           Wait.forLogMessage('Actix runtime found; starting in Actix runtime', 1)
         );
-        
+
         this.logger.info('Docker environment configured');
       } catch (importError) {
         this.logger.error('Failed to import testcontainers', importError);
@@ -302,7 +343,7 @@ export class WalletManager {
       this.logger.error('Failed to configure Docker environment', error);
     }
   }
-  
+
   /**
    * Initialize wallet by starting Docker and configuring wallet
    */
@@ -313,15 +354,15 @@ export class WalletManager {
         this.logger.info('Starting Docker environment');
         try {
           this.startedEnv = await this.dockerEnv.up();
-          
+
           // Update config with mapped ports
           if (this.startedEnv) {
             this.config.proofServer = mapContainerPort(
-              this.startedEnv, 
-              this.config.proofServer, 
+              this.startedEnv,
+              this.config.proofServer,
               CONTAINER_NAME
             );
-            
+
             this.logger.info(`Docker environment started, proof server at ${this.config.proofServer}`);
           } else {
             this.logger.error('Docker environment started but startedEnv is undefined');
@@ -335,18 +376,18 @@ export class WalletManager {
       } else if (!isDevelopment) {
         this.logger.info('Running in production mode without Docker, using configured proof server');
       }
-      
+
       // Generate a random seed if not provided
       const finalFilename = walletFilename || '';
-      
+
       // Initialize wallet
       try {
         this.wallet = await this.buildWalletFromSeed(seed, finalFilename);
-        
+
         if (this.wallet) {
           // Subscribe to wallet state changes with error recovery
           this.setupWalletSubscription();
-          
+
           this.logger.info('Wallet initialized successfully, syncing in progress');
         } else {
           this.logger.error('Failed to initialize wallet, wallet instance is null');
@@ -358,7 +399,7 @@ export class WalletManager {
       this.logger.error('Error during wallet initialization process', error);
     }
   }
-  
+
   /**
    * Sets up the wallet subscription with error handling and recovery
    */
@@ -367,11 +408,11 @@ export class WalletManager {
       this.logger.error('Cannot setup subscription: wallet is null');
       return;
     }
-    
+
     if (this.walletSyncSubscription) {
       this.walletSyncSubscription.unsubscribe();
     }
-    
+
     this.walletSyncSubscription = this.wallet.state().subscribe({
       next: async (state) => {
         try {
@@ -433,7 +474,7 @@ export class WalletManager {
       }
     });
   }
-  
+
   /**
    * Attempts to recover the wallet after an error
    * @param reason Reason for recovery attempt
@@ -443,31 +484,31 @@ export class WalletManager {
       this.logger.info('Recovery already in progress, skipping new attempt');
       return;
     }
-    
+
     this.isRecovering = true;
-    
+
     try {
       this.recoveryAttempts++;
       this.ready = false;
-      
+
       this.syncedIndices = 0n;
       this.applyGap = 0n;
       this.sourceGap = 0n;
-      
+
       this.logger.warn(`Attempting wallet recovery (${this.recoveryAttempts}/${this.maxRecoveryAttempts}). Reason: ${reason}`);
-      
+
       // Check if we've exceeded max recovery attempts
       if (this.recoveryAttempts > this.maxRecoveryAttempts) {
         this.logger.error(`Max recovery attempts (${this.maxRecoveryAttempts}) exceeded. Wallet may need manual intervention.`);
         return;
       }
-      
+
       // Unsubscribe from current subscription
       if (this.walletSyncSubscription) {
         this.walletSyncSubscription.unsubscribe();
         this.walletSyncSubscription = undefined;
       }
-      
+
       // Try to save current wallet state if possible
       if (this.wallet) {
         try {
@@ -476,7 +517,7 @@ export class WalletManager {
         } catch (saveError) {
           this.logger.warn('Failed to save wallet state before recovery', saveError);
         }
-        
+
         // Close the current wallet
         try {
           await this.wallet.close();
@@ -484,20 +525,20 @@ export class WalletManager {
         } catch (closeError) {
           this.logger.warn('Error closing wallet during recovery', closeError);
         }
-        
+
         this.wallet = null;
       }
-      
+
       // Apply exponential backoff before reconnecting
       const backoffTime = Math.min(this.recoveryBackoffMs * Math.pow(1.5, this.recoveryAttempts - 1), 60000); // Max 1 minute
       this.logger.info(`Waiting ${backoffTime}ms before attempting recovery`);
-      
+
       await new Promise(resolve => setTimeout(resolve, backoffTime));
-      
+
       // Attempt to rebuild the wallet
       try {
         this.wallet = await this.buildWalletFromSeed(this.walletSeed, this.walletFilename);
-        
+
         if (this.wallet) {
           this.setupWalletSubscription();
           this.logger.info('Wallet recovered successfully');
@@ -506,12 +547,12 @@ export class WalletManager {
         }
       } catch (rebuildError) {
         this.logger.error('Error rebuilding wallet during recovery', rebuildError);
-        
+
         // Schedule another recovery attempt with backoff if we haven't exceeded max attempts
         if (this.recoveryAttempts < this.maxRecoveryAttempts) {
           this.recoveryBackoffMs = Math.min(this.recoveryBackoffMs * 2, 60000); // Double backoff time, max 1 minute
           this.logger.info(`Scheduling another recovery attempt in ${this.recoveryBackoffMs}ms`);
-          
+
           setTimeout(() => {
             this.isRecovering = false;
             this.attemptWalletRecovery('Previous recovery failed');
@@ -522,7 +563,7 @@ export class WalletManager {
       this.isRecovering = false;
     }
   }
-  
+
   /**
    * Build wallet from seed and optionally restore from file
    */
@@ -536,29 +577,29 @@ export class WalletManager {
     }
 
     const formattedFilename = `${filename}.json`;
-    
+
     // Try to restore wallet from file if filename is provided
     if (filename && this.fileManager.fileExists(FileType.WALLET_BACKUP, this.agentId, formattedFilename)) {
       this.logger.info(`Attempting to restore wallet from ${formattedFilename}`);
       try {
         const serialized = this.fileManager.readFile(FileType.WALLET_BACKUP, this.agentId, formattedFilename);
-        
-        const cleanSerialized = serialized.trim().startsWith('"') 
-          ? JSON.parse(serialized) 
+
+        const cleanSerialized = serialized.trim().startsWith('"')
+          ? JSON.parse(serialized)
           : serialized;
-        
+
         // Restore wallet from serialized state
         this.logger.info(`Restoring wallet with seed: ${seed}`);
         wallet = await WalletBuilder.restore(
-          indexer, 
-          indexerWS, 
-          proofServer, 
-          node, 
-          seed, 
-          cleanSerialized, 
+          indexer,
+          indexerWS,
+          proofServer,
+          node,
+          seed,
+          cleanSerialized,
           'info'
         );
-        
+
         wallet.start();
         this.logger.info('Wallet restored from file and started');
       } catch (error) {
@@ -588,18 +629,18 @@ export class WalletManager {
       );
       wallet.start();
     }
-    
+
     return wallet;
   }
-  
+
   /**
    * Check if the wallet is ready for operations
    * @param withDetails Whether to return detailed status information
    * @returns true if wallet is synced and ready, or status object if withDetails is true
    */
-  public isReady(withDetails: boolean = false): boolean | { 
-    ready: boolean; 
-    recovering: boolean; 
+  public isReady(withDetails: boolean = false): boolean | {
+    ready: boolean;
+    recovering: boolean;
     recoveryAttempts: number;
     synced?: string;
     applyGap?: string;
@@ -615,10 +656,10 @@ export class WalletManager {
         sourceGap: this.sourceGap.toString()
       };
     }
-    
+
     return this.ready;
   }
-  
+
   /**
    * Get the wallet's address
    * @returns The wallet address as a string
@@ -627,7 +668,7 @@ export class WalletManager {
   public getAddress(): string {
     return this.walletAddress;
   }
-  
+
   /**
    * Get the wallet's current balance with detailed breakdown
    * @returns An object containing different balance types with dust amounts as strings
@@ -635,13 +676,13 @@ export class WalletManager {
    */
   public getBalance(): WalletBalances {
     if (!this.ready) throw new Error('Wallet not ready');
-    
+
     return {
       balance: convertBigIntToDecimal(this.walletBalances.balance),
       pendingBalance: convertBigIntToDecimal(this.walletBalances.pendingBalance)
     };
   }
-  
+
   /**
    * Send funds to the specified destination address
    * @param to Address to send the funds to
@@ -652,10 +693,10 @@ export class WalletManager {
   public async sendFunds(to: string, amount: string): Promise<SendFundsResult> {
     if (!this.ready) throw new Error('Wallet not ready');
     if (!this.wallet) throw new Error('Wallet instance not available');
-    
+
     try {
       const amountBigInt = convertDecimalToBigInt(amount);
-      
+
       if (this.walletBalances.balance < amountBigInt) {
         if (this.walletBalances.balance >= amountBigInt) {
           const pendingAmount = this.walletBalances.pendingBalance;
@@ -669,7 +710,7 @@ export class WalletManager {
         const formattedTotalBalance = convertBigIntToDecimal(this.walletBalances.balance);
         throw new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
       }
-      
+
       const transferRecipe = await this.wallet.transferTransaction([
         {
           amount: amountBigInt,
@@ -677,22 +718,22 @@ export class WalletManager {
           receiverAddress: to
         }
       ]);
-      
+
       const provenTransaction = await this.wallet.proveTransaction(transferRecipe);
       const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
-      
+
       this.logger.info(`Transaction submitted: ${submittedTransaction}`);
-      
+
       const isFullySynced = this.walletState?.syncProgress?.synced ?? false;
-      
+
       const transaction = this.transactionDb.createTransaction(
         this.walletAddress,
         to,
         amount
       );
-      
+
       this.transactionDb.markTransactionAsSent(transaction.id, submittedTransaction);
-      
+
       return {
         txIdentifier: submittedTransaction,
         syncStatus: {
@@ -710,7 +751,7 @@ export class WalletManager {
       throw error;
     }
   }
-  
+
   /**
    * Save wallet state to file
    * @param filename Optional filename to save to
@@ -721,17 +762,17 @@ export class WalletManager {
       this.logger.error('Cannot save wallet: wallet not initialized');
       return null;
     }
-    
+
     try {
       // Use provided filename or use the one stored in the class
       const walletFilename = filename || this.walletFilename || `wallet-${Date.now()}`;
       const formattedFilename = `${walletFilename}.json`;
-      
+
       this.logger.info(`Saving wallet to file ${formattedFilename} for agent ${this.agentId}`);
       const walletJson = await this.wallet.serializeState();
-      
+
       this.fileManager.writeFile(FileType.WALLET_BACKUP, this.agentId, walletJson, formattedFilename);
-      
+
       const filePath = this.fileManager.getPath(FileType.WALLET_BACKUP, this.agentId, formattedFilename);
       this.logger.info(`Wallet saved to ${filePath}`);
       return filePath;
@@ -740,7 +781,7 @@ export class WalletManager {
       return null;
     }
   }
-  
+
   /**
    * Close the wallet manager, shutting down wallet and Docker
    */
@@ -751,7 +792,7 @@ export class WalletManager {
         clearInterval(this.transactionPoller);
         this.transactionPoller = undefined;
       }
-      
+
       // Close transaction database
       try {
         this.transactionDb.close();
@@ -759,7 +800,7 @@ export class WalletManager {
       } catch (dbError) {
         this.logger.warn('Error closing transaction database', dbError);
       }
-      
+
       // Save wallet state before closing
       if (this.wallet) {
         try {
@@ -769,18 +810,18 @@ export class WalletManager {
           this.logger.warn('Could not save wallet before shutdown', saveError);
         }
       }
-      
+
       // Unsubscribe from wallet state updates
       if (this.walletSyncSubscription) {
         this.walletSyncSubscription.unsubscribe();
       }
-      
+
       // Close wallet
       if (this.wallet) {
         await this.wallet.close();
         this.logger.info('Wallet closed successfully');
       }
-      
+
       // Shutdown Docker environment only if we started it and we're in development mode
       if (this.startedEnv && !this.config.useExternalProofServer && isDevelopment) {
         await this.startedEnv.down();
@@ -800,7 +841,7 @@ export class WalletManager {
   public async recoverWallet(): Promise<void> {
     this.logger.info('Manual wallet recovery triggered');
     await this.attemptWalletRecovery('Manual recovery request');
-    
+
     // Wait a bit to let the recovery process start
     return new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -815,12 +856,12 @@ export class WalletManager {
   public hasReceivedTransactionByIdentifier(identifier: string): TransactionVerificationResult {
     if (!this.ready) throw new Error('Wallet not ready');
     if (!this.wallet) throw new Error('Wallet instance not available');
-    
+
     try {
       if (!this.walletState || !this.walletState.transactionHistory || !Array.isArray(this.walletState.transactionHistory)) {
         this.logger.warn('Transaction history not available in stored wallet state');
         return {
-          exists: false, 
+          exists: false,
           syncStatus: {
             syncedIndices: this.syncedIndices.toString(),
             lag: {
@@ -831,11 +872,11 @@ export class WalletManager {
           }
         };
       }
-      
-      const exists = this.walletState.transactionHistory.some((tx: TransactionHistoryEntry) => 
+
+      const exists = this.walletState.transactionHistory.some((tx: TransactionHistoryEntry) =>
         Array.isArray(tx.identifiers) && tx.identifiers.includes(identifier)
       );
-      
+
       return {
         exists,
         syncStatus: {
@@ -898,7 +939,7 @@ export class WalletManager {
     }
 
     this.logger.info(`Starting transaction poller with interval of ${this.pollingInterval}ms`);
-    
+
     // Check for any pending sent transactions that might have completed during downtime
     this.checkPendingTransactions();
 
@@ -918,7 +959,7 @@ export class WalletManager {
     try {
       // Get all transactions in SENT state that need to be checked
       const sentTransactions = this.transactionDb.getTransactionsByState(TransactionState.SENT);
-      
+
       if (sentTransactions.length === 0) {
         return;
       }
@@ -930,7 +971,7 @@ export class WalletManager {
 
         // Check if transaction appears in wallet history
         const verificationResult = this.hasReceivedTransactionByIdentifier(tx.txIdentifier);
-        
+
         if (verificationResult.exists) {
           this.logger.info(`Transaction ${tx.id} with txIdentifier ${tx.txIdentifier} found in blockchain history, marking as completed`);
           this.transactionDb.markTransactionAsCompleted(tx.txIdentifier);
@@ -956,7 +997,7 @@ export class WalletManager {
 
     try {
       const amountBigInt = convertDecimalToBigInt(amount);
-      
+
       if (this.walletBalances.balance < amountBigInt) {
         if (this.walletBalances.balance >= amountBigInt) {
           const pendingAmount = this.walletBalances.pendingBalance;
@@ -1016,13 +1057,13 @@ export class WalletManager {
           receiverAddress: to
         }
       ]);
-      
+
       // Prove and submit the transaction
       const provenTransaction = await this.wallet.proveTransaction(transferRecipe);
       const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
-      
+
       this.logger.info(`Transaction submitted for ${transactionId}: ${submittedTransaction}`);
-      
+
       // Update transaction record with txIdentifier and set state to SENT
       this.transactionDb.markTransactionAsSent(transactionId, submittedTransaction);
     } catch (error) {
@@ -1041,15 +1082,15 @@ export class WalletManager {
   public getTransactionStatus(id: string): TransactionStatusResult | null {
     try {
       const transaction = this.transactionDb.getTransactionById(id);
-      
+
       if (!transaction) {
         return null;
       }
-      
+
       // If we have a txIdentifier and transaction is in SENT state, check blockchain status
       if (transaction.txIdentifier && transaction.state === TransactionState.SENT) {
         const blockchainStatus = this.hasReceivedTransactionByIdentifier(transaction.txIdentifier);
-        
+
         // Convert BigInt values to strings for safe JSON serialization
         return {
           transaction,
@@ -1063,7 +1104,7 @@ export class WalletManager {
           }
         };
       }
-      
+
       return { transaction };
     } catch (error) {
       this.logger.error(`Failed to get transaction status for ${id}`, error);
@@ -1104,4 +1145,3 @@ export class WalletManager {
 }
 
 export default WalletManager;
-  
