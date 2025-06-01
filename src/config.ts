@@ -28,6 +28,8 @@ interface Config {
   indexerWS: string;
   node: string;
   agentId: string;
+  walletServerHost: string;
+  walletServerPort: number;
 }
 
 /**
@@ -69,6 +71,13 @@ export function loadConfig(): Config {
     throw new Error('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
   }
 
+  // Server port configuration
+  const serverPort = parseInt(process.env.SERVER_PORT || '3000', 10);
+
+  // Wallet server configuration
+  const walletServerHost = process.env.WALLET_SERVER_HOST || 'localhost';
+  const walletServerPort = parseInt(process.env.WALLET_SERVER_PORT || '3000', 10);
+
   return {
     networkId,
     walletBackupFolder,
@@ -79,7 +88,9 @@ export function loadConfig(): Config {
     indexer,
     indexerWS,
     node: mnNode,
-    agentId
+    agentId,
+    walletServerHost,
+    walletServerPort
   };
 }
 

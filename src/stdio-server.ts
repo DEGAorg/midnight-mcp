@@ -11,8 +11,8 @@ import {
   ReadResourceRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import { 
-  MCPServer as MidnightMCPServer,
-  MCPError as MidnightMCPError
+  WalletServiceMCP as MidnightMCPServer,
+  WalletServiceError as MidnightMCPError
 } from './mcp/index.js';
 import { config } from './config.js';
 import { ALL_TOOLS, handleToolCall } from './tools.js';

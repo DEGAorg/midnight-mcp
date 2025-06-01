@@ -1,4 +1,5 @@
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { httpClient } from './utils/http-client.js';
 
 // Define tools with their schemas
 export const ALL_TOOLS = [
@@ -90,7 +91,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
     switch (toolName) {
       // Midnight wallet tool handlers
       case "walletStatus":
-        const status = midnightServer.getWalletStatus();
+        const status = await httpClient.get('/wallet/status');
         return {
           "content": [
             {
@@ -102,7 +103,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
         };
         
       case "walletAddress":
-        const address = midnightServer.getAddress();
+        const address = await httpClient.get('/wallet/address');
         return {
           "content": [
             {
@@ -114,7 +115,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
         };
         
       case "walletBalance":
-        const balance = midnightServer.getBalance();
+        const balance = await httpClient.get('/wallet/balance');
         return {
           "content": [
             {
@@ -133,7 +134,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             "Missing required parameters: destinationAddress and amount"
           );
         }
-        const sendResult = await midnightServer.sendFunds(destinationAddress, amount);
+        const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount });
         return {
           "content": [
             {
@@ -152,7 +153,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             "Missing required parameter: identifier"
           );
         }
-        const verifyResult = midnightServer.confirmTransactionHasBeenReceived(identifier);
+        const verifyResult = await httpClient.post('/wallet/verify-transaction', { identifier });
         return {
           "content": [
             {
@@ -171,7 +172,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             "Missing required parameter: transactionId"
           );
         }
-        const statusResult = midnightServer.getTransactionStatus(transactionId);
+        const statusResult = await httpClient.get(`/wallet/transaction/${transactionId}`);
         return {
           "content": [
             {
@@ -183,7 +184,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
         };
         
       case "getTransactions":
-        const transactions = midnightServer.getTransactions();
+        const transactions = await httpClient.get('/wallet/transactions');
         return {
           "content": [
             {
@@ -195,7 +196,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
         };
         
       case "getPendingTransactions":
-        const pendingTransactions = midnightServer.getPendingTransactions();
+        const pendingTransactions = await httpClient.get('/wallet/pending-transactions');
         return {
           "content": [
             {
@@ -207,7 +208,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
         };
       
       case "getWalletConfig":
-        const config = midnightServer.getWalletConfig();
+        const config = await httpClient.get('/wallet/config');
         return {
           "content": [
             {
