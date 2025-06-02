@@ -1,7 +1,8 @@
 import express, { Router, RequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { json } from 'body-parser';
+import pkg from 'body-parser';
+const { json } = pkg;
 import { WalletServiceMCP } from './mcp/index.js';
 import { WalletController } from './controllers/wallet.controller.js';
 import { config } from './config.js';
@@ -56,8 +57,16 @@ const routes = [
 
 // Register all routes
 routes.forEach(({ method, path, handler }) => {
-  const routerMethod = router[method] as (path: string, handler: RequestHandler) => Router;
-  routerMethod(path, handler.bind(walletController));
+  const boundHandler = (handler as RequestHandler).bind(walletController);
+  if (method === 'get') {
+    router.get(path, boundHandler);
+  } else if (method === 'post') {
+    router.post(path, boundHandler);
+  } else if (method === 'put') {
+    router.put(path, boundHandler);
+  } else if (method === 'delete') {
+    router.delete(path, boundHandler);
+  }
 });
 
 // Mount router
