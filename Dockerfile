@@ -1,7 +1,7 @@
 # ────────────────────────
 # Builder stage
 # ────────────────────────
-FROM node:18-alpine AS builder
+FROM node:22.15.1-alpine AS builder
 
 WORKDIR /app
 
@@ -29,7 +29,7 @@ RUN yarn build:mcp
 # ────────────────────────
 # Production stage
 # ────────────────────────
-FROM node:18-alpine
+FROM node:22.15.1-alpine
 
 WORKDIR /app
 

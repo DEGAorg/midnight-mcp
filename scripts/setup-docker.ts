@@ -115,6 +115,7 @@ LOG_LEVEL=info
 
 # External Services
 USE_EXTERNAL_PROOF_SERVER=true
+PROOF_SERVER=${options.proofServer}
 INDEXER=${options.indexer}
 INDEXER_WS=${options.indexerWs}
 MN_NODE=${options.node}

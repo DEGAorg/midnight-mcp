@@ -108,7 +108,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
           "content": [
             {
               "type": "text",
-              "text": address,
+              "text": JSON.stringify(address, null, 2),
               "mimeType": "application/json"
             }
           ]
