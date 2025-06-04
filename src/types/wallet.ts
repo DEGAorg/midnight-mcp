@@ -51,7 +51,8 @@ export interface TransactionVerificationResult {
       sourceGap: string;
     };
     isFullySynced: boolean;
-  }
+  },
+  transactionAmount: string;
 }
 
 /**
