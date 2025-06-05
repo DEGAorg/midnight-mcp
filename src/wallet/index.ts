@@ -383,7 +383,7 @@ export class WalletManager {
           const applyGap = state.syncProgress?.lag?.applyGap ?? 0n;
           const sourceGap = state.syncProgress?.lag?.sourceGap ?? 0n;
           const isSynced = state.syncProgress?.synced ?? false;
-
+          
           this.walletAddress = state.address || '';
 
           const nativeBalance = state.balances[nativeToken()] ?? 0n;
@@ -828,16 +828,36 @@ export class WalletManager {
               sourceGap: this.sourceGap.toString()
             },
             isFullySynced: this.walletState?.syncProgress?.synced ?? false
-          }
+          },
+          transactionAmount: '0'
         };
       }
       
-      const exists = this.walletState.transactionHistory.some((tx: TransactionHistoryEntry) => 
+      const matchingTransaction = this.walletState.transactionHistory.find((tx: TransactionHistoryEntry) => 
         Array.isArray(tx.identifiers) && tx.identifiers.includes(identifier)
       );
+
+      if (!matchingTransaction) {
+        return {
+          exists: false,
+          syncStatus: {
+            syncedIndices: this.syncedIndices.toString(),
+            lag: {
+              applyGap: this.applyGap.toString(),
+              sourceGap: this.sourceGap.toString()
+            },
+            isFullySynced: this.walletState?.syncProgress?.synced ?? false
+          },
+          transactionAmount: '0'
+        };
+      }
+
+      // Get the amount from the transaction deltas
+      const nativeTokenAmount = matchingTransaction.deltas[nativeToken()] ?? 0n;
+      const amount = convertBigIntToDecimal(nativeTokenAmount);
       
       return {
-        exists,
+        exists: true,
         syncStatus: {
           syncedIndices: this.syncedIndices.toString(),
           lag: {
@@ -845,7 +865,8 @@ export class WalletManager {
             sourceGap: this.sourceGap.toString()
           },
           isFullySynced: this.walletState?.syncProgress?.synced ?? false
-        }
+        },
+        transactionAmount: amount
       };
     } catch (error) {
       this.logger.error(`Error verifying transaction receipt: ${error}`);

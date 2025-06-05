@@ -15,9 +15,9 @@ import {
 } from '../types/wallet.js';
 
 /**
- * Error types for the MCP API
+ * Error types for the Wallet Service
  */
-export enum MCPErrorType {
+export enum WalletServiceErrorType {
   WALLET_NOT_READY = 'WALLET_NOT_READY',
   INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
   TX_SUBMISSION_FAILED = 'TX_SUBMISSION_FAILED',
@@ -26,33 +26,33 @@ export enum MCPErrorType {
 }
 
 /**
- * Centralized error message mapping for MCP error types
+ * Centralized error message mapping for Wallet Service error types
  */
 export const ERROR_MESSAGES = {
-  [MCPErrorType.WALLET_NOT_READY]: 'Wallet is not ready yet. Please try again later.',
-  [MCPErrorType.INSUFFICIENT_FUNDS]: 'Insufficient funds for this transaction.',
-  [MCPErrorType.TX_SUBMISSION_FAILED]: 'Transaction submission failed.',
-  [MCPErrorType.TX_NOT_FOUND]: 'Transaction not found.',
-  [MCPErrorType.IDENTIFIER_VERIFICATION_FAILED]: 'Transaction verification failed.',
+  [WalletServiceErrorType.WALLET_NOT_READY]: 'Wallet is not ready yet. Please try again later.',
+  [WalletServiceErrorType.INSUFFICIENT_FUNDS]: 'Insufficient funds for this transaction.',
+  [WalletServiceErrorType.TX_SUBMISSION_FAILED]: 'Transaction submission failed.',
+  [WalletServiceErrorType.TX_NOT_FOUND]: 'Transaction not found.',
+  [WalletServiceErrorType.IDENTIFIER_VERIFICATION_FAILED]: 'Transaction verification failed.',
 };
 
 /**
- * Error class for MCP errors
+ * Error class for Wallet Service errors
  */
-export class MCPError extends Error {
-  constructor(public type: MCPErrorType, message: string) {
+export class WalletServiceError extends Error {
+  constructor(public type: WalletServiceErrorType, message: string) {
     super(message);
-    this.name = 'MCPError';
+    this.name = 'WalletServiceError';
   }
 }
 
 /**
- * Generic error handler for MCP errors
+ * Generic error handler for Wallet Service errors
  * @param error The error to handle
  * @returns A formatted response with appropriate error message
  */
-export function handleMCPError(error: unknown) {
-  if (error instanceof MCPError) {
+export function handleWalletServiceError(error: unknown) {
+  if (error instanceof WalletServiceError) {
     const message = ERROR_MESSAGES[error.type] || error.message || 'An unexpected error occurred.';
     return { 
       content: [{ 
@@ -62,7 +62,7 @@ export function handleMCPError(error: unknown) {
     };
   }
   
-  // For non-MCP errors, rethrow to be caught by the outer handler
+  // For non-Wallet Service errors, rethrow to be caught by the outer handler
   throw error;
 }
 
@@ -82,7 +82,7 @@ export function createSimpleToolHandler(handler: () => any) {
         }] 
       };
     } catch (error: unknown) {
-      return handleMCPError(error);
+      return handleWalletServiceError(error);
     }
   };
 }
@@ -103,23 +103,23 @@ export function createParameterizedToolHandler<T extends Record<string, any>>(ha
         }] 
       };
     } catch (error: unknown) {
-      return handleMCPError(error);
+      return handleWalletServiceError(error);
     }
   };
 }
 
 /**
- * MCP Server that provides a secure interface to interact with the Midnight blockchain
+ * Wallet Service MCP that provides a secure interface to interact with the Midnight blockchain
  * through the wallet implementation
  */
-export class MCPServer {
+export class WalletServiceMCP {
   private wallet: WalletManager;
   private logger: Logger;
   private externalConfig: WalletConfig;
   private agentId: string;
   
   /**
-   * Create a new MCP Server instance
+   * Create a new Wallet Service instance
    * @param networkId The Midnight network ID to connect to
    * @param seed The seed for the wallet
    * @param walletFilename filename to restore wallet from
@@ -131,17 +131,17 @@ export class MCPServer {
       setNetworkId(networkId);
     }
     
-    this.logger = createLogger('mcp-server');
+    this.logger = createLogger('wallet-service');
     this.agentId = process.env.AGENT_ID || 'default';
     
-    this.logger.info('Initializing Midnight MCP Server');
+    this.logger.info('Initializing Midnight Wallet Service');
 
     this.externalConfig = externalConfig || new TestnetRemoteConfig();
     
     // Initialize WalletManager with network ID, seed, filename, and optional external config
     this.wallet = new WalletManager(networkId, seed, walletFilename, externalConfig);
     
-    this.logger.info('MCP Server initialized, wallet synchronization started in background');
+    this.logger.info('Wallet Service initialized, wallet synchronization started in background');
   }
   
   /**
@@ -156,32 +156,32 @@ export class MCPServer {
   /**
    * Get the wallet's address
    * @returns The wallet address as a string
-   * @throws MCPError if wallet is not ready
+   * @throws WalletServiceError if wallet is not ready
    */
   public getAddress(): string {
     try {
       return this.wallet.getAddress();
     } catch (error) {
       this.logger.error('Error getting wallet address', error);
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Error accessing wallet address');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Error accessing wallet address');
     }
   }
   
   /**
    * Get the wallet's current balance
    * @returns The wallet balance details including available and pending balances
-   * @throws MCPError if wallet is not ready
+   * @throws WalletServiceError if wallet is not ready
    */
   public getBalance(): WalletBalances {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
       return this.wallet.getBalance();
     } catch (error) {
       this.logger.error('Error getting wallet balance', error);
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Error accessing wallet balance');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Error accessing wallet balance');
     }
   }
   
@@ -192,11 +192,11 @@ export class MCPServer {
    * @param destinationAddress Address to send the funds to
    * @param amount Amount of funds to send as a string (decimal value)
    * @returns Transaction initiation details including ID, state, and amount
-   * @throws MCPError if wallet is not ready or transaction initialization fails
+   * @throws WalletServiceError if wallet is not ready or transaction initialization fails
    */
   public async sendFunds(destinationAddress: string, amount: string): Promise<InitiateTransactionResult> {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
@@ -206,7 +206,7 @@ export class MCPServer {
       return result;
     } catch (error) {
       this.logger.error('Failed to send funds', error);
-      throw new MCPError(MCPErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
     }
   }
   
@@ -217,12 +217,12 @@ export class MCPServer {
    * @param destinationAddress Address to send the funds to
    * @param amount Amount of funds to send as a string (decimal value)
    * @returns Transaction details including identifier, sync status, and amount sent
-   * @throws MCPError if wallet is not ready, has insufficient funds, or transaction fails
+   * @throws WalletServiceError if wallet is not ready, has insufficient funds, or transaction fails
    * @deprecated Use sendFunds for non-blocking transactions
    */
   public async sendFundsAndWait(destinationAddress: string, amount: string): Promise<WalletSendFundsResult> {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
@@ -235,7 +235,7 @@ export class MCPServer {
       };
     } catch (error) {
       this.logger.error('Failed to send funds', error);
-      throw new MCPError(MCPErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to submit transaction');
     }
   }
   
@@ -243,28 +243,28 @@ export class MCPServer {
    * Get the status of a transaction by its ID
    * @param transactionId The ID of the transaction to check
    * @returns The current status of the transaction including blockchain status if available
-   * @throws MCPError if transaction is not found or wallet is not ready
+   * @throws WalletServiceError if transaction is not found or wallet is not ready
    */
   public getTransactionStatus(transactionId: string): TransactionStatusResult | null {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
       const status = this.wallet.getTransactionStatus(transactionId);
       
       if (!status) {
-        throw new MCPError(MCPErrorType.TX_NOT_FOUND, `Transaction with ID ${transactionId} not found`);
+        throw new WalletServiceError(WalletServiceErrorType.TX_NOT_FOUND, `Transaction with ID ${transactionId} not found`);
       }
       
       return status;
     } catch (error) {
-      if (error instanceof MCPError) {
+      if (error instanceof WalletServiceError) {
         throw error;
       }
       this.logger.error(`Failed to get transaction status for ${transactionId}`, error);
-      throw new MCPError(
-        MCPErrorType.TX_NOT_FOUND,
+      throw new WalletServiceError(
+        WalletServiceErrorType.TX_NOT_FOUND,
         `Failed to get transaction status: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -274,19 +274,19 @@ export class MCPServer {
    * Get all transactions, optionally filtered by state
    * @param state Optional state to filter transactions by (INITIATED, SENT, COMPLETED, FAILED)
    * @returns Array of transaction records matching the specified state or all transactions if no state provided
-   * @throws MCPError if wallet is not ready
+   * @throws WalletServiceError if wallet is not ready
    */
   public getTransactions(): TransactionRecord[] {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
       return this.wallet.getTransactions();
     } catch (error) {
       this.logger.error('Failed to get transactions', error);
-      throw new MCPError(
-        MCPErrorType.WALLET_NOT_READY,
+      throw new WalletServiceError(
+        WalletServiceErrorType.WALLET_NOT_READY,
         `Failed to get transactions: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -295,19 +295,19 @@ export class MCPServer {
   /**
    * Get all pending transactions (INITIATED or SENT)
    * @returns Array of pending transaction records
-   * @throws MCPError if wallet is not ready
+   * @throws WalletServiceError if wallet is not ready
    */
   public getPendingTransactions(): TransactionRecord[] {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
       return this.wallet.getPendingTransactions();
     } catch (error) {
       this.logger.error('Failed to get pending transactions', error);
-      throw new MCPError(
-        MCPErrorType.WALLET_NOT_READY,
+      throw new WalletServiceError(
+        WalletServiceErrorType.WALLET_NOT_READY,
         `Failed to get pending transactions: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -318,19 +318,19 @@ export class MCPServer {
    * 
    * @param identifier The transaction identifier to verify (not the transaction hash)
    * @returns Verification result with transaction existence and sync status
-   * @throws MCPError if wallet is not ready or verification fails
+   * @throws WalletServiceError if wallet is not ready or verification fails
    */
   public confirmTransactionHasBeenReceived(identifier: string): TransactionVerificationResult {
     if (!this.isReady()) {
-      throw new MCPError(MCPErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
     }
     
     try {
       return this.wallet.hasReceivedTransactionByIdentifier(identifier);
     } catch (error) {
       this.logger.error('Error verifying transaction by identifier', error);
-      throw new MCPError(
-        MCPErrorType.IDENTIFIER_VERIFICATION_FAILED, 
+      throw new WalletServiceError(
+        WalletServiceErrorType.IDENTIFIER_VERIFICATION_FAILED, 
         `Failed to verify transaction with identifier: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -339,15 +339,15 @@ export class MCPServer {
   /**
    * Get detailed wallet status including sync progress, readiness, and recovery state
    * @returns Detailed wallet status with sync information, address, and balances
-   * @throws MCPError if there's an issue retrieving wallet status
+   * @throws WalletServiceError if there's an issue retrieving wallet status
    */
   public getWalletStatus(): WalletStatus {
     try {
       return this.wallet.getWalletStatus();
     } catch (error) {
       this.logger.error('Error getting wallet status', error);
-      throw new MCPError(
-        MCPErrorType.WALLET_NOT_READY,
+      throw new WalletServiceError(
+        WalletServiceErrorType.WALLET_NOT_READY,
         `Failed to retrieve wallet status: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -359,17 +359,17 @@ export class MCPServer {
   }
   
   /**
-   * Close the MCP server and clean up resources
+   * Close the Wallet Service and clean up resources
    */
   public async close(): Promise<void> {
     try {
       await this.wallet.close();
     } catch (error) {
-      this.logger.error('Error closing MCP server:', error);
+      this.logger.error('Error closing Wallet Service:', error);
       throw error;
     }
   }
 }
 
 // Export default instance
-export default MCPServer;
+export default WalletServiceMCP;

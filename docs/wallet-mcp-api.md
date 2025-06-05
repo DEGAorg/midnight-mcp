@@ -14,6 +14,70 @@ The Wallet MCP is responsible for securely managing private keys, maintaining wa
 
 ---
 
+## Configuration
+
+### Environment Variables
+
+The following environment variables can be used to configure the Wallet MCP:
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `AGENT_ID` | Unique identifier for the agent | - | Yes |
+| `WALLET_SERVER_HOST` | Hostname or IP of the wallet server | `localhost` | No |
+| `WALLET_SERVER_PORT` | Port number for the wallet server | `3000` | No |
+| `NETWORK_ID` | Midnight network to connect to | `TestNet` | No |
+| `WALLET_FILENAME` | Name of the wallet file | `midnight-wallet` | No |
+| `LOG_LEVEL` | Logging level | `info` | No |
+| `USE_EXTERNAL_PROOF_SERVER` | Whether to use external proof server | `false` | No |
+| `PROOF_SERVER` | URL of the proof server | - | If `USE_EXTERNAL_PROOF_SERVER=true` |
+| `INDEXER` | URL of the indexer | - | If `USE_EXTERNAL_PROOF_SERVER=true` |
+| `INDEXER_WS` | WebSocket URL of the indexer | - | If `USE_EXTERNAL_PROOF_SERVER=true` |
+| `MN_NODE` | URL of the Midnight node | - | If `USE_EXTERNAL_PROOF_SERVER=true` |
+
+### Example .env File
+
+```env
+# Required
+AGENT_ID=my-agent-1
+
+# Optional - Server Configuration
+WALLET_SERVER_HOST=wallet-server  # Use 'localhost' for local development
+WALLET_SERVER_PORT=3000          # Must match the port exposed in Docker
+
+# Optional - Network Configuration
+NETWORK_ID=TestNet
+WALLET_FILENAME=midnight-wallet
+LOG_LEVEL=info
+
+# Optional - External Services
+USE_EXTERNAL_PROOF_SERVER=true
+PROOF_SERVER=http://proof-server:8080
+INDEXER=http://indexer:8080
+INDEXER_WS=ws://indexer:8080
+MN_NODE=http://midnight-node:8080
+```
+
+### Docker Configuration
+
+When running in Docker, make sure to:
+
+1. Expose the wallet server port in your Dockerfile:
+```dockerfile
+EXPOSE 3000
+```
+
+2. Set the `WALLET_SERVER_HOST` to the service name in your Docker network:
+```env
+WALLET_SERVER_HOST=wallet-server
+```
+
+3. Ensure the port matches between:
+   - The exposed port in Dockerfile
+   - The `WALLET_SERVER_PORT` environment variable
+   - The port your wallet server is listening on
+
+---
+
 ## API Methods
 
 ### `isReady()`
