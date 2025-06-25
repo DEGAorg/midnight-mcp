@@ -82,6 +82,31 @@ export const ALL_TOOLS = [
       properties: {},
       required: []
     },
+  },
+  // Marketplace tools
+  {
+    name: "registerInMarketplace",
+    description: "Register a user in the marketplace",
+    inputSchema: {
+      type: "object",
+      properties: {
+        userId: { type: "string" },
+        userData: { type: "object" }
+      },
+      required: ["userId", "userData"]
+    }
+  },
+  {
+    name: "verifyUserInMarketplace",
+    description: "Verify a user in the marketplace",
+    inputSchema: {
+      type: "object",
+      properties: {
+        userId: { type: "string" },
+        verificationData: { type: "object" }
+      },
+      required: ["userId", "verificationData"]
+    }
   }
 ];
 
@@ -214,6 +239,59 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             {
               "type": "text",
               "text": JSON.stringify(config, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      // Marketplace tool handlers
+      case "registerInMarketplace":
+        const { userId, userData } = toolArgs;
+        if (!userId || !userData) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameters: userId and userData"
+          );
+        }
+        // TODO: Implement actual marketplace registration logic
+        const registerResult = {
+          success: true,
+          message: "User registered successfully in marketplace (placeholder)",
+          userId,
+          userData,
+          timestamp: new Date().toISOString()
+        };
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(registerResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "verifyUserInMarketplace":
+        const { userId: verifyUserId, verificationData } = toolArgs;
+        if (!verifyUserId || !verificationData) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameters: userId and verificationData"
+          );
+        }
+        // TODO: Implement actual marketplace user verification logic
+        const verifyUserResult = {
+          success: true,
+          message: "User verified successfully in marketplace (placeholder)",
+          userId: verifyUserId,
+          verificationData,
+          verifiedAt: new Date().toISOString()
+        };
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(verifyUserResult, null, 2),
               "mimeType": "application/json"
             }
           ]
