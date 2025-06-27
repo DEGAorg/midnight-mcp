@@ -159,6 +159,10 @@ export class WalletServiceMCP {
    * @throws WalletServiceError if wallet is not ready
    */
   public getAddress(): string {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
     try {
       return this.wallet.getAddress();
     } catch (error) {
@@ -366,7 +370,7 @@ export class WalletServiceMCP {
       await this.wallet.close();
     } catch (error) {
       this.logger.error('Error closing Wallet Service:', error);
-      throw error;
+      // Don't rethrow the error, just log it
     }
   }
 }

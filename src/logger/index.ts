@@ -354,7 +354,7 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
   // Get agent ID from environment or standard fields
   const agentId = process.env.AGENT_ID || standardFields.agentId || 'default';
   
-  // Base logger options
+  // Base logger options - ensure we don't override the level with custom levels
   let baseOptions: pino.LoggerOptions = {
     level,
     name,
@@ -364,8 +364,27 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
       version: standardFields.version,
       ...standardFields.custom,
     },
-    ...options.pinoOptions,
   };
+  
+  // Only merge pinoOptions if they don't contain custom levels that would conflict
+  if (options.pinoOptions) {
+    const { customLevels, ...safePinoOptions } = options.pinoOptions;
+    baseOptions = {
+      ...baseOptions,
+      ...safePinoOptions,
+    };
+    
+    // If custom levels are provided, ensure the default level is included
+    if (customLevels) {
+      // Get the numeric value for the current level
+      const levelValue = pino.levels.values[level] || 30; // Default to info level value
+      
+      baseOptions.customLevels = {
+        ...customLevels,
+        [level]: levelValue,
+      };
+    }
+  }
   
   // Apply cloud-specific formatters if needed
   if (cloud.provider === CloudProvider.GCP) {

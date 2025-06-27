@@ -1,10 +1,11 @@
-import { MCPServer } from '../../../src/mcp/index.js';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
+import MCPServer  from '../../../src/mcp/index.js';
 import { generateTestSeed, waitForWalletReady, getTestNetworkId } from '../helpers.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import type { WalletConfig } from '../../../src/wallet/index.js';
+import type { WalletConfig } from '../../../src/wallet';
 
 /**
  * These tests demonstrate how to connect to a custom network configuration.

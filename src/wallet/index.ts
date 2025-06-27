@@ -834,7 +834,7 @@ export class WalletManager {
       }
       
       const matchingTransaction = this.walletState.transactionHistory.find((tx: TransactionHistoryEntry) => 
-        Array.isArray(tx.identifiers) && tx.identifiers.includes(identifier)
+        tx && Array.isArray(tx.identifiers) && tx.identifiers.length > 0 && tx.identifiers.includes(identifier)
       );
 
       if (!matchingTransaction) {
@@ -931,7 +931,7 @@ export class WalletManager {
   /**
    * Check for pending transactions that might have been completed
    */
-  private async checkPendingTransactions(): Promise<void> {
+  public async checkPendingTransactions(): Promise<void> {
     if (!this.ready || !this.wallet) {
       return;
     }
@@ -1085,6 +1085,7 @@ export class WalletManager {
         };
       }
       
+      // For COMPLETED, FAILED, and INITIATED states, don't include blockchain status
       return { transaction };
     } catch (error) {
       this.logger.error(`Failed to get transaction status for ${id}`, error);

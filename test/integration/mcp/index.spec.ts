@@ -1,9 +1,10 @@
-import { MCPServer } from '../../../src/mcp/index.js';
+import MCPServer from "../../../src/mcp/index.js"
 import { generateTestSeed, createLocalNetworkConfig, waitForWalletReady, getTestNetworkId } from '../helpers.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
 
 /**
  * These integration tests require a running local Midnight network.
