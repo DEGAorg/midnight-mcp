@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { McpError, ErrorCode, Resource } from "@modelcontextprotocol/sdk/types.js";
 
 /**

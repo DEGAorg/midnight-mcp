@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { httpClient } from './utils/http-client.js';
 

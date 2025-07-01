@@ -1,4 +1,5 @@
 import type { Logger } from 'pino';
+import { ILogger } from '../../../src/logger/types';
 
 
 
@@ -136,82 +137,37 @@ export interface LoggerOptions {
   };
 }
 
-const mockLogger: Logger = {
-  info: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-  warn: jest.fn(),
-  trace: jest.fn(),
-  fatal: jest.fn(),
-  child: jest.fn(() => mockLogger),
-  level: 'info',
-  levels: { values: {}, labels: {} },
-  isLevelEnabled: jest.fn(() => true),
-  silent: jest.fn(),
-  on: jest.fn(),
-  once: jest.fn(),
-  emit: jest.fn(),
-  addListener: jest.fn(),
-  removeListener: jest.fn(),
-  removeAllListeners: jest.fn(),
-  setMaxListeners: jest.fn(),
-  getMaxListeners: jest.fn(),
-  listeners: jest.fn(() => []),
-  rawListeners: jest.fn(() => []),
-  listenerCount: jest.fn(() => 0),
-  prependListener: jest.fn(),
-  prependOnceListener: jest.fn(),
-  eventNames: jest.fn(() => []),
-} as any;
+type MockLogger = {
+  error: jest.Mock;
+  info: jest.Mock;
+  debug: jest.Mock;
+  warn: jest.Mock;
+  trace: jest.Mock;
+  fatal: jest.Mock;
+  child: jest.Mock<MockLogger, []>;
+};
 
-function createLogger(name?: string, options?: LoggerOptions): Logger {
+const mockLogger = {} as MockLogger;
+mockLogger.error = jest.fn();
+mockLogger.info = jest.fn();
+mockLogger.debug = jest.fn();
+mockLogger.warn = jest.fn();
+mockLogger.trace = jest.fn();
+mockLogger.fatal = jest.fn();
+mockLogger.child = jest.fn(() => mockLogger);
+
+export function createLogger() {
   return mockLogger;
 }
 
-function configureGlobalLogging(options: {
-  level?: LogLevel;
-  prettyPrint?: boolean;
-  enableFileOutput?: boolean;
-  defaultLogFile?: string;
-  cloud?: CloudLoggerConfig;
-  standardFields?: typeof LoggerConfig.standardFields;
-}): void {
-  if (options.level) {
-    LoggerConfig.defaultLevel = options.level;
-  }
-  
-  if (options.prettyPrint !== undefined) {
-    LoggerConfig.prettyPrint = options.prettyPrint;
-  }
-  
-  if (options.enableFileOutput !== undefined) {
-    LoggerConfig.enableFileOutput = options.enableFileOutput;
-  }
-  
-  if (options.defaultLogFile) {
-    LoggerConfig.defaultLogFile = options.defaultLogFile;
-  }
-  
-  if (options.cloud) {
-    LoggerConfig.cloud = options.cloud;
-  }
-  
-  if (options.standardFields) {
-    LoggerConfig.standardFields = {
-      ...LoggerConfig.standardFields,
-      ...options.standardFields,
-    };
-  }
+export default mockLogger;
+
+export function createGCPFormatter(config: GCPLoggerConfig): any {
+  return {
+    formatters: {
+      level: (level: string, code: number) => ({ severity: level, level: code }),
+      log: (log: any) => ({ ...log, timestamp: new Date().toISOString() })
+    }
+  };
 }
 
-// Mock pino
-const mockPino = {
-  pino: jest.fn(() => mockLogger),
-  transport: jest.fn(),
-  destination: jest.fn(),
-  multistream: jest.fn(),
-  levels: { values: {} },
-};
-
-export { createLogger, configureGlobalLogging, mockLogger as logger, mockPino as pino };
-export default createLogger; 

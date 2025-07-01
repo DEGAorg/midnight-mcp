@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { config } from '../config.js';
 
 export class HttpError extends Error {

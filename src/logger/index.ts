@@ -2,6 +2,9 @@ import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FileManager, FileType } from '../utils/file-manager.js';
+import { ILogger } from './types';
+import { PinoLogger } from './pino-logger';
+import { SentryLogger } from './sentry-logger';
 
 /**
  * Available log levels in ascending order of importance.
@@ -246,7 +249,7 @@ function ensureLogDirectoryExists(filePath: string): void {
 /**
  * Create GCP-compatible log formatter
  */
-function createGCPFormatter(config: GCPLoggerConfig): pino.LoggerOptions {
+export function createGCPFormatter(config: GCPLoggerConfig): pino.LoggerOptions {
   return {
     base: {
       serviceContext: config.serviceContext || {
@@ -480,14 +483,21 @@ export function configureGlobalLogging(options: {
   }
 }
 
-/**
- * Default application logger
- */
-export const logger = createLogger('midnight-mcp');
-
-/**
- * Export the pino library for advanced usage
- */
 export { pino };
 
-export default createLogger; 
+export default createLogger;
+
+let logger: ILogger;
+
+export function configureLogger(type: 'pino' | 'sentry', options?: any) {
+  if (type === 'sentry') {
+    logger = new SentryLogger(/* pass options if needed */);
+  } else {
+    logger = new PinoLogger(/* pass options if needed */);
+  }
+}
+
+export function getLogger(): ILogger {
+  if (!logger) logger = new PinoLogger();
+  return logger;
+} 

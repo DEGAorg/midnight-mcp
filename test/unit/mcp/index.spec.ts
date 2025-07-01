@@ -5,12 +5,12 @@ jest.mock('@midnight-ntwrk/midnight-js-network-id');
 jest.mock('../../../src/utils/file-manager');
 jest.mock('../../../src/logger');
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
-import { WalletServiceMCP, WalletServiceErrorType, WalletServiceError } from '../../../src/mcp/index.js';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { fail } from 'assert';
-import { __mockWallet as mockWalletData } from '../__mocks__/wallet';
-import { TransactionState } from '../../../src/types/wallet.js';
+import { createSimpleToolHandler, handleWalletServiceError } from '../../../src/mcp/index';
+import { WalletServiceError, WalletServiceErrorType, WalletServiceMCP } from '../../../src/mcp/index.js';
+import { createParameterizedToolHandler } from '../../../src/mcp/index';
 
 jest.useFakeTimers();
 
@@ -189,6 +189,23 @@ describe('WalletServiceMCP', () => {
       mockWallet.isReady.mockReturnValue(false);
       await expect(mcpServer.sendFundsAndWait('mdnt1recipient_address', '100')).rejects.toThrow('Wallet is not ready');
     });
+
+    it('should log and throw when wallet.sendFunds fails', async () => {
+      // Arrange: create instance
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      // Mock isReady to return true
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      // Mock logger
+      mcp['logger'] = { error: jest.fn() } as any;
+      // Mock wallet.sendFunds to throw
+      mcp['wallet'] = {
+        sendFunds: () => Promise.reject(new Error('fail'))
+      } as any;
+
+      // Act & Assert
+      await expect(mcp.sendFundsAndWait('addr', '1')).rejects.toThrow('Failed to submit transaction');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to send funds', expect.any(Error));
+    });
   });
 
   describe('getTransactionStatus', () => {
@@ -258,6 +275,18 @@ describe('WalletServiceMCP', () => {
         expect(error).toBeInstanceOf(WalletServiceError);
         expect(error.type).toBe(WalletServiceErrorType.TX_NOT_FOUND);
       }
+    });
+
+    it('should log and throw when wallet.getTransactionStatus fails', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getTransactionStatus: jest.fn(() => { throw new Error('fail'); })
+      } as any;
+
+      expect(() => mcp.getTransactionStatus('txid')).toThrow('Failed to get transaction status: fail');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get transaction status for txid', expect.any(Error));
     });
   });
 
@@ -330,6 +359,17 @@ describe('WalletServiceMCP', () => {
       });
       expect(() => mcpServer.confirmTransactionHasBeenReceived('mock_tx_hash')).toThrow(WalletServiceError);
     });
+
+    it('should log and throw when wallet.hasReceivedTransactionByIdentifier fails with non-Error', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        hasReceivedTransactionByIdentifier: jest.fn(() => { throw 'not-an-error'; })
+      } as any;
+      expect(() => mcp.confirmTransactionHasBeenReceived('id')).toThrow('Failed to verify transaction with identifier: not-an-error');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Error verifying transaction by identifier', 'not-an-error');
+    });
   });
 
   describe('close', () => {
@@ -342,6 +382,16 @@ describe('WalletServiceMCP', () => {
     it('should handle errors during wallet closing', async () => {
       mockWallet.close.mockRejectedValue(new Error('Close error'));
       await expect(mcpServer.close()).resolves.toBeUndefined();
+    });
+
+    it('should log error if wallet.close fails', async () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        close: jest.fn(() => { throw new Error('fail'); })
+      } as any;
+      await mcp.close();
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Error closing Wallet Service:', expect.any(Error));
     });
   });
 
@@ -371,5 +421,164 @@ describe('WalletServiceMCP', () => {
       );
       expect(testServer).toBeDefined();
     });
+  });
+
+  describe('getTransactions', () => {
+    it('should log and throw when wallet.getTransactions fails', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getTransactions: jest.fn(() => { throw new Error('fail'); })
+      } as any;
+
+      expect(() => mcp.getTransactions()).toThrow('Failed to get transactions: fail');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get transactions', expect.any(Error));
+    });
+
+    it('should throw if not ready in getTransactions', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(false);
+      expect(() => mcp.getTransactions()).toThrow('Wallet is not ready');
+    });
+
+    it('should log and throw when wallet.getTransactions fails with non-Error', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getTransactions: jest.fn(() => { throw 123; }) // Not an Error instance
+      } as any;
+      expect(() => mcp.getTransactions()).toThrow('Failed to get transactions: 123');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get transactions', 123);
+    });
+  });
+
+  describe('getPendingTransactions', () => {
+    it('should throw if not ready in getPendingTransactions', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(false);
+      expect(() => mcp.getPendingTransactions()).toThrow('Wallet is not ready');
+    });
+
+    it('should log and throw when wallet.getPendingTransactions fails', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getPendingTransactions: jest.fn(() => { throw new Error('fail'); })
+      } as any;
+      expect(() => mcp.getPendingTransactions()).toThrow('Failed to get pending transactions: fail');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get pending transactions', expect.any(Error));
+    });
+
+    it('should log and throw when wallet.getPendingTransactions fails with non-Error', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getPendingTransactions: jest.fn(() => { throw 456; }) // Not an Error instance
+      } as any;
+      expect(() => mcp.getPendingTransactions()).toThrow('Failed to get pending transactions: 456');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get pending transactions', 456);
+    });
+  });
+
+  describe('getWalletStatus', () => {
+    it('should log and throw when wallet.getWalletStatus fails', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getWalletStatus: jest.fn(() => { throw new Error('fail'); })
+      } as any;
+      expect(() => mcp.getWalletStatus()).toThrow('Failed to retrieve wallet status: fail');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Error getting wallet status', expect.any(Error));
+    });
+
+    it('should log and throw when wallet.getWalletStatus fails with non-Error', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getWalletStatus: jest.fn(() => { throw 'fail-string'; })
+      } as any;
+      expect(() => mcp.getWalletStatus()).toThrow('Failed to retrieve wallet status: fail-string');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Error getting wallet status', 'fail-string');
+    });
+  });
+});
+
+describe('createSimpleToolHandler', () => {
+  it('returns string result', async () => {
+    const handler = createSimpleToolHandler(() => 'hello');
+    const result = await handler();
+    expect(result.content[0].text).toBe('hello');
+  });
+
+  it('returns object result as JSON', async () => {
+    const handler = createSimpleToolHandler(() => ({ foo: 'bar' }));
+    const result = await handler();
+    expect(result.content[0].text).toBe(JSON.stringify({ foo: 'bar' }, null, 2));
+  });
+
+  it('handles WalletServiceError', async () => {
+    const handler = createSimpleToolHandler(() => {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    });
+    const result = await handler();
+    expect(result.content[0].text).toBe('Wallet is not ready yet. Please try again later.');
+  });
+
+  it('throws non-WalletServiceError', async () => {
+    const handler = createSimpleToolHandler(() => {
+      throw new Error('Other error');
+    });
+    await expect(handler()).rejects.toThrow('Other error');
+  });
+});
+
+describe('handleWalletServiceError', () => {
+  it('returns error.message if type is not in ERROR_MESSAGES', () => {
+    // @ts-ignore: purposely using a type not in ERROR_MESSAGES
+    const error = new WalletServiceError('UNKNOWN_TYPE', 'Custom message');
+    const result = handleWalletServiceError(error);
+    expect(result.content[0].text).toBe('Custom message');
+  });
+
+  it('returns default message if type and message are missing', () => {
+    // @ts-ignore: purposely omitting message
+    const error = new WalletServiceError('UNKNOWN_TYPE');
+    // Remove message property to simulate missing message
+    delete (error as any).message;
+    const result = handleWalletServiceError(error);
+    expect(result.content[0].text).toBe('An unexpected error occurred.');
+  });
+});
+
+describe('createParameterizedToolHandler', () => {
+  it('returns string result', async () => {
+    const handler = createParameterizedToolHandler<{ foo: string }>((args) => `Hello, ${args.foo}`);
+    const result = await handler({ foo: 'World' });
+    expect(result.content[0].text).toBe('Hello, World');
+  });
+
+  it('returns object result as JSON', async () => {
+    const handler = createParameterizedToolHandler<{ bar: number }>((args) => ({ bar: args.bar }));
+    const result = await handler({ bar: 42 });
+    expect(result.content[0].text).toBe(JSON.stringify({ bar: 42 }, null, 2));
+  });
+
+  it('handles WalletServiceError', async () => {
+    const handler = createParameterizedToolHandler(() => {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    });
+    const result = await handler({});
+    expect(result.content[0].text).toBe('Wallet is not ready yet. Please try again later.');
+  });
+
+  it('throws non-WalletServiceError', async () => {
+    const handler = createParameterizedToolHandler(() => {
+      throw new Error('Other error');
+    });
+    await expect(handler({})).rejects.toThrow('Other error');
   });
 }); 

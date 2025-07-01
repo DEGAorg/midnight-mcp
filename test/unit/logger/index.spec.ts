@@ -1,4 +1,8 @@
 import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
+import { createLogger, LoggerConfig, CloudProvider } from '../../../src/logger/index';
+import { configureGlobalLogging } from '../../../src/logger/index';
+import { configureLogger, getLogger } from '../../../src/logger/index';
+import * as loggerIndex from '../../../src/logger/index';
 
 // Mock pino
 jest.mock('pino', () => {
@@ -20,13 +24,31 @@ jest.mock('pino', () => {
   const mockDestination = jest.fn();
   const mockMultistream = jest.fn();
   
-  return {
+  const levels = {
+    values: {
+      trace: 10,
+      debug: 20,
+      info: 30,
+      warn: 40,
+      error: 50,
+      fatal: 60
+    }
+  };
+
+  return Object.assign(mockPino, {
     pino: mockPino,
     transport: mockTransport,
     destination: mockDestination,
     multistream: mockMultistream,
-    default: mockPino
-  };
+    default: mockPino,
+    levels: levels,
+    isLevelEnabled: jest.fn(() => true),
+    silent: jest.fn(),
+    on: jest.fn(),
+    once: jest.fn(),
+    emit: jest.fn(),
+    addListener: jest.fn(),
+  });
 });
 
 // Mock optional pino transport modules
@@ -110,6 +132,66 @@ describe('Logger Module', () => {
       expect(logger).toBeDefined();
       expect(typeof logger.info).toBe('function');
     });
+
+    it('creates a logger with pretty print', () => {
+      const logger = createLogger('test', { pretty: true });
+      expect(logger).toBeDefined();
+    });
+
+    it('creates a logger without pretty print', () => {
+      const logger = createLogger('test', { pretty: false });
+      expect(logger).toBeDefined();
+    });
+
+    it('creates a logger with file output', () => {
+      const logger = createLogger('test', { outputFile: 'test.log' });
+      expect(logger).toBeDefined();
+    });
+
+    it('creates a logger with GCP cloud transport', () => {
+      const logger = createLogger('test', {
+        cloud: {
+          provider: CloudProvider.GCP,
+          config: { projectId: 'pid' }
+        }
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('creates a logger with AWS cloud transport', () => {
+      const logger = createLogger('test', {
+        cloud: {
+          provider: CloudProvider.AWS,
+          config: { logGroupName: 'group', region: 'us-east-1' }
+        }
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('creates a logger with AZURE cloud transport', () => {
+      const logger = createLogger('test', {
+        cloud: {
+          provider: CloudProvider.AZURE,
+          config: { connectionString: 'conn' }
+        }
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('creates a logger with customLevels in pinoOptions', () => {
+      const logger = createLogger('test', {
+        pinoOptions: {
+          customLevels: { foo: 35 }
+        }
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('should not add file output when enableFileOutput is false', () => {
+      LoggerConfig.enableFileOutput = false;
+      const logger = createLogger('test-module', {});
+      expect(logger).toBeDefined();
+    });
   });
   
   describe('configureGlobalLogging', () => {
@@ -135,6 +217,26 @@ describe('Logger Module', () => {
       expect(LoggerConfig.standardFields.application).toBe('custom-app');
       expect(LoggerConfig.standardFields.environment).toBe('production');
       expect(LoggerConfig.standardFields.version).toBe('2.0.0');
+    });
+
+    it('configures global logging options', () => {
+      configureGlobalLogging({
+        level: 'debug',
+        prettyPrint: false,
+        enableFileOutput: false,
+        defaultLogFile: 'custom.log',
+        cloud: { provider: CloudProvider.NONE },
+        standardFields: { 
+          application: 'test-app',
+          environment: 'test-env',
+          version: '1.0.0'
+        }
+      });
+      expect(LoggerConfig.defaultLevel).toBe('debug');
+      expect(LoggerConfig.prettyPrint).toBe(false);
+      expect(LoggerConfig.enableFileOutput).toBe(false);
+      expect(LoggerConfig.defaultLogFile).toBe('custom.log');
+      expect(LoggerConfig.standardFields.application).toBe('test-app');
     });
   });
   
@@ -220,6 +322,67 @@ describe('Logger Module', () => {
       const { LoggerConfig } = await import('../../../src/logger/index');
       
       expect(LoggerConfig.standardFields.version).toBe('3.0.0');
+    });
+
+    it('should use default values when env variables are not set', async () => {
+      // Clear environment variables
+      delete process.env.LOG_LEVEL;
+      delete process.env.NODE_ENV;
+      delete process.env.APP_VERSION;
+    
+      // Re-import to pick up the environment variable change
+      const { LoggerConfig } = await import('../../../src/logger/index');
+    
+      expect(LoggerConfig.defaultLevel).toBe('info');
+      expect(LoggerConfig.standardFields.environment).toBe('development');
+      expect(LoggerConfig.standardFields.version).toBe('0.0.1');
+    });
+    
+  });
+
+  describe('configureLogger and getLogger', () => {
+    it('configures sentry logger', () => {
+      configureLogger('sentry');
+      const logger = getLogger();
+      expect(logger).toBeDefined();
+    });
+
+    it('configures pino logger', () => {
+      configureLogger('pino');
+      const logger = getLogger();
+      expect(logger).toBeDefined();
+    });
+
+    it('should fallback to PinoLogger if getLogger is called before configureLogger', () => {
+      // Reset the logger variable (if possible)
+      // @ts-ignore
+      import('../../../src/logger/index').then(mod => {
+        // forcibly reset the logger variable for test
+        (mod as any).logger = undefined;
+        const logger = mod.getLogger();
+        expect(logger).toBeDefined();
+      });
+    });
+  });
+
+  describe('createGCPFormatter', () => {
+    it('should map log levels to GCP severity and add timestamp', () => {
+      // Create the formatter
+      const formatter = (loggerIndex as any).createGCPFormatter({});
+
+      // Test the level formatter
+      const levelFormatter = formatter.formatters.level;
+      expect(levelFormatter('info', 30)).toEqual({ severity: 'INFO', level: 30 });
+      expect(levelFormatter('warn', 40)).toEqual({ severity: 'WARNING', level: 40 });
+      expect(levelFormatter('unknown', 99)).toEqual({ severity: 'DEFAULT', level: 99 });
+
+      // Test the log formatter
+      const logFormatter = formatter.formatters.log;
+      const result = logFormatter({ foo: 'bar' });
+      expect(result).toHaveProperty('foo', 'bar');
+      expect(result).toHaveProperty('timestamp');
+      // Optionally, check timestamp format
+      expect(new Date(result.timestamp).toISOString()).toBe(result.timestamp);
     });
   });
 }); 

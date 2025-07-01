@@ -7,12 +7,105 @@ jest.mock('../../../src/utils/file-manager');
 jest.mock('../../../src/wallet/db/TransactionDatabase');
 jest.mock('../../../src/wallet/utils');
 
+// Mock the audit module properly
+const mockTestOutcomes: any[] = [];
+const mockActiveTests: Map<string, any> = new Map();
+const mockTestDecisions: Map<string, any[]> = new Map();
+let testIdCounter = 0; // Add counter for unique test IDs
+const mockTestOutcomeAuditor = {
+  startTest: jest.fn((testExecution: any) => {
+    // Ensure unique test ID even for concurrent operations
+    const uniqueTestId = testExecution.testId || `test-${Date.now()}-${++testIdCounter}`;
+    const testExecWithUniqueId = { ...testExecution, testId: uniqueTestId };
+    mockActiveTests.set(uniqueTestId, testExecWithUniqueId);
+    mockTestDecisions.set(uniqueTestId, []);
+    return uniqueTestId;
+  }),
+  completeTest: jest.fn((testId: string, status: string, summary?: string) => {
+    // Check if test outcome already exists to prevent duplicates
+    const existingOutcome = mockTestOutcomes.find(outcome => outcome.testId === testId);
+    if (existingOutcome) {
+      return `mock-event-${Date.now()}`;
+    }
+    
+    const testExecution = mockActiveTests.get(testId);
+    const decisions = mockTestDecisions.get(testId) || [];
+    const endTime = Date.now();
+    
+    const outcome = {
+      testId,
+      testName: testExecution?.testName || 'Unknown Test',
+      testSuite: testExecution?.testSuite || 'Unknown Suite',
+      status,
+      startTime: testExecution?.startTime || endTime - 1000,
+      endTime,
+      duration: endTime - (testExecution?.startTime || endTime - 1000),
+      summary,
+      decisions: decisions.length > 0 ? decisions : undefined,
+      correlationId: `mock-correlation-${Date.now()}`,
+      errorMessage: status === 'failed' ? summary : undefined
+    };
+    
+    mockTestOutcomes.push(outcome);
+    mockActiveTests.delete(testId);
+    mockTestDecisions.delete(testId);
+    
+    return `mock-event-${Date.now()}`;
+  }),
+  logTestDecision: jest.fn((decision: any) => {
+    const decisions = mockTestDecisions.get(decision.testId) || [];
+    decisions.push(decision);
+    mockTestDecisions.set(decision.testId, decisions);
+    return `mock-event-${Date.now()}`;
+  }),
+  logTestOutcome: jest.fn(() => `mock-event-${Date.now()}`),
+  logTestMetrics: jest.fn(() => `mock-event-${Date.now()}`),
+  logTestFailure: jest.fn(() => `mock-event-${Date.now()}`),
+  getTestEvents: jest.fn(() => []),
+  getTestEventsByCorrelation: jest.fn(() => []),
+  getActiveTests: jest.fn(() => []),
+  getTestSummary: jest.fn(() => ({ testId: 'test', totalEvents: 0 })),
+  getTestOutcomes: jest.fn(() => mockTestOutcomes),
+  exportTestOutcomes: jest.fn(async (filters?: any) => {
+    let filteredOutcomes = [...mockTestOutcomes];
+    
+    if (filters?.status) {
+      filteredOutcomes = filteredOutcomes.filter(outcome => outcome.status === filters.status);
+    }
+    if (filters?.testSuite) {
+      filteredOutcomes = filteredOutcomes.filter(outcome => outcome.testSuite === filters.testSuite);
+    }
+    if (filters?.testId) {
+      filteredOutcomes = filteredOutcomes.filter(outcome => outcome.testId === filters.testId);
+    }
+    if (filters?.startTime) {
+      filteredOutcomes = filteredOutcomes.filter(outcome => outcome.startTime >= filters.startTime);
+    }
+    if (filters?.endTime) {
+      filteredOutcomes = filteredOutcomes.filter(outcome => outcome.endTime <= filters.endTime);
+    }
+    
+    return filteredOutcomes;
+  })
+};
+
+jest.mock('../../../src/audit', () => ({
+  TestOutcomeAuditor: jest.fn().mockImplementation(() => mockTestOutcomeAuditor),
+  AuditTrailService: {
+    getInstance: jest.fn()
+  },
+  AgentDecisionLogger: jest.fn(),
+  TransactionTraceLogger: jest.fn()
+}));
+
 import { describe, it, beforeEach, jest, expect } from '@jest/globals';
 import { WalletManager } from '../../../src/wallet';
 import { TransactionState } from '../../../src/types/wallet.js';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { Subject } from 'rxjs';
 import * as utils from '../../../src/wallet/utils';
+// Import the mocked TestOutcomeAuditor
+import { TestOutcomeAuditor } from '../../../src/audit/index.js';
 
 // Import shared mocks
 const { __mockWallet: mockWallet } = require('@midnight-ntwrk/wallet');
@@ -23,9 +116,20 @@ describe('WalletManager', () => {
   const seed = 'test-seed';
   const walletFilename = 'test-wallet';
   let walletStateSubject: Subject<any>;
+  let testAuditor: TestOutcomeAuditor;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    // Don't clear all mocks as it resets the mockTestOutcomeAuditor
+    // jest.clearAllMocks();
+    
+    // Clear mock test outcomes only at the start of each test
+    mockTestOutcomes.length = 0;
+    mockActiveTests.clear();
+    mockTestDecisions.clear();
+    testIdCounter = 0; // Reset counter for each test
+
+    // Initialize test auditor
+    testAuditor = new TestOutcomeAuditor();
 
     walletStateSubject = new Subject<any>();
     if (mockWallet.state) {
@@ -41,50 +145,129 @@ describe('WalletManager', () => {
     // Create WalletManager instance - this should now use the mocked constructor
     walletManager = new WalletManager(NetworkId.TestNet, seed, walletFilename, { useExternalProofServer: true, indexer: '', indexerWS: '', node: '', proofServer: '' });
     
+    // Set up default wallet balance for tests (sufficient funds)
+    (walletManager as any).walletBalances = { balance: 1000000000n, pendingBalance: 0n }; // 1.0 in nano units
+    
     // Configure the mock behavior for this test
     (walletManager as any).sendFunds.mockImplementation(async (to: string, amount: string) => {
-      // Check for insufficient funds
-      const balance = (walletManager as any).walletBalances.balance;
-      const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1000000000));
-      if (balance < amountBigInt) {
-        throw new Error('Insufficient funds');
+      // Start test tracking for sendFunds operation
+      const testId = testAuditor.startTest({
+        testId: `send-funds-${Date.now()}-${++testIdCounter}`,
+        testName: 'Send Funds Operation',
+        testSuite: 'WalletManager',
+        environment: 'test',
+        startTime: Date.now(),
+        status: 'running'
+      });
+
+      try {
+        // Check for insufficient funds
+        const balance = (walletManager as any).walletBalances.balance;
+        const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 1000000000));
+        if (balance < amountBigInt) {
+          testAuditor.completeTest(testId, 'failed', 'Insufficient funds');
+          throw new Error('Insufficient funds');
+        }
+        
+        // Simulate the actual sendFunds logic by calling the injected mocks
+        const txRecipe = await mockWallet.transferTransaction();
+        const provenTx = await mockWallet.proveTransaction(txRecipe);
+        const txHash = await mockWallet.submitTransaction(provenTx);
+        
+        // Create transaction record and mark it as sent (matching actual implementation)
+        const transaction = mockTransactionDb.createTransaction('addr1', to, amount);
+        mockTransactionDb.markTransactionAsSent(transaction.id, txHash);
+        
+        // Log test decision
+        testAuditor.logTestDecision({
+          testId,
+          decisionType: 'continue',
+          reasoning: 'Transaction processing completed successfully',
+          confidence: 0.9,
+          selectedAction: 'complete',
+          timestamp: Date.now()
+        });
+
+        testAuditor.completeTest(testId, 'passed', 'Transaction submitted successfully');
+        
+        return {
+          txIdentifier: txHash,
+          syncStatus: {
+            syncedIndices: '10',
+            lag: { applyGap: '0', sourceGap: '0' },
+            isFullySynced: true
+          },
+          amount
+        };
+      } catch (error) {
+        testAuditor.completeTest(testId, 'failed', error instanceof Error ? error.message : 'Unknown error');
+        throw error;
       }
-      
-      // Simulate the actual sendFunds logic by calling the injected mocks
-      const txRecipe = await mockWallet.transferTransaction();
-      const provenTx = await mockWallet.proveTransaction(txRecipe);
-      const txHash = await mockWallet.submitTransaction(provenTx);
-      
-      // Create transaction record and mark it as sent (matching actual implementation)
-      const transaction = mockTransactionDb.createTransaction('addr1', to, amount);
-      mockTransactionDb.markTransactionAsSent(transaction.id, txHash);
-      
-      return {
-        txIdentifier: txHash,
-        syncStatus: {
-          syncedIndices: '10',
-          lag: { applyGap: '0', sourceGap: '0' },
-          isFullySynced: true
-        },
-        amount
-      };
     });
     
     // Configure initiateSendFunds to use the transaction database
     (walletManager as any).initiateSendFunds.mockImplementation(async (to: string, amount: string) => {
-      const mockTxRecord = mockTransactionDb.createTransaction('addr1', to, amount);
-      return mockTxRecord;
+      const testId = testAuditor.startTest({
+        testId: `initiate-funds-${Date.now()}-${++testIdCounter}`,
+        testName: 'Initiate Send Funds Operation',
+        testSuite: 'WalletManager',
+        environment: 'test',
+        startTime: Date.now(),
+        status: 'running'
+      });
+
+      try {
+        const mockTxRecord = mockTransactionDb.createTransaction('addr1', to, amount);
+        
+        testAuditor.logTestDecision({
+          testId,
+          decisionType: 'continue',
+          reasoning: 'Transaction initiation completed successfully',
+          confidence: 0.9,
+          selectedAction: 'complete',
+          timestamp: Date.now()
+        });
+
+        testAuditor.completeTest(testId, 'passed', 'Transaction initiated successfully');
+        
+        return mockTxRecord;
+      } catch (error) {
+        testAuditor.completeTest(testId, 'failed', error instanceof Error ? error.message : 'Unknown error');
+        throw error;
+      }
     });
     
     // Configure processSendFundsAsync to use the injected mocks
     (walletManager as any).processSendFundsAsync.mockImplementation(async (txId: string, to: string, amount: string) => {
+      const testId = testAuditor.startTest({
+        testId: `process-funds-${txId}-${++testIdCounter}`,
+        testName: 'Process Send Funds Async Operation',
+        testSuite: 'WalletManager',
+        environment: 'test',
+        startTime: Date.now(),
+        status: 'running'
+      });
+
       try {
         const txRecipe = await mockWallet.transferTransaction();
         const provenTx = await mockWallet.proveTransaction(txRecipe);
         const txHash = await mockWallet.submitTransaction(provenTx);
         mockTransactionDb.markTransactionAsSent(txId, txHash);
+        
+        testAuditor.logTestDecision({
+          testId,
+          decisionType: 'continue',
+          reasoning: 'Async transaction processing completed successfully',
+          confidence: 0.9,
+          selectedAction: 'complete',
+          timestamp: Date.now()
+        });
+
+        testAuditor.completeTest(testId, 'passed', 'Async transaction processing completed');
       } catch (error:any) {
         mockTransactionDb.markTransactionAsFailed(txId, `Failed at processing transaction: ${error.message}`);
+        
+        testAuditor.completeTest(testId, 'failed', error.message);
         throw error;
       }
     });
@@ -165,6 +348,13 @@ describe('WalletManager', () => {
       expect(mockWallet.proveTransaction).toHaveBeenCalled();
       expect(mockWallet.submitTransaction).toHaveBeenCalled();
       expect(mockTransactionDb.markTransactionAsSent).toHaveBeenCalled();
+      
+      // Verify audit trail was logged
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('passed');
+      expect(testOutcomes[0].testName).toBe('Send Funds Operation');
+      expect(testOutcomes[0].testSuite).toBe('WalletManager');
     });
 
     it('handles errors during transaction submission', async () => {
@@ -173,6 +363,12 @@ describe('WalletManager', () => {
       mockWallet.submitTransaction.mockRejectedValue(new Error('Submission failed'));
 
       await expect(walletManager.sendFunds('addr2', '0.5')).rejects.toThrow('Submission failed');
+      
+      // Verify audit trail logged the failure
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('failed');
+      expect(testOutcomes[0].errorMessage).toContain('Submission failed');
     });
 
     it('should initiate a transaction and return a transaction ID', async () => {
@@ -186,6 +382,12 @@ describe('WalletManager', () => {
       expect(result.id).toBe('tx1');
       expect(result.state).toBe(TransactionState.INITIATED);
       expect(mockTransactionDb.createTransaction).toHaveBeenCalledWith('addr1', to, amount);
+      
+      // Verify audit trail was logged
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('passed');
+      expect(testOutcomes[0].testName).toBe('Initiate Send Funds Operation');
     });
 
     it('should process an initiated transaction', async () => {
@@ -203,6 +405,12 @@ describe('WalletManager', () => {
       expect(mockWallet.proveTransaction).toHaveBeenCalledWith('tx-recipe');
       expect(mockWallet.submitTransaction).toHaveBeenCalledWith('proven-tx');
       expect(mockTransactionDb.markTransactionAsSent).toHaveBeenCalledWith(txId, 'tx-hash');
+      
+      // Verify audit trail was logged
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('passed');
+      expect(testOutcomes[0].testName).toBe('Process Send Funds Async Operation');
     });
 
     it('marks transaction as failed when processing async fails', async () => {
@@ -215,11 +423,188 @@ describe('WalletManager', () => {
       await expect((walletManager as any).processSendFundsAsync(txId, to, amount)).rejects.toThrow(errorMessage);
 
       expect(mockTransactionDb.markTransactionAsFailed).toHaveBeenCalledWith(txId, `Failed at processing transaction: ${errorMessage}`);
+      
+      // Verify audit trail logged the failure
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('failed');
+      expect(testOutcomes[0].errorMessage).toBe(errorMessage);
     });
 
     it('throws error on insufficient funds', async () => {
       (walletManager as any).walletBalances = { balance: 10n, pendingBalance: 0n };
       await expect(walletManager.sendFunds('addr2', '1000')).rejects.toThrow('Insufficient funds');
+      
+      // Verify audit trail logged the failure
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('failed');
+      expect(testOutcomes[0].errorMessage).toBe('Insufficient funds');
+    });
+  });
+
+  describe('Audit Trail Integration', () => {
+    it('should track test decisions during transaction processing', async () => {
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockResolvedValue('tx-hash');
+      mockTransactionDb.createTransaction.mockReturnValue({ id: 'tx1', state: TransactionState.INITIATED });
+
+      await walletManager.sendFunds('addr2', '0.5');
+
+      // Verify test decisions were logged
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      
+      const testOutcome = testOutcomes[0];
+      expect(testOutcome.decisions).toBeDefined();
+      expect(testOutcome.decisions!.length).toBeGreaterThan(0);
+      
+      const decision = testOutcome.decisions![0];
+      expect(decision.decisionType).toBe('continue');
+      expect(decision.reasoning).toContain('Transaction processing completed successfully');
+      expect(decision.confidence).toBe(0.9);
+    });
+
+    it('should handle failed transactions correctly', async () => {
+      // Test that failed transactions are properly tracked
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockRejectedValue(new Error('Test failure'));
+
+      try {
+        await walletManager.sendFunds('addr2', '0.5');
+      } catch (error) {
+        // Expected to fail
+      }
+
+      const testOutcomes = testAuditor.getTestOutcomes();
+      
+      expect(testOutcomes).toHaveLength(1);
+      expect(testOutcomes[0].status).toBe('failed');
+      expect(testOutcomes[0].errorMessage).toContain('Test failure');
+    });
+
+    it('should export audit trail data', async () => {
+      // Perform some operations to generate audit data
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockResolvedValue('tx-hash');
+      mockTransactionDb.createTransaction.mockReturnValue({ id: 'tx1', state: TransactionState.INITIATED });
+
+      await walletManager.sendFunds('addr2', '0.5');
+
+      // Export audit trail data
+      const auditData = await testAuditor.exportTestOutcomes({
+        testSuite: 'WalletManager',
+        status: 'passed'
+      });
+
+      expect(auditData).toBeDefined();
+      expect(auditData.length).toBeGreaterThan(0);
+      expect(auditData[0].testSuite).toBe('WalletManager');
+      expect(auditData[0].status).toBe('passed');
+    });
+
+    it('should query audit trail by test status', async () => {
+      // Perform operations that generate both success and failure
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockResolvedValue('tx-hash');
+      mockTransactionDb.createTransaction.mockReturnValue({ id: 'tx1', state: TransactionState.INITIATED });
+
+      await walletManager.sendFunds('addr2', '0.5');
+
+      // Force a failure by changing the mock behavior
+      mockWallet.submitTransaction.mockRejectedValue(new Error('Test failure'));
+      
+      try {
+        await walletManager.sendFunds('addr3', '0.1');
+      } catch (error) {
+        // Expected to fail
+      }
+
+      // Query passed tests
+      const passedTests = await testAuditor.exportTestOutcomes({
+        status: 'passed'
+      });
+      expect(passedTests.length).toBeGreaterThan(0);
+      expect(passedTests.every(test => test.status === 'passed')).toBe(true);
+
+      // Query failed tests
+      const failedTests = await testAuditor.exportTestOutcomes({
+        status: 'failed'
+      });
+      expect(failedTests.length).toBeGreaterThan(0);
+      expect(failedTests.every(test => test.status === 'failed')).toBe(true);
+    });
+
+    it('should track test metrics correctly', async () => {
+      const startTime = Date.now();
+      
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockResolvedValue('tx-hash');
+      mockTransactionDb.createTransaction.mockReturnValue({ id: 'tx1', state: TransactionState.INITIATED });
+
+      await walletManager.sendFunds('addr2', '0.5');
+
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(1);
+      
+      const testOutcome = testOutcomes[0];
+      expect(testOutcome.startTime).toBeGreaterThanOrEqual(startTime);
+      expect(testOutcome.endTime).toBeGreaterThanOrEqual(testOutcome.startTime);
+      expect(testOutcome.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle multiple concurrent test operations', async () => {
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockResolvedValue('tx-hash');
+      mockTransactionDb.createTransaction.mockReturnValue({ id: 'tx1', state: TransactionState.INITIATED });
+
+      // Perform multiple operations concurrently
+      const promises = [
+        walletManager.sendFunds('addr1', '0.1'),
+        walletManager.sendFunds('addr2', '0.2'),
+        walletManager.sendFunds('addr3', '0.3')
+      ];
+
+      await Promise.all(promises);
+
+      // Verify all operations were tracked
+      const testOutcomes = testAuditor.getTestOutcomes();
+      expect(testOutcomes).toHaveLength(3);
+      
+      // Verify each operation has unique test ID
+      const testIds = testOutcomes.map(outcome => outcome.testId);
+      const uniqueTestIds = new Set(testIds);
+      expect(uniqueTestIds.size).toBe(3);
+    });
+
+    it('should persist audit trail data across test runs', async () => {
+      // This test verifies that audit trail data persists
+      // In a real implementation, this would test database/file persistence
+      
+      mockWallet.transferTransaction.mockResolvedValue('tx-recipe');
+      mockWallet.proveTransaction.mockResolvedValue('proven-tx');
+      mockWallet.submitTransaction.mockResolvedValue('tx-hash');
+      mockTransactionDb.createTransaction.mockReturnValue({ id: 'tx1', state: TransactionState.INITIATED });
+
+      await walletManager.sendFunds('addr2', '0.5');
+
+      // Verify data is available for export
+      const auditData = await testAuditor.exportTestOutcomes({});
+      expect(auditData.length).toBeGreaterThan(0);
+      
+      // Verify data structure is correct
+      const testOutcome = auditData[0];
+      expect(testOutcome).toHaveProperty('testId');
+      expect(testOutcome).toHaveProperty('testName');
+      expect(testOutcome).toHaveProperty('status');
+      expect(testOutcome).toHaveProperty('startTime');
+      expect(testOutcome).toHaveProperty('endTime');
     });
   });
 

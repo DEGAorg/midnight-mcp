@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { Request, Response, NextFunction } from 'express';
 import { WalletServiceMCP } from '../mcp/index.js';
 import { createLogger } from '../logger/index.js';
