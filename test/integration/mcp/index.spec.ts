@@ -1,27 +1,57 @@
 import request from 'supertest';
-import { createLogger } from '../../../src/logger/index.js';
-import { 
-  WalletStatus, 
-  WalletBalances, 
-  TransactionVerificationResult,
-  TransactionStatusResult,
-  TransactionRecord,
-  TransactionState
-} from '../../../src/types/wallet.js';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const logger = createLogger('integration-test');
 
 // Load test configuration from JSON file
 function loadTestConfig() {
   try {
     const configPath = path.join(__dirname, 'test-config.json');
+    
+    // Check if file exists
+    if (!fs.existsSync(configPath)) {
+      console.error('test-config.json not found');
+      console.error('Please copy setup-script-output-template.json to test-config.json and update with actual values from your setup script');
+      throw new Error('test-config.json not found. Please copy setup-script-output-template.json to test-config.json and update with actual values from your setup script');
+    }
+    
     const configData = fs.readFileSync(configPath, 'utf8');
-    return JSON.parse(configData);
+    const config = JSON.parse(configData);
+    
+    // Validate required fields
+    const requiredFields = [
+      'wallets.wallet1.address',
+      'wallets.wallet2.address',
+      'transactions.validPayment.identifier',
+      'transactions.wrongAmount.identifier',
+      'transactions.unknownSender.identifier'
+    ];
+    
+    const missingFields: string[] = [];
+    for (const field of requiredFields) {
+      const keys = field.split('.');
+      let value = config;
+      for (const key of keys) {
+        if (!value || !value[key]) {
+          missingFields.push(field);
+          break;
+        }
+        value = value[key];
+      }
+    }
+    
+    if (missingFields.length > 0) {
+      console.error('Missing required fields in test-config.json:', missingFields);
+      throw new Error(`Missing required fields in test-config.json: ${missingFields.join(', ')}`);
+    }
+    
+    console.log('Test configuration loaded successfully');
+    return config;
   } catch (error) {
-    logger.error('Failed to load test configuration:', error);
-    throw new Error('Please ensure test-config.json exists and is valid JSON');
+    if (error instanceof SyntaxError) {
+      console.error('Invalid JSON in test-config.json');
+      throw new Error('Invalid JSON in test-config.json. Please check the file format.');
+    }
+    throw error;
   }
 }
 
@@ -34,7 +64,7 @@ describe('Wallet MCP Integration Tests', () => {
   const testAmounts = config.testAmounts;
 
   beforeAll(async () => {
-    logger.info(`Starting integration tests against server: ${baseUrl}`);
+    console.log(`Starting integration tests against server: ${baseUrl}`);
     
     // Wait for the server to be ready
     await waitForServerReady();
@@ -51,12 +81,12 @@ describe('Wallet MCP Integration Tests', () => {
           .timeout(5000);
         
         if (response.status === 200) {
-          logger.info('Server is ready for testing');
+          console.log('Server is ready for testing');
           return;
         }
       } catch (error) {
         // Continue waiting
-        logger.info('Waiting for server to be ready...');
+        console.log('Waiting for server to be ready...');
       }
       
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -85,7 +115,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('syncProgress');
       
       // Log wallet status for debugging
-      logger.info('Wallet status:', response.body);
+      console.log('Wallet status:', response.body);
     });
 
     test('should return wallet address', async () => {
@@ -97,7 +127,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(typeof response.body.address).toBe('string');
       expect(response.body.address.length).toBeGreaterThan(0);
       
-      logger.info('Wallet address:', response.body.address);
+      console.log('Wallet address:', response.body.address);
     });
 
     test('should return wallet balance', async () => {
@@ -110,7 +140,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(typeof response.body.balance).toBe('string');
       expect(typeof response.body.pendingBalance).toBe('string');
       
-      logger.info('Wallet balance:', response.body);
+      console.log('Wallet balance:', response.body);
     });
 
     test('should return wallet configuration', async () => {
@@ -122,7 +152,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('node');
       expect(response.body).toHaveProperty('proofServer');
       
-      logger.info('Wallet config:', response.body);
+      console.log('Wallet config:', response.body);
     });
   });
 
@@ -133,7 +163,7 @@ describe('Wallet MCP Integration Tests', () => {
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      logger.info(`Found ${response.body.length} transactions`);
+      console.log(`Found ${response.body.length} transactions`);
     });
 
     test('should return pending transactions', async () => {
@@ -142,7 +172,7 @@ describe('Wallet MCP Integration Tests', () => {
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      logger.info(`Found ${response.body.length} pending transactions`);
+      console.log(`Found ${response.body.length} pending transactions`);
     });
 
     test('should handle send funds request', async () => {
@@ -162,7 +192,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('amount');
       expect(response.body).toHaveProperty('createdAt');
       
-      logger.info('Send funds result:', response.body);
+      console.log('Send funds result:', response.body);
     });
 
     test('should reject send funds with missing parameters', async () => {
@@ -187,7 +217,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('transactionAmount');
       expect(response.body).toHaveProperty('syncStatus');
       
-      logger.info('Valid payment verification result:', response.body);
+      console.log('Valid payment verification result:', response.body);
       
       // For a valid payment from registered agent, we expect the transaction to exist
       if (response.body.exists) {
@@ -206,7 +236,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       
-      logger.info('Wrong amount verification result:', response.body);
+      console.log('Wrong amount verification result:', response.body);
       
       // If transaction exists, verify amount mismatch
       if (response.body.exists) {
@@ -225,7 +255,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       
-      logger.info('Unknown sender verification result:', response.body);
+      console.log('Unknown sender verification result:', response.body);
       
       // For unknown sender, transaction might not exist or amount might be different
       // This tests the system's ability to handle unregistered senders gracefully
@@ -243,7 +273,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('transactionAmount');
       expect(response.body).toHaveProperty('syncStatus');
       
-      logger.info('No payment verification result:', response.body);
+      console.log('No payment verification result:', response.body);
       
       // For no payment, exists should be false
       expect(response.body.exists).toBe(false);
@@ -260,7 +290,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       
-      logger.info('Valid identity match verification result:', response.body);
+      console.log('Valid identity match verification result:', response.body);
       
       // For valid identity match, transaction should exist with correct amount
       if (response.body.exists) {
@@ -279,7 +309,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       
-      logger.info('Agent not registered verification result:', response.body);
+      console.log('Agent not registered verification result:', response.body);
       
       // For unregistered agent, transaction should not exist or be invalid
       expect(response.body.exists).toBe(false);
@@ -296,7 +326,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       
-      logger.info('Sender mismatch verification result:', response.body);
+      console.log('Sender mismatch verification result:', response.body);
       
       // For sender mismatch, the system should detect the inconsistency
       // This tests session management and identity validation
@@ -323,7 +353,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response2.body).toHaveProperty('exists');
       expect(response2.body).toHaveProperty('transactionAmount');
       
-      logger.info('Duplicate transaction verification results:', {
+      console.log('Duplicate transaction verification results:', {
         first: response1.body,
         second: response2.body
       });
@@ -459,7 +489,7 @@ describe('Wallet MCP Integration Tests', () => {
        }> = [];
 
        for (const scenario of scenarios) {
-        logger.info(`Running scenario: ${scenario.name}`);
+        console.log(`Running scenario: ${scenario.name}`);
         
         const response = await request(baseUrl)
           .post('/wallet/verify-transaction')
@@ -476,11 +506,11 @@ describe('Wallet MCP Integration Tests', () => {
           }
         });
         
-        logger.info(`Scenario ${scenario.name} result:`, response.body);
+        console.log(`Scenario ${scenario.name} result:`, response.body);
       }
 
       // Log all results for analysis
-      logger.info('All test scenario results:', results);
+      console.log('All test scenario results:', results);
       
       // Basic validation that all scenarios returned proper responses
       expect(results).toHaveLength(8);

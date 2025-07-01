@@ -41,31 +41,17 @@ yarn add -D supertest @types/supertest
 # The server should be accessible at http://localhost:3000 (or set TEST_SERVER_URL)
 ```
 
-### 3. Update Test Configuration
+### 3. Create Test Configuration
 
-Copy the output from your setup script into `test/integration/mcp/test-config.json`. The setup script should output JSON in this format:
+Copy `setup-script-output-template.json` to `test-config.json` and update it with the actual values from your setup script (in the other repository):
 
-```json
-{
-  "wallets": {
-    "wallet1": {
-      "address": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
-    },
-    "wallet2": {
-      "address": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
-    }
-  },
-  "transactions": {
-    "validPayment": {
-      "identifier": "tx_hash_from_setup_script",
-      "expectedAmount": "1000000",
-      "senderAddress": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
-    }
-  }
-}
+```bash
+cp test/integration/mcp/setup-script-output-template.json test/integration/mcp/test-config.json
 ```
 
-**Required fields from your setup script:**
+Then edit `test-config.json` and replace the placeholder values with actual data from your setup script:
+
+**Required fields to update:**
 - `wallets.wallet1.address` - Registered agent wallet address
 - `wallets.wallet2.address` - Unregistered agent wallet address  
 - `transactions.validPayment.identifier` - Valid payment transaction ID
