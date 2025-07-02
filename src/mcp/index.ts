@@ -15,6 +15,16 @@ import {
 } from '../types/wallet.js';
 
 /**
+ * Format error for logging
+ */
+export function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+  return String(error);
+}
+
+/**
  * Error types for the Wallet Service
  */
 export enum WalletServiceErrorType {
@@ -269,7 +279,7 @@ export class WalletServiceMCP {
       this.logger.error(`Failed to get transaction status for ${transactionId}`, error);
       throw new WalletServiceError(
         WalletServiceErrorType.TX_NOT_FOUND,
-        `Failed to get transaction status: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to get transaction status: ${formatError(error)}`
       );
     }
   }
@@ -291,7 +301,7 @@ export class WalletServiceMCP {
       this.logger.error('Failed to get transactions', error);
       throw new WalletServiceError(
         WalletServiceErrorType.WALLET_NOT_READY,
-        `Failed to get transactions: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to get transactions: ${formatError(error)}`
       );
     }
   }
@@ -312,7 +322,7 @@ export class WalletServiceMCP {
       this.logger.error('Failed to get pending transactions', error);
       throw new WalletServiceError(
         WalletServiceErrorType.WALLET_NOT_READY,
-        `Failed to get pending transactions: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to get pending transactions: ${formatError(error)}`
       );
     }
   }
@@ -335,7 +345,7 @@ export class WalletServiceMCP {
       this.logger.error('Error verifying transaction by identifier', error);
       throw new WalletServiceError(
         WalletServiceErrorType.IDENTIFIER_VERIFICATION_FAILED, 
-        `Failed to verify transaction with identifier: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to verify transaction with identifier: ${formatError(error)}`
       );
     }
   }
@@ -352,7 +362,7 @@ export class WalletServiceMCP {
       this.logger.error('Error getting wallet status', error);
       throw new WalletServiceError(
         WalletServiceErrorType.WALLET_NOT_READY,
-        `Failed to retrieve wallet status: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to retrieve wallet status: ${formatError(error)}`
       );
     }
   }

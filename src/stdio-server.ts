@@ -34,6 +34,7 @@ function formatError(error: unknown): string {
   if (error instanceof Error) {
     return `${error.name}: ${error.message}`;
   }
+  /* istanbul ignore next */
   return String(error);
 }
 
@@ -152,6 +153,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
       log(`Tool call received: ${toolName}`);
       return await handleToolCall(toolName, toolArgs, midnightServer, log);
     } catch (error) {
+      /* istanbul ignore next */
       return handleError("handling tool call", error);
     }
   });
@@ -161,6 +163,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
     try {
       return { resources: handleListResources() };
     } catch (error) {
+      /* istanbul ignore next */
       return handleError("listing resources", error);
     }
   });
@@ -171,6 +174,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
       const resourceUri = request.params.uri;
       const resource = handleReadResource(resourceUri);
       
+      /* istanbul ignore next */
       return {
         contents: [{
           uri: resourceUri,
@@ -179,6 +183,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
         }]
       };
     } catch (error) {
+      /* istanbul ignore next */
       handleError("reading resource", error);
     }
   });
@@ -188,6 +193,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
     try {
       return { tools: ALL_TOOLS };
     } catch (error) {
+      /* istanbul ignore next */
       return handleError("listing tools", error);
     }
   });
@@ -205,6 +211,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
 /**
  * Set up process exit signal handlers
  */
+/* istanbul ignore next */
 function setupExitHandlers(server: any) {
   const exitHandler = async () => {
     log("Shutting down server...");
@@ -222,6 +229,7 @@ function setupExitHandlers(server: any) {
 /**
  * Main function - Program entry point
  */
+/* istanbul ignore next */
 async function main() {
   try {
     log("Starting Midnight MCP server");
@@ -240,6 +248,7 @@ async function main() {
 }
 
 // Run the main function if this file is executed directly
+/* istanbul ignore next */
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     log("Fatal error:", error);

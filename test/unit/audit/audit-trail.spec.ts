@@ -69,14 +69,14 @@ describe('Audit Trail System', () => {
 
     it('should get events by correlation ID', () => {
       const correlationId = auditService.generateCorrelationId();
-      
+
       auditService.logEvent(
         AuditEventType.AGENT_DECISION,
         'Event 1',
         AuditSeverity.MEDIUM,
         { correlationId, source: 'test' }
       );
-      
+
       auditService.logEvent(
         AuditEventType.TRANSACTION_INITIATED,
         'Event 2',
@@ -97,7 +97,7 @@ describe('Audit Trail System', () => {
         AuditSeverity.MEDIUM,
         { source: 'test' }
       );
-      
+
       auditService.logEvent(
         AuditEventType.TRANSACTION_INITIATED,
         'Transaction event',
@@ -116,7 +116,7 @@ describe('Audit Trail System', () => {
 
     it('should get events by time range', () => {
       const startTime = Date.now();
-      
+
       auditService.logEvent(
         AuditEventType.AGENT_DECISION,
         'Event in range',
@@ -125,7 +125,7 @@ describe('Audit Trail System', () => {
       );
 
       const endTime = Date.now();
-      
+
       const events = auditService.getEventsByTimeRange(startTime, endTime);
       expect(events).toHaveLength(1);
       expect(events[0].createdAt).toBeGreaterThanOrEqual(startTime);
@@ -197,7 +197,7 @@ describe('Audit Trail System', () => {
 
       // Assert: The returned file path should be correct
       expect(filePath).toContain('test-audit-export.json');
-      
+
     });
 
     it('should export audit trail to file without providing filename', () => {
@@ -214,7 +214,7 @@ describe('Audit Trail System', () => {
 
       // Assert: The returned file path should be correct
       expect(filePath).toContain('audit-trail');
-      
+
     });
 
     it('should filter by eventTypes in queryAuditTrail', async () => {
@@ -331,7 +331,7 @@ describe('Audit Trail System', () => {
       AuditTrailService.resetInstance();
       const service = AuditTrailService.getInstance({ persistence: 'memory' });
       // Spy on persistToFile to ensure they are not called
-      const fileSpy = jest.spyOn(service as any, 'persistToFile').mockImplementation(() => {});
+      const fileSpy = jest.spyOn(service as any, 'persistToFile').mockImplementation(() => { });
       const event = {
         id: 'test-id',
         type: AuditEventType.AGENT_DECISION,
@@ -347,83 +347,6 @@ describe('Audit Trail System', () => {
       // Should not throw and should not call persistToDatabase or persistToFile
       expect(() => service['persistEvent'](event)).not.toThrow();
       expect(fileSpy).not.toHaveBeenCalled();
-    });
-
-    xit('should write new file if file does not exist in persistToFile', () => {
-      AuditTrailService.resetInstance();
-      
-      // Reset FileManager singleton before mocking
-      FileManager.resetInstance();
-      
-      
-      const service = AuditTrailService.getInstance({ persistence: 'file'});
-      
-      const mockFileManager = {
-        fileExists: jest.fn().mockReturnValue(false),
-        writeFile: jest.fn(() => { 
-          console.error('MOCK writeFile CALLED');
-          throw new Error('fail'); 
-        }),
-        getPath: jest.fn().mockReturnValue('mock-path'),
-        readFile: jest.fn()
-      };
-    
-      (FileManager as any).setMockInstance(mockFileManager);
-    
-      const event = {
-        id: 'test-id',
-        type: AuditEventType.AGENT_DECISION,
-        severity: AuditSeverity.LOW,
-        message: 'test message',
-        context: { timestamp: Date.now(), source: 'test-source' },
-        createdAt: Date.now(),
-        data: {}
-      };
-    
-      service['persistToFile'](event);
-    
-      expect(service['persistToFile']).toHaveBeenCalled();
-    });
-
-    xit('should log error if persistToFile throws', () => {
-      // 1. Reset everything
-      AuditTrailService.resetInstance();
-      (FileManager as any).resetInstance();
-      jest.clearAllMocks();
-
-      // 2. Set up your mock instance
-      const mockError = new Error('Mock write error');
-      const mockFileManagerInstance = {
-        fileExists: jest.fn().mockReturnValue(false),
-        writeFile: jest.fn().mockImplementation(() => {
-          throw mockError;
-        }),
-        getPath: jest.fn().mockReturnValue('/mock/path'),
-        readFile: jest.fn(),
-        ensureDirectoryExists: jest.fn()
-      };
-
-      // 3. Set the mock instance
-      (FileManager as any).setMockInstance(mockFileManagerInstance);
-
-      // 4. Now create the service
-      const service = AuditTrailService.getInstance({ persistence: 'file' });
-
-      // 5. Trigger the code
-      service.logEvent(
-        AuditEventType.AGENT_DECISION,
-        'test message',
-        AuditSeverity.LOW,
-        { source: 'test' },
-        {}
-      );
-
-      // 6. Assert
-      expect(mockFileManagerInstance.writeFile).toHaveBeenCalled();
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({ error: mockError }),
-        expect.stringContaining('Failed to persist audit event to file')
-      );
     });
 
     it('should cleanup old events if over maxEvents', () => {
@@ -457,7 +380,7 @@ describe('Audit Trail System', () => {
     it('should start and complete transaction traces', () => {
       const transactionId = 'tx-123';
       const correlationId = auditService.generateCorrelationId();
-      
+
       transactionLogger.startTrace(transactionId, correlationId, {
         amount: '1.0',
         recipient: 'test-recipient',
@@ -476,9 +399,9 @@ describe('Audit Trail System', () => {
     it('should add and complete steps', () => {
       const transactionId = 'tx-123';
       const correlationId = auditService.generateCorrelationId();
-      
+
       transactionLogger.startTrace(transactionId, correlationId, {});
-      
+
       const stepId = transactionLogger.addStep(
         transactionId,
         'validation',
@@ -487,7 +410,7 @@ describe('Audit Trail System', () => {
       );
 
       transactionLogger.completeStep(transactionId, stepId, { valid: true });
-      
+
       // Complete the trace so getTraces() can find it
       transactionLogger.completeTrace(transactionId, 'completed', 'Transaction successful');
 
@@ -500,7 +423,7 @@ describe('Audit Trail System', () => {
     it('should log transaction sent events', () => {
       const transactionId = 'tx-123';
       const correlationId = auditService.generateCorrelationId();
-      
+
       transactionLogger.logTransactionSent(transactionId, 'tx-hash-456', correlationId);
 
       const events = auditService.getEventsByType(AuditEventType.TRANSACTION_SENT);
@@ -513,7 +436,7 @@ describe('Audit Trail System', () => {
       const transactionId = 'tx-123';
       const correlationId = auditService.generateCorrelationId();
       const error = new Error('Transaction failed');
-      
+
       transactionLogger.logTransactionFailure(
         transactionId,
         error,
@@ -531,7 +454,7 @@ describe('Audit Trail System', () => {
   describe('AgentDecisionLogger', () => {
     it('should log agent decisions', () => {
       const correlationId = auditService.generateCorrelationId();
-      
+
       agentLogger.logTransactionDecision(
         'test-agent',
         'decision-123',
@@ -552,7 +475,7 @@ describe('Audit Trail System', () => {
 
     it('should export agent decisions', async () => {
       const correlationId = auditService.generateCorrelationId();
-      
+
       agentLogger.logTransactionDecision(
         'test-agent',
         'decision-123',
@@ -810,7 +733,7 @@ describe('Audit Trail System', () => {
 
     it('should calculate test metrics', () => {
       const startTime = Date.now();
-      
+
       const testId = testAuditor.startTest({
         testId: 'test-123',
         testName: 'Test Transaction',
@@ -832,7 +755,7 @@ describe('Audit Trail System', () => {
   describe('Integration Example', () => {
     it('should run complete integration example', async () => {
       const example = new AuditIntegrationExample();
-      
+
       // Mock the wallet manager to avoid actual wallet operations
       (example as any).walletManager = {
         sendFunds: jest.fn().mockImplementation(() => Promise.resolve({ txIdentifier: 'mock-tx-hash' }))
@@ -854,7 +777,7 @@ describe('Audit Trail System', () => {
 
     it('should export and analyze audit trail data', async () => {
       const example = new AuditIntegrationExample();
-      
+
       // Mock the wallet manager
       (example as any).walletManager = {
         sendFunds: jest.fn().mockImplementation(() => Promise.resolve({ txIdentifier: 'mock-tx-hash' }))
@@ -876,7 +799,7 @@ describe('Audit Trail System', () => {
   describe('Audit Trail Performance', () => {
     it('should handle high volume of events', () => {
       const startTime = Date.now();
-      
+
       // Generate many events quickly
       for (let i = 0; i < 100; i++) {
         auditService.logEvent(
@@ -889,14 +812,14 @@ describe('Audit Trail System', () => {
 
       const endTime = Date.now();
       const events = auditService.getAllEvents();
-      
+
       expect(events).toHaveLength(100);
       expect(endTime - startTime).toBeGreaterThanOrEqual(0);
     });
 
     it('should maintain performance with concurrent operations', async () => {
       const promises = [];
-      
+
       // Start multiple concurrent operations
       for (let i = 0; i < 10; i++) {
         promises.push(

@@ -544,22 +544,7 @@ describe('stdio-server', () => {
       process.argv = originalArgv;
     });
 
-    xit('should handle main function errors', () => {
-      (console.error as jest.Mock).mockClear();
 
-      const fakeSeedManager = {
-        getAgentSeed: () => { throw new Error('Seed file not found'); }
-      };
-
-      const { createServer } = require('../../src/stdio-server.js');
-      expect(() => createServer('fakeSeedManager')).toThrow('Seed file not found. Please ensure the seed file exists for this agent.');
-
-      const calls = (console.error as jest.Mock).mock.calls;
-      const hasErrorLog = calls.some((call: any[]) => 
-        call[1]?.includes('Failed to load seed from file:')
-      );
-      expect(hasErrorLog).toBe(true);
-    });
   });
 
   describe('Logging functions', () => {

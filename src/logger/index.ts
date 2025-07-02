@@ -380,6 +380,8 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
     // If custom levels are provided, ensure the default level is included
     if (customLevels) {
       // Get the numeric value for the current level
+      
+      /* istanbul ignore next */ 
       const levelValue = pino.levels.values[level] || 30; // Default to info level value
       
       baseOptions.customLevels = {

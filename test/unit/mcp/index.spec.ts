@@ -8,7 +8,7 @@ jest.mock('../../../src/logger');
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { fail } from 'assert';
-import { createSimpleToolHandler, handleWalletServiceError } from '../../../src/mcp/index';
+import { createSimpleToolHandler, handleWalletServiceError, formatError } from '../../../src/mcp/index';
 import { WalletServiceError, WalletServiceErrorType, WalletServiceMCP } from '../../../src/mcp/index.js';
 import { createParameterizedToolHandler } from '../../../src/mcp/index';
 
@@ -285,8 +285,20 @@ describe('WalletServiceMCP', () => {
         getTransactionStatus: jest.fn(() => { throw new Error('fail'); })
       } as any;
 
-      expect(() => mcp.getTransactionStatus('txid')).toThrow('Failed to get transaction status: fail');
+      expect(() => mcp.getTransactionStatus('txid')).toThrow('Failed to get transaction status: Error: fail');
       expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get transaction status for txid', expect.any(Error));
+    });
+
+    it('should log and throw when wallet.getTransactionStatus fails with non-Error', () => {
+      const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
+      jest.spyOn(mcp, 'isReady').mockReturnValue(true);
+      mcp['logger'] = { error: jest.fn() } as any;
+      mcp['wallet'] = {
+        getTransactionStatus: jest.fn(() => { throw 'string-error'; }) // Not an Error instance
+      } as any;
+
+      expect(() => mcp.getTransactionStatus('txid')).toThrow('Failed to get transaction status: string-error');
+      expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get transaction status for txid', 'string-error');
     });
   });
 
@@ -421,6 +433,118 @@ describe('WalletServiceMCP', () => {
       );
       expect(testServer).toBeDefined();
     });
+
+    it('should use default agent ID when AGENT_ID environment variable is not set', () => {
+      // Store original AGENT_ID
+      const originalAgentId = process.env.AGENT_ID;
+      
+      // Remove AGENT_ID to test fallback
+      delete process.env.AGENT_ID;
+      
+      try {
+        const testServer = new WalletServiceMCP(
+          NetworkId.TestNet,
+          'test seed',
+          'test-wallet.json'
+        );
+        expect(testServer).toBeDefined();
+        // Verify that the default value was used by checking internal property
+        expect((testServer as any).agentId).toBe('default');
+      } finally {
+        // Restore original AGENT_ID
+        if (originalAgentId !== undefined) {
+          process.env.AGENT_ID = originalAgentId;
+        }
+      }
+    });
+
+    it('should use AGENT_ID environment variable when set', () => {
+      // Store original AGENT_ID
+      const originalAgentId = process.env.AGENT_ID;
+      
+      // Set a test AGENT_ID
+      process.env.AGENT_ID = 'test-agent-123';
+      
+      try {
+        const testServer = new WalletServiceMCP(
+          NetworkId.TestNet,
+          'test seed',
+          'test-wallet.json'
+        );
+        expect(testServer).toBeDefined();
+        // Verify that the environment variable value was used
+        expect((testServer as any).agentId).toBe('test-agent-123');
+      } finally {
+        // Restore original AGENT_ID
+        if (originalAgentId !== undefined) {
+          process.env.AGENT_ID = originalAgentId;
+        } else {
+          delete process.env.AGENT_ID;
+        }
+      }
+    });
+  });
+
+  describe('getWalletConfig', () => {
+    it('should return the external config when provided', () => {
+      const externalConfig = {
+        indexer: 'https://test-indexer.com',
+        indexerWS: 'wss://test-indexer.com/ws',
+        node: 'https://test-node.com',
+        proofServer: 'http://test-proof.com',
+        useExternalProofServer: true,
+        networkId: NetworkId.TestNet
+      };
+      
+      const testServer = new WalletServiceMCP(
+        NetworkId.TestNet,
+        'test seed',
+        'test-wallet.json',
+        externalConfig
+      );
+      
+      const config = testServer.getWalletConfig();
+      expect(config).toEqual(externalConfig);
+    });
+
+    it('should return the default config when no external config is provided', () => {
+      const testServer = new WalletServiceMCP(
+        NetworkId.TestNet,
+        'test seed',
+        'test-wallet.json'
+      );
+      
+      const config = testServer.getWalletConfig();
+      expect(config).toBeDefined();
+      // Should return the default TestnetRemoteConfig or similar
+      expect(typeof config).toBe('object');
+      expect(config).toHaveProperty('indexer');
+      expect(config).toHaveProperty('indexerWS');
+      expect(config).toHaveProperty('node');
+      expect(config).toHaveProperty('proofServer');
+    });
+
+    it('should return exactly the partial external config when provided', () => {
+      const partialConfig = {
+        indexer: 'https://custom-indexer-only.com'
+      };
+      
+      const testServer = new WalletServiceMCP(
+        NetworkId.TestNet,
+        'test seed',
+        'test-wallet.json',
+        partialConfig as any
+      );
+      
+      const config = testServer.getWalletConfig();
+      expect(config).toEqual(partialConfig);
+      expect(config.indexer).toBe('https://custom-indexer-only.com');
+      // Should only have the properties that were provided in partialConfig
+      expect(Object.keys(config)).toHaveLength(1);
+      expect(config).not.toHaveProperty('indexerWS');
+      expect(config).not.toHaveProperty('node');
+      expect(config).not.toHaveProperty('proofServer');
+    });
   });
 
   describe('getTransactions', () => {
@@ -432,7 +556,7 @@ describe('WalletServiceMCP', () => {
         getTransactions: jest.fn(() => { throw new Error('fail'); })
       } as any;
 
-      expect(() => mcp.getTransactions()).toThrow('Failed to get transactions: fail');
+      expect(() => mcp.getTransactions()).toThrow('Failed to get transactions: Error: fail');
       expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get transactions', expect.any(Error));
     });
 
@@ -468,7 +592,7 @@ describe('WalletServiceMCP', () => {
       mcp['wallet'] = {
         getPendingTransactions: jest.fn(() => { throw new Error('fail'); })
       } as any;
-      expect(() => mcp.getPendingTransactions()).toThrow('Failed to get pending transactions: fail');
+      expect(() => mcp.getPendingTransactions()).toThrow('Failed to get pending transactions: Error: fail');
       expect(mcp['logger'].error).toHaveBeenCalledWith('Failed to get pending transactions', expect.any(Error));
     });
 
@@ -485,13 +609,14 @@ describe('WalletServiceMCP', () => {
   });
 
   describe('getWalletStatus', () => {
+    
     it('should log and throw when wallet.getWalletStatus fails', () => {
       const mcp = new WalletServiceMCP(NetworkId.TestNet, 'seed', 'walletFile');
       mcp['logger'] = { error: jest.fn() } as any;
       mcp['wallet'] = {
         getWalletStatus: jest.fn(() => { throw new Error('fail'); })
       } as any;
-      expect(() => mcp.getWalletStatus()).toThrow('Failed to retrieve wallet status: fail');
+      expect(() => mcp.getWalletStatus()).toThrow('Failed to retrieve wallet status: Error: fail');
       expect(mcp['logger'].error).toHaveBeenCalledWith('Error getting wallet status', expect.any(Error));
     });
 
@@ -580,5 +705,69 @@ describe('createParameterizedToolHandler', () => {
       throw new Error('Other error');
     });
     await expect(handler({})).rejects.toThrow('Other error');
+  });
+});
+
+describe('formatError', () => {
+  it('should format Error instances with name and message', () => {
+    const error = new Error('Test error message');
+    error.name = 'TestError';
+    const result = formatError(error);
+    expect(result).toBe('TestError: Test error message');
+  });
+
+  it('should handle Error instances with default name', () => {
+    const error = new Error('Test message');
+    const result = formatError(error);
+    expect(result).toBe('Error: Test message');
+  });
+
+  it('should handle custom Error subclasses', () => {
+    class CustomError extends Error {
+      constructor(message: string) {
+        super(message);
+        this.name = 'CustomError';
+      }
+    }
+    const error = new CustomError('Custom error message');
+    const result = formatError(error);
+    expect(result).toBe('CustomError: Custom error message');
+  });
+
+  it('should convert non-Error values to string', () => {
+    const result = formatError('string error');
+    expect(result).toBe('string error');
+  });
+
+  it('should handle null values', () => {
+    const result = formatError(null);
+    expect(result).toBe('null');
+  });
+
+  it('should handle undefined values', () => {
+    const result = formatError(undefined);
+    expect(result).toBe('undefined');
+  });
+
+  it('should handle number values', () => {
+    const result = formatError(42);
+    expect(result).toBe('42');
+  });
+
+  it('should handle boolean values', () => {
+    const result = formatError(false);
+    expect(result).toBe('false');
+  });
+
+  it('should handle object values', () => {
+    const obj = { key: 'value' };
+    const result = formatError(obj);
+    expect(result).toBe('[object Object]');
+  });
+
+  it('should handle array values', () => {
+    const arr = [1, 2, 3];
+    const result = formatError(arr);
+    expect(result).toBe('1,2,3');
   });
 }); 
