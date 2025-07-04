@@ -67,6 +67,7 @@ export function exampleTestAuditing() {
     agentId: 'agent-001',
     environment: 'test',
     startTime: Date.now(),
+    status: 'running',
     correlationId
   };
   

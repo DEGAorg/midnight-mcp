@@ -8596,6 +8596,7 @@ __metadata:
     turbo: "npm:^1.10.16"
     typescript: "npm:^5.2.2"
     uuid: "npm:^11.1.0"
+    zod: "npm:^3.25.71"
   dependenciesMeta:
     pino-applicationinsights:
       optional: true
@@ -10575,5 +10576,12 @@ __metadata:
   version: 3.24.3
   resolution: "zod@npm:3.24.3"
   checksum: 10/1b15db625ca633324084f3a8587bfb907043bbca407a09f7d5da6a9781b3838c68e9312b49e91e479d2f8bf04cdda5810803ac9504e3b7ccbec3adf2de625fb8
+  languageName: node
+  linkType: hard
+
+"zod@npm:^3.25.71":
+  version: 3.25.71
+  resolution: "zod@npm:3.25.71"
+  checksum: 10/5467883fa8635ea0b88cdac1d494e84ee3dc1a4f0a5aaf0a1a0644d09a529bc3c6344114e95987981f47896f1743ee2677330ed0732ce2a448a4173ed31ce3a1
   languageName: node
   linkType: hard

@@ -233,7 +233,7 @@ describe('Config Module', () => {
   describe('fileURLToPath error handling', () => {
     it('should handle fileURLToPath errors gracefully', async () => {
       const { fileURLToPath } = await import('url');
-      fileURLToPath.mockImplementation(() => {
+      (fileURLToPath as jest.MockedFunction<typeof fileURLToPath>).mockImplementation(() => {
         throw new Error('fileURLToPath error');
       });
 
