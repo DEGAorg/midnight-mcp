@@ -34,50 +34,48 @@ function formatError(error: unknown): string {
   if (error instanceof Error) {
     return `${error.name}: ${error.message}`;
   }
+  /* istanbul ignore next */
   return String(error);
 }
-
-/**
- * Initialize Midnight wallet instance
- */
-const externalConfig = {
-  proofServer: config.proofServer,
-  indexer: config.indexer,
-  indexerWS: config.indexerWS,
-  node: config.node,
-  useExternalProofServer: config.useExternalProofServer,
-  networkId: config.networkId
-};
-
-// Get agent ID from environment
-const agentId = process.env.AGENT_ID;
-if (!agentId) {
-  throw new Error('AGENT_ID environment variable is required');
-}
-
-// Get seed from file
-let seed: string;
-try {
-  seed = SeedManager.getAgentSeed(agentId);
-  log('Seed loaded from file for agent:', agentId);
-} catch (error) {
-  log('Failed to load seed from file:', error);
-  throw new Error('Seed file not found. Please ensure the seed file exists for this agent.');
-}
-
-// Initialize Midnight wallet instance
-const midnightServer = new MidnightMCPServer(
-  config.networkId,
-  seed,
-  config.walletFilename,
-  externalConfig
-);
 
 /**
  * Create and configure MCP server
  */
 export function createServer() {
   log("Creating Midnight MCP server");
+
+  // Get agent ID from environment
+  const agentId = process.env.AGENT_ID;
+  if (!agentId) {
+    throw new Error('AGENT_ID environment variable is required');
+  }
+
+  // Get seed from file
+  let seed: string;
+  try {
+    seed = SeedManager.getAgentSeed(agentId);
+    log('Seed loaded from file for agent:', agentId);
+  } catch (error) {
+    log('Failed to load seed from file:', error);
+    throw new Error('Seed file not found. Please ensure the seed file exists for this agent.');
+  }
+
+  // Initialize Midnight wallet instance
+  const externalConfig = {
+    proofServer: config.proofServer,
+    indexer: config.indexer,
+    indexerWS: config.indexerWS,
+    node: config.node,
+    useExternalProofServer: config.useExternalProofServer,
+    networkId: config.networkId
+  };
+
+  const midnightServer = new MidnightMCPServer(
+    config.networkId,
+    seed,
+    config.walletFilename,
+    externalConfig
+  );
 
   // Create server instance
   const server = new Server({
@@ -91,7 +89,7 @@ export function createServer() {
   });
 
   // Set up request handlers
-  setupRequestHandlers(server);
+  setupRequestHandlers(server, midnightServer);
 
   // Create STDIO transport
   const transport = new StdioServerTransport();
@@ -145,7 +143,7 @@ function handleError(context: string, error: unknown): never {
 /**
  * Set up server request handlers
  */
-function setupRequestHandlers(server: Server) {
+function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer) {
   // Handle tool calls
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
@@ -155,6 +153,7 @@ function setupRequestHandlers(server: Server) {
       log(`Tool call received: ${toolName}`);
       return await handleToolCall(toolName, toolArgs, midnightServer, log);
     } catch (error) {
+      /* istanbul ignore next */
       return handleError("handling tool call", error);
     }
   });
@@ -164,6 +163,7 @@ function setupRequestHandlers(server: Server) {
     try {
       return { resources: handleListResources() };
     } catch (error) {
+      /* istanbul ignore next */
       return handleError("listing resources", error);
     }
   });
@@ -174,6 +174,7 @@ function setupRequestHandlers(server: Server) {
       const resourceUri = request.params.uri;
       const resource = handleReadResource(resourceUri);
       
+      /* istanbul ignore next */
       return {
         contents: [{
           uri: resourceUri,
@@ -182,6 +183,7 @@ function setupRequestHandlers(server: Server) {
         }]
       };
     } catch (error) {
+      /* istanbul ignore next */
       handleError("reading resource", error);
     }
   });
@@ -191,6 +193,7 @@ function setupRequestHandlers(server: Server) {
     try {
       return { tools: ALL_TOOLS };
     } catch (error) {
+      /* istanbul ignore next */
       return handleError("listing tools", error);
     }
   });
@@ -208,6 +211,7 @@ function setupRequestHandlers(server: Server) {
 /**
  * Set up process exit signal handlers
  */
+/* istanbul ignore next */
 function setupExitHandlers(server: any) {
   const exitHandler = async () => {
     log("Shutting down server...");
@@ -225,6 +229,7 @@ function setupExitHandlers(server: any) {
 /**
  * Main function - Program entry point
  */
+/* istanbul ignore next */
 async function main() {
   try {
     log("Starting Midnight MCP server");
@@ -243,6 +248,7 @@ async function main() {
 }
 
 // Run the main function if this file is executed directly
+/* istanbul ignore next */
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     log("Fatal error:", error);

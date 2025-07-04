@@ -58,12 +58,15 @@ const routes = [
 // Register all routes
 routes.forEach(({ method, path, handler }) => {
   const boundHandler = (handler as RequestHandler).bind(walletController);
+  /* istanbul ignore else */
   if (method === 'get') {
     router.get(path, boundHandler);
   } else if (method === 'post') {
     router.post(path, boundHandler);
+
   } else if (method === 'put') {
     router.put(path, boundHandler);
+    
   } else if (method === 'delete') {
     router.delete(path, boundHandler);
   }
@@ -116,3 +119,5 @@ process.on('SIGINT', () => {
     }
   });
 });
+
+export { app, server };

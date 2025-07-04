@@ -352,3 +352,79 @@ bun add @fleek-platform/eliza-plugin-mcp
 Now in the character.json file that you'll use to create your AI Agent add the mcp json structure shown above.
 
 All set! You're ready to use AI agents with on-chain capabilities for the Midnight blockchain.
+
+## E2E Testing with ElizaOS
+
+This project includes comprehensive End-to-End testing that validates the integration between the Midnight MCP server and ElizaOS using the [@fleek-platform/eliza-plugin-mcp](https://github.com/fleek-platform/eliza-plugin-mcp).
+
+### Quick Demo
+
+Run the interactive demo to see ElizaOS + MCP integration in action:
+
+```bash
+yarn demo:eliza
+```
+
+This will:
+1. Check prerequisites and install ElizaOS CLI if needed
+2. Create a demo ElizaOS project with MCP integration
+3. Configure the Midnight MCP server connection
+4. Provide instructions to start the agent
+
+### E2E Test Suites
+
+Run different types of E2E tests:
+
+```bash
+# Direct MCP protocol testing
+yarn test:e2e
+
+# STDIO JSON-RPC testing
+yarn test:e2e:stdio
+
+# ElizaOS integration testing  
+yarn test:e2e:eliza
+
+# Comprehensive test suite
+yarn test:e2e:full
+
+# Interactive demo
+yarn demo:eliza
+```
+
+### ElizaOS Integration Features
+
+The MCP server integrates with ElizaOS to provide:
+
+- **AI Agent Conversations**: Natural language interactions with blockchain tools
+- **Automatic Tool Discovery**: MCP tools are automatically available to agents
+- **Contextual Help**: Agents understand Midnight blockchain concepts
+- **Error Handling**: Graceful error handling in conversational context
+- **Real-time Updates**: Live wallet and transaction status updates
+
+### Available MCP Tools for Agents
+
+When integrated with ElizaOS, agents have access to these tools:
+
+- `walletStatus` - Check wallet synchronization status
+- `walletAddress` - Get wallet receiving address
+- `walletBalance` - View current balance
+- `getTransactions` - List transaction history
+- `sendFunds` - Send funds to another address
+- `verifyTransaction` - Verify transaction status
+- `getWalletConfig` - Get wallet configuration
+
+### Example Agent Conversations
+
+```
+User: "Hello! Can you check my wallet status?"
+Agent: "I'll check your wallet status for you! 💰 Let me connect to the Midnight network..."
+
+User: "What's my current balance?"
+Agent: "Let me check your current balance on the Midnight network. 🔍"
+
+User: "Show me my recent transactions"
+Agent: "I'll fetch your recent transactions from the Midnight blockchain. ⛓️"
+```
+
+For detailed E2E testing documentation, see [test/e2e/README.md](test/e2e/README.md).

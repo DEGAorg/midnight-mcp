@@ -307,4 +307,3 @@ The wallet server exposes the following REST API endpoints:
 ---
 
 # End of Document
-

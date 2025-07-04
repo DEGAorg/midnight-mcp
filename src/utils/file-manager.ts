@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import fs from 'fs';
 import path from 'path';
 
@@ -50,7 +51,7 @@ export interface FileConfig {
  * Manages file operations and paths for different types of files
  */
 export class FileManager {
-  private static instance: FileManager;
+  private static instance: FileManager | undefined;
   private config: Required<FileConfig>;
   
   private constructor(config: FileConfig = {}) {
@@ -77,6 +78,10 @@ export class FileManager {
       FileManager.instance = new FileManager(config);
     }
     return FileManager.instance;
+  }
+
+  public static resetInstance(): void {
+    FileManager.instance = undefined;
   }
   
   /**

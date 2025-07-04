@@ -67,7 +67,7 @@ export function loadConfig(): Config {
   const indexerWS = process.env.INDEXER_WS;
   const mnNode = process.env.MN_NODE;
 
-  if (!proofServer || !indexer || !indexerWS || !mnNode) {
+  if (useExternalProofServer && (!proofServer || !indexer || !indexerWS || !mnNode)) {
     throw new Error('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
   }
 
@@ -84,10 +84,10 @@ export function loadConfig(): Config {
     walletFilename,
     logLevel,
     useExternalProofServer,
-    proofServer,
-    indexer,
-    indexerWS,
-    node: mnNode,
+    proofServer: proofServer || '',
+    indexer: indexer || '',
+    indexerWS: indexerWS || '',
+    node: mnNode || '',
     agentId,
     walletServerHost,
     walletServerPort

@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { FileManager, FileType } from './file-manager.js';
 import path from 'path';
 

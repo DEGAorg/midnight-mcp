@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 // Mock path
@@ -18,147 +18,252 @@ jest.mock('dotenv', () => ({
   config: jest.fn(),
 }));
 
-// Create a mock implementation for the config module
-jest.mock('../../../src/config.ts', () => {
-  // This function will recreate the module each time it's required
-  return {
-    __esModule: true,
-    loadConfig: jest.fn().mockImplementation(() => {
-      // Required configurations
-      const seed = process.env.SEED;
-      if (!seed) {
-        throw new Error('SEED environment variable is required');
-      }
-
-      // Optional configurations with defaults
-      const configuredNetworkId = process.env.NETWORK_ID;
-      const foundNetworkId = configuredNetworkId 
-        ? NetworkId[configuredNetworkId as keyof typeof NetworkId] 
-        : undefined;
-      const networkId = foundNetworkId || NetworkId.TestNet;
-
-      // Default wallet filename
-      const walletFilename = process.env.WALLET_FILENAME || 'midnight-wallet';
-
-      // Logging configuration
-      const logLevel = process.env.LOG_LEVEL || 'info';
-
-      // Default wallet backup folder
-      const walletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'wallet-backups';
-
-      // External proof server configuration
-      const useExternalProofServer = process.env.USE_EXTERNAL_PROOF_SERVER === 'true';
-      const proofServer = process.env.PROOF_SERVER;
-      const indexer = process.env.INDEXER;
-      const indexerWS = process.env.INDEXER_WS;
-      const node = process.env.NODE;
-
-      return {
-        seed,
-        networkId,
-        walletBackupFolder,
-        walletFilename,
-        logLevel,
-        useExternalProofServer,
-        proofServer,
-        indexer,
-        indexerWS,
-        node
-      };
-    }),
-    // The config object is created by loading the config
-    get config() {
-      return this.loadConfig();
-    }
-  };
-}, { virtual: true });
+// Mock the NetworkId enum
+jest.mock('@midnight-ntwrk/midnight-js-network-id', () => ({
+  NetworkId: {
+    TestNet: 'TestNet',
+    MainNet: 'MainNet',
+    Undeployed: 'Undeployed'
+  }
+}));
 
 describe('Config Module', () => {
   const originalEnv = process.env;
   
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.resetModules();
     process.env = { ...originalEnv };
-    delete process.env.SEED;
+    
+    // Clear all relevant environment variables
     delete process.env.NETWORK_ID;
     delete process.env.WALLET_FILENAME;
     delete process.env.LOG_LEVEL;
+    delete process.env.AGENT_ID;
     delete process.env.WALLET_BACKUP_FOLDER;
     delete process.env.USE_EXTERNAL_PROOF_SERVER;
     delete process.env.PROOF_SERVER;
     delete process.env.INDEXER;
     delete process.env.INDEXER_WS;
-    delete process.env.NODE;
+    delete process.env.MN_NODE;
+    delete process.env.SERVER_PORT;
+    delete process.env.WALLET_SERVER_HOST;
+    delete process.env.WALLET_SERVER_PORT;
   });
   
   afterEach(() => {
     process.env = originalEnv;
+    jest.clearAllMocks();
   });
-  
-  test('should throw error if SEED is not provided', () => {
-    expect(() => {
-      // Import the config module
-      const { config } = require('../../../src/config.ts');
-      // This should throw
-      console.log(config); // Just to use the variable
-    }).toThrow('SEED environment variable is required');
+
+  describe('loadConfig function', () => {
+    it('should throw error if AGENT_ID is not provided', async () => {
+      await expect(async () => {
+        const { loadConfig } = await import('../../src/config.js');
+        loadConfig();
+      }).rejects.toThrow('AGENT_ID environment variable is required');
+    });
+
+    it('should use default values when minimal env is provided', async () => {
+      // Set minimal environment
+      process.env.AGENT_ID = 'test-agent';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      expect(config.agentId).toBe('test-agent');
+      expect(config.networkId).toBe(NetworkId.TestNet);
+      expect(config.walletFilename).toBe('midnight-wallet');
+      expect(config.logLevel).toBe('info');
+      expect(config.walletBackupFolder).toBe('.storage/wallet-backups/test-agent');
+      expect(config.useExternalProofServer).toBe(false);
+      expect(config.walletServerHost).toBe('localhost');
+      expect(config.walletServerPort).toBe(3000);
+    });
+
+    it('should use provided environment variables', async () => {
+      // Set all environment variables
+      process.env.AGENT_ID = 'test-agent';
+      process.env.NETWORK_ID = 'MainNet';
+      process.env.WALLET_FILENAME = 'custom-wallet';
+      process.env.LOG_LEVEL = 'debug';
+      process.env.WALLET_BACKUP_FOLDER = 'custom-backups';
+      process.env.WALLET_SERVER_HOST = '0.0.0.0';
+      process.env.WALLET_SERVER_PORT = '8080';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      expect(config.agentId).toBe('test-agent');
+      expect(config.networkId).toBe(NetworkId.MainNet);
+      expect(config.walletFilename).toBe('custom-wallet');
+      expect(config.logLevel).toBe('debug');
+      expect(config.walletBackupFolder).toBe('custom-backups/test-agent');
+      expect(config.walletServerHost).toBe('0.0.0.0');
+      expect(config.walletServerPort).toBe(8080);
+    });
+
+    it('should handle invalid network ID gracefully', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.NETWORK_ID = 'InvalidNetwork';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      expect(config.networkId).toBe(NetworkId.TestNet);
+    });
+
+    it('should handle external proof server configuration when enabled', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
+      process.env.PROOF_SERVER = 'https://proof.example.com';
+      process.env.INDEXER = 'https://indexer.example.com';
+      process.env.INDEXER_WS = 'wss://indexer-ws.example.com';
+      process.env.MN_NODE = 'https://node.example.com';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      expect(config.useExternalProofServer).toBe(true);
+      expect(config.proofServer).toBe('https://proof.example.com');
+      expect(config.indexer).toBe('https://indexer.example.com');
+      expect(config.indexerWS).toBe('wss://indexer-ws.example.com');
+      expect(config.node).toBe('https://node.example.com');
+    });
+
+    it('should throw error when external proof server is enabled but required env vars are missing', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
+      // Missing PROOF_SERVER, INDEXER, INDEXER_WS, MN_NODE
+      
+      await expect(async () => {
+        const { loadConfig } = await import('../../src/config.js');
+        loadConfig();
+      }).rejects.toThrow('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
+    });
+
+    it('should throw error when external proof server is enabled but PROOF_SERVER is missing', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
+      process.env.INDEXER = 'https://indexer.example.com';
+      process.env.INDEXER_WS = 'wss://indexer-ws.example.com';
+      process.env.MN_NODE = 'https://node.example.com';
+      // Missing PROOF_SERVER
+      
+      await expect(async () => {
+        const { loadConfig } = await import('../../src/config.js');
+        loadConfig();
+      }).rejects.toThrow('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
+    });
+
+    it('should throw error when external proof server is enabled but INDEXER is missing', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
+      process.env.PROOF_SERVER = 'https://proof.example.com';
+      process.env.INDEXER_WS = 'wss://indexer-ws.example.com';
+      process.env.MN_NODE = 'https://node.example.com';
+      // Missing INDEXER
+      
+      await expect(async () => {
+        const { loadConfig } = await import('../../src/config.js');
+        loadConfig();
+      }).rejects.toThrow('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
+    });
+
+    it('should throw error when external proof server is enabled but INDEXER_WS is missing', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
+      process.env.PROOF_SERVER = 'https://proof.example.com';
+      process.env.INDEXER = 'https://indexer.example.com';
+      process.env.MN_NODE = 'https://node.example.com';
+      // Missing INDEXER_WS
+      
+      await expect(async () => {
+        const { loadConfig } = await import('../../src/config.js');
+        loadConfig();
+      }).rejects.toThrow('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
+    });
+
+    it('should throw error when external proof server is enabled but MN_NODE is missing', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
+      process.env.PROOF_SERVER = 'https://proof.example.com';
+      process.env.INDEXER = 'https://indexer.example.com';
+      process.env.INDEXER_WS = 'wss://indexer-ws.example.com';
+      // Missing MN_NODE
+      
+      await expect(async () => {
+        const { loadConfig } = await import('../../src/config.js');
+        loadConfig();
+      }).rejects.toThrow('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
+    });
+
+    it('should handle server port configuration', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.SERVER_PORT = '8080';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      // Note: serverPort is not returned in the config object, but the parsing should work
+      expect(config.walletServerPort).toBe(3000); // Default value
+    });
+
+    it('should handle wallet server port configuration', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.WALLET_SERVER_PORT = '8080';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      expect(config.walletServerPort).toBe(8080);
+    });
+
+    it('should handle wallet server host configuration', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      process.env.WALLET_SERVER_HOST = '0.0.0.0';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      expect(config.walletServerHost).toBe('0.0.0.0');
+    });
   });
-  
-  test('should use default values when minimal env is provided', () => {
-    // Set minimal environment
-    process.env.SEED = 'test seed phrase';
-    
-    // Load the config and verify defaults
-    const { config } = require('../../../src/config.ts');
-    
-    expect(config.seed).toBe('test seed phrase');
-    expect(config.networkId).toBe(NetworkId.TestNet);
-    expect(config.walletFilename).toBe('midnight-wallet');
-    expect(config.logLevel).toBe('info');
-    expect(config.walletBackupFolder).toBe('wallet-backups');
-    expect(config.useExternalProofServer).toBe(false);
-    expect(config.proofServer).toBeUndefined();
-    expect(config.indexer).toBeUndefined();
-    expect(config.indexerWS).toBeUndefined();
-    expect(config.node).toBeUndefined();
+
+  describe('fileURLToPath error handling', () => {
+    it('should handle fileURLToPath errors gracefully', async () => {
+      const { fileURLToPath } = await import('url');
+      (fileURLToPath as jest.MockedFunction<typeof fileURLToPath>).mockImplementation(() => {
+        throw new Error('fileURLToPath error');
+      });
+
+      process.env.AGENT_ID = 'test-agent';
+      
+      const { loadConfig } = await import('../../src/config.js');
+      const config = loadConfig();
+      
+      // Should still work by falling back to process.cwd()
+      expect(config.agentId).toBe('test-agent');
+      expect(config.networkId).toBe(NetworkId.TestNet);
+    });
   });
-  
-  test('should use provided environment variables', () => {
-    // Set all environment variables
-    process.env.SEED = 'test seed phrase';
-    process.env.NETWORK_ID = 'MainNet';
-    process.env.WALLET_FILENAME = 'custom-wallet';
-    process.env.LOG_LEVEL = 'debug';
-    process.env.WALLET_BACKUP_FOLDER = 'custom-backups';
-    process.env.USE_EXTERNAL_PROOF_SERVER = 'true';
-    process.env.PROOF_SERVER = 'https://proof.example.com';
-    process.env.INDEXER = 'https://indexer.example.com';
-    process.env.INDEXER_WS = 'wss://indexer-ws.example.com';
-    process.env.NODE = 'https://node.example.com';
-    
-    // Load the config and verify all values
-    const { config } = require('../../../src/config.ts');
-    
-    expect(config.seed).toBe('test seed phrase');
-    expect(config.networkId).toBe(NetworkId.MainNet);
-    expect(config.walletFilename).toBe('custom-wallet');
-    expect(config.logLevel).toBe('debug');
-    expect(config.walletBackupFolder).toBe('custom-backups');
-    expect(config.useExternalProofServer).toBe(true);
-    expect(config.proofServer).toBe('https://proof.example.com');
-    expect(config.indexer).toBe('https://indexer.example.com');
-    expect(config.indexerWS).toBe('wss://indexer-ws.example.com');
-    expect(config.node).toBe('https://node.example.com');
-  });
-  
-  test('should handle invalid network ID gracefully', () => {
-    // Set environment with invalid network ID
-    process.env.SEED = 'test seed phrase';
-    process.env.NETWORK_ID = 'InvalidNetwork';
-    
-    // Load the config and verify it uses default network
-    const { config } = require('../../../src/config.ts');
-    
-    expect(config.networkId).toBe(NetworkId.TestNet);
+
+  describe('config singleton', () => {
+    it('should export config singleton', async () => {
+      process.env.AGENT_ID = 'test-agent';
+      
+      const { config } = await import('../../src/config.js');
+      
+      expect(config).toBeDefined();
+      expect(config.agentId).toBe('test-agent');
+      expect(config.networkId).toBe(NetworkId.TestNet);
+    });
+
+    it('should throw error when AGENT_ID is missing in singleton', async () => {
+      await expect(async () => {
+        const { config } = await import('../../src/config.js');
+        console.log(config); // Just to use the variable
+      }).rejects.toThrow('AGENT_ID environment variable is required');
+    });
   });
 }); 

@@ -1,5 +1,5 @@
 {
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts"],
   "compilerOptions": {
     "outDir": "dist",
     "declaration": true,
@@ -16,7 +16,9 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": ["jest", "node"],
+    "allowSyntheticDefaultImports": true
   },
   "exclude": ["node_modules", "dist"]
 } 

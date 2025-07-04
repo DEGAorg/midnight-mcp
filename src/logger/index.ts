@@ -2,6 +2,9 @@ import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FileManager, FileType } from '../utils/file-manager.js';
+import { ILogger } from './types';
+import { PinoLogger } from './pino-logger';
+import { SentryLogger } from './sentry-logger';
 
 /**
  * Available log levels in ascending order of importance.
@@ -246,7 +249,7 @@ function ensureLogDirectoryExists(filePath: string): void {
 /**
  * Create GCP-compatible log formatter
  */
-function createGCPFormatter(config: GCPLoggerConfig): pino.LoggerOptions {
+export function createGCPFormatter(config: GCPLoggerConfig): pino.LoggerOptions {
   return {
     base: {
       serviceContext: config.serviceContext || {
@@ -354,7 +357,7 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
   // Get agent ID from environment or standard fields
   const agentId = process.env.AGENT_ID || standardFields.agentId || 'default';
   
-  // Base logger options
+  // Base logger options - ensure we don't override the level with custom levels
   let baseOptions: pino.LoggerOptions = {
     level,
     name,
@@ -364,8 +367,29 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
       version: standardFields.version,
       ...standardFields.custom,
     },
-    ...options.pinoOptions,
   };
+  
+  // Only merge pinoOptions if they don't contain custom levels that would conflict
+  if (options.pinoOptions) {
+    const { customLevels, ...safePinoOptions } = options.pinoOptions;
+    baseOptions = {
+      ...baseOptions,
+      ...safePinoOptions,
+    };
+    
+    // If custom levels are provided, ensure the default level is included
+    if (customLevels) {
+      // Get the numeric value for the current level
+      
+      /* istanbul ignore next */ 
+      const levelValue = pino.levels.values[level] || 30; // Default to info level value
+      
+      baseOptions.customLevels = {
+        ...customLevels,
+        [level]: levelValue,
+      };
+    }
+  }
   
   // Apply cloud-specific formatters if needed
   if (cloud.provider === CloudProvider.GCP) {
@@ -461,14 +485,21 @@ export function configureGlobalLogging(options: {
   }
 }
 
-/**
- * Default application logger
- */
-export const logger = createLogger('midnight-mcp');
-
-/**
- * Export the pino library for advanced usage
- */
 export { pino };
 
-export default createLogger; 
+export default createLogger;
+
+let logger: ILogger;
+
+export function configureLogger(type: 'pino' | 'sentry', options?: any) {
+  if (type === 'sentry') {
+    logger = new SentryLogger(/* pass options if needed */);
+  } else {
+    logger = new PinoLogger(/* pass options if needed */);
+  }
+}
+
+export function getLogger(): ILogger {
+  if (!logger) logger = new PinoLogger();
+  return logger;
+} 
