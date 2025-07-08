@@ -59,13 +59,17 @@ const GenericResponseSchema = z.object({}).passthrough();
 describe('MCP Server E2E Tests', () => {
   let client: Client;
   let transport: StdioClientTransport;
-  const testAgentId = 'test-agent-e2e';
-  const testSeedPath = path.join(__dirname, '../../.storage/seeds', `${testAgentId}.seed`);
+  const testAgentId = 'test-eliza-e2e-agent';
+  const testSeedPath = path.join(__dirname, `${testAgentId}.seed`);
 
   beforeAll(async () => {
-    // Create test seed file
-    await fs.mkdir(path.dirname(testSeedPath), { recursive: true });
-    await fs.writeFile(testSeedPath, 'test-seed-for-e2e-testing-only');
+    // Verify test seed file exists
+    try {
+      await fs.access(testSeedPath);
+      console.log('Using existing seed file:', testSeedPath);
+    } catch (error) {
+      throw new Error(`Test seed file not found at ${testSeedPath}. Please ensure the seed file exists.`);
+    }
 
     // Create client transport that will spawn the server process
     transport = new StdioClientTransport({
@@ -105,12 +109,7 @@ describe('MCP Server E2E Tests', () => {
       await transport.close();
     }
 
-    // Clean up test seed file
-    try {
-      await fs.unlink(testSeedPath);
-    } catch (error) {
-      // Ignore if file doesn't exist
-    }
+    // Keep the seed file for reuse - do not delete testSeedPath
   }, 10000);
 
   describe('Server Initialization', () => {

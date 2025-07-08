@@ -408,7 +408,7 @@ describe('Wallet MCP Integration Tests', () => {
       ];
 
       for (const endpoint of endpoints) {
-        const response = await request(baseUrl)[endpoint.method](endpoint.path);
+        const response = await (request(baseUrl) as any)[endpoint.method](endpoint.path);
         expect(response.status).toBe(200);
         expect(response.body).toBeDefined();
         expect(typeof response.body).toBe('object');

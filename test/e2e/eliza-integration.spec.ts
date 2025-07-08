@@ -11,8 +11,8 @@ const __dirname = path.dirname(__filename);
 describe('ElizaOS + MCP Integration E2E Tests', () => {
   let mcpServerProcess: ChildProcess;
   let elizaServerProcess: ChildProcess;
-  const testAgentId = 'test-eliza-mcp-agent';
-  const testSeedPath = path.join(__dirname, '../../.storage/seeds', `${testAgentId}.seed`);
+  const testAgentId = 'test-eliza-e2e-agent';
+  const testSeedPath = path.join(__dirname, `${testAgentId}.seed`);
   const elizaProjectPath = path.join(__dirname, '../../test-eliza-project');
   const elizaPort = 3001;
 
@@ -40,9 +40,13 @@ describe('ElizaOS + MCP Integration E2E Tests', () => {
   async function setupTestEnvironment(): Promise<void> {
     console.log('Setting up ElizaOS + MCP test environment...');
     
-    // Create test seed file
-    await fs.mkdir(path.dirname(testSeedPath), { recursive: true });
-    await fs.writeFile(testSeedPath, 'test-seed-for-eliza-mcp-integration');
+    // Verify test seed file exists
+    try {
+      await fs.access(testSeedPath);
+      console.log('Using existing seed file:', testSeedPath);
+    } catch (error) {
+      throw new Error(`Test seed file not found at ${testSeedPath}. Please ensure the seed file exists.`);
+    }
   }
 
   async function startMCPServer(): Promise<void> {
@@ -223,7 +227,7 @@ describe('ElizaOS + MCP Integration E2E Tests', () => {
     // Clean up test files
     try {
       await fs.rm(elizaProjectPath, { recursive: true, force: true });
-      await fs.unlink(testSeedPath);
+      // Keep the seed file for reuse - do not delete testSeedPath
     } catch (error) {
       // Ignore cleanup errors
     }

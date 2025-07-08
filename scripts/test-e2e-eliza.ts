@@ -1,28 +1,8 @@
-#!/usr/bin/env tsx
-
 /*
  * ElizaOS + MCP E2E Integration Test Runner
  * 
  * This script tests the integration between ElizaOS and the Midnight MCP server.
  * 
- * Common Troubleshooting:
- * 
- * 1. "MCP error -32000: Connection closed" - This usually means:
- *    - The MCP server failed to start properly
- *    - The MCP server crashed after startup
- *    - Configuration mismatch between ElizaOS and MCP server
- *    - Missing dependencies (tsx, node modules)
- * 
- * 2. To debug MCP server issues:
- *    - Check the MCP server logs in the test output
- *    - Verify tsx is installed: `npm install -g tsx`
- *    - Test MCP server manually: `tsx src/stdio-server.ts`
- *    - Check that all environment variables are set correctly
- * 
- * 3. To debug ElizaOS issues:
- *    - Check ElizaOS server logs in the test output
- *    - Verify ElizaOS CLI is installed: `npm install -g @elizaos/cli@beta`
- *    - Check character configuration in test-eliza-e2e-project/characters/
  */
 
 import { spawn, ChildProcess } from 'child_process';
@@ -103,7 +83,7 @@ class ElizaOSE2ETestRunner {
           AGENT_ID: this.testAgentId,
           NODE_ENV: 'test',
           WALLET_SERVER_HOST: 'localhost',
-          WALLET_SERVER_PORT: '3004',
+          WALLET_SERVER_PORT: '3000',
           NETWORK_ID: 'TestNet',
           USE_EXTERNAL_PROOF_SERVER: 'false'
         }
@@ -207,7 +187,7 @@ class ElizaOSE2ETestRunner {
         for (const [cmd, args] of installCommands) {
           try {
             console.log(`   🔄 Trying: ${cmd} ${(args as string[]).join(' ')}`);
-            await this.executeCommand(cmd, args as string[]);
+            await this.executeCommand(cmd as string, args as string[]);
             console.log(`   ✅ Successfully used ${cmd}`);
             installSuccess = true;
             break;
@@ -286,7 +266,7 @@ AGENT_ID=${this.testAgentId}
                   AGENT_ID: this.testAgentId,
                   NODE_ENV: 'test',
                   WALLET_SERVER_HOST: 'localhost',
-                  WALLET_SERVER_PORT: '3004',
+                  WALLET_SERVER_PORT: '3000',
                   NETWORK_ID: 'TestNet',
                   USE_EXTERNAL_PROOF_SERVER: 'false'
                 },
@@ -323,7 +303,7 @@ AGENT_ID=${this.testAgentId}
               for (const [manager, args] of packageManagers) {
           try {
             console.log(`   🔄 Trying: ${manager} ${(args as string[]).join(' ')}`);
-            await this.executeCommand(manager, args as string[], this.elizaProjectPath);
+            await this.executeCommand(manager as string, args as string[], this.elizaProjectPath);
           console.log(`   ✅ Dependencies installed successfully with ${manager}`);
           installSuccess = true;
           break;
@@ -469,30 +449,108 @@ AGENT_ID=${this.testAgentId}
     console.log('💬 Testing conversation flow with MCP tools...');
     
     const testMessages = [
+      'Hello, how are you doing?',
       'Hello, can you check my wallet status?',
       'What is my wallet address?',
       'Show me my current balance',
       'Can you list my recent transactions?'
     ];
 
-    for (const message of testMessages) {
+    console.log('\n' + '='.repeat(60));
+    console.log('🎭 CONVERSATION FLOW TEST');
+    console.log('='.repeat(60));
+    
+    for (let i = 0; i < testMessages.length; i++) {
+      const message = testMessages[i];
+      console.log(`\n📤 User [${i + 1}/${testMessages.length}]: ${message}`);
+      console.log('─'.repeat(50));
+      
       try {
-        // This is a simplified test - in reality, you'd need to use the actual ElizaOS API
-        // For now, we'll just verify the server is responsive
-        const response = await fetch(`http://localhost:${this.elizaPort}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
+        // Try to send message to ElizaOS chat endpoint - this MUST work
+        const chatResponse = await this.sendChatMessage(message, i);
+        console.log(`🤖 ElizaOS Response:`);
+        console.log(`${chatResponse}`);
         
-        if (response.status >= 500) {
-          throw new Error(`Server error for message: ${message}`);
-        }
+        // Add a small delay between messages
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
       } catch (error) {
+        console.log(`❌ CRITICAL ERROR: ${error instanceof Error ? error.message : error}`);
+        console.log(`💡 ElizaOS must respond to continue the conversation flow test`);
         throw new Error(`Failed to process message "${message}": ${error}`);
       }
     }
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('✅ Conversation flow test completed');
+    console.log('='.repeat(60));
+  }
+
+  async sendChatMessage(message: string, messageIndex: number): Promise<string | null> {
+    // Try different ElizaOS API endpoints that might exist
+    const endpoints = [
+      '/api',
+      '/api/',
+      '/api/chat',
+      '/api/message',
+      '/api/conversation',
+      '/chat',
+      '/message'
+    ];
+    
+    console.log(`   🔍 Trying to send message to ElizaOS...`);
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`   🔄 Trying endpoint: ${endpoint}`);
+        const response = await fetch(`http://localhost:${this.elizaPort}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            message: message,
+            conversationId: `test-conversation-${messageIndex}`,
+            userId: 'test-user',
+            agentId: this.testAgentId
+          })
+        });
+        
+        console.log(`   📡 Response status: ${response.status}`);
+        
+        if (response.ok) {
+          const data = await response.json() as any;
+          console.log(`   📋 Raw ElizaOS response:`, JSON.stringify(data, null, 2));
+          
+          // Try to extract response text from various possible response formats
+          if (data.response) {
+            return data.response;
+          } else if (data.message) {
+            return data.message;
+          } else if (data.text) {
+            return data.text;
+          } else if (data.reply) {
+            return data.reply;
+          } else if (typeof data === 'string') {
+            return data;
+          } else {
+            return `[ElizaOS Raw Response]: ${JSON.stringify(data, null, 2)}`;
+          }
+        } else {
+          console.log(`   ⚠️ Non-OK response from ${endpoint}: ${response.status}`);
+          const errorText = await response.text();
+          console.log(`   📄 Error response body: ${errorText}`);
+        }
+      } catch (error) {
+        console.log(`   ❌ Error with ${endpoint}: ${error instanceof Error ? error.message : error}`);
+        continue;
+      }
+    }
+    
+    // If no working endpoint found, this is an error - ElizaOS MUST respond
+    console.log(`   ❌ ALL ENDPOINTS FAILED - ElizaOS must respond to continue test`);
+    throw new Error(`ElizaOS failed to respond to message: "${message}". All API endpoints failed. ElizaOS must be running and accessible.`);
   }
 
   async testMCPServerHealth(): Promise<void> {

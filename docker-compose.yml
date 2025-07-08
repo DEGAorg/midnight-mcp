@@ -11,7 +11,7 @@ services:
       test: ["CMD", "/bin/bash", "-c", ":> /dev/tcp/127.0.0.1/6300 || exit 1"]
     restart: unless-stopped
 
-  wallet-server:
+wallet-server:
     build:
       context: ../..  # Adjust this path to your Dockerfile location
       dockerfile: Dockerfile
@@ -23,9 +23,9 @@ services:
       - NETWORK_ID=TestNet
       - USE_EXTERNAL_PROOF_SERVER=true
       - PROOF_SERVER=http://proof-server:6300
-      - INDEXER=${INDEXER:-http://indexer:8080}
-      - INDEXER_WS=${INDEXER_WS:-ws://indexer:8080}
-      - MN_NODE=${MN_NODE:-http://midnight-node:8080}
+      - INDEXER=https://indexer.testnet-02.midnight.network/api/v1/graphql
+      - INDEXER_WS=wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws
+      - MN_NODE=https://rpc.testnet-02.midnight.network
       - LOG_LEVEL=info
       - STORAGE_BASE_DIR=/app/.storage
     ports:

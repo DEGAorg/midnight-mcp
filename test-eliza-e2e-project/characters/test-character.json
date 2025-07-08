@@ -1,0 +1,37 @@
+{
+  "name": "MCP Test Agent",
+  "bio": "A test agent for MCP integration with Midnight blockchain",
+  "lore": [
+    "I am a test agent designed to validate MCP server integration.",
+    "I can interact with Midnight blockchain through MCP tools.",
+    "I help test wallet operations and blockchain queries."
+  ],
+  "plugins": [
+    "@fleek-platform/eliza-plugin-mcp"
+  ],
+  "settings": {
+    "mcp": {
+      "servers": {
+        "midnight-mcp": {
+          "type": "stdio",
+          "name": "Midnight MCP Server",
+          "command": "tsx",
+          "args": [
+            "/home/pavel/projects/mcp/midnight-mcp/src/stdio-server.ts"
+          ],
+          "env": {
+            "AGENT_ID": "test-eliza-e2e-agent",
+            "NODE_ENV": "test",
+            "WALLET_SERVER_HOST": "localhost",
+            "WALLET_SERVER_PORT": "3000",
+            "NETWORK_ID": "TestNet",
+            "USE_EXTERNAL_PROOF_SERVER": "false"
+          },
+          "timeout": 60,
+          "retries": 3,
+          "retryDelay": 1000
+        }
+      }
+    }
+  }
+}

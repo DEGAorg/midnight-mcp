@@ -24,7 +24,7 @@ COPY src ./src
 COPY scripts ./scripts
 
 # Build MCP server
-RUN yarn build:mcp
+RUN yarn build
 
 # ────────────────────────
 # Production stage
