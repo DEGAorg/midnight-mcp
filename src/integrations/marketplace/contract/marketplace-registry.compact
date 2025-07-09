@@ -1,0 +1,52 @@
+// This file is part of midnightntwrk/marketplace-registry.
+// Copyright (C) 2025 Midnight Foundation
+// SPDX-License-Identifier: Apache-2.0
+// Licensed under the Apache License, Version 2.0 (the "License");
+// You may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+pragma language_version 0.15;
+
+import CompactStandardLibrary;
+
+// Map to store public keys to text identifiers
+export ledger registry: Map<Bytes<32>, Opaque<"string">>;
+
+// Register a user with their text identifier
+export circuit register(text: Opaque<"string">): [] {
+    // Get the user's public key
+    const pkBytes = own_public_key().bytes;
+    const pk = disclose(pkBytes);
+    
+    // Check if the user is already registered
+    assert !registry.member(pk)
+        "User already registered";
+    
+    // Store the text identifier associated with the public key
+    const disclosedText = disclose(text);
+    registry.insert(pk, disclosedText);
+}
+
+// Verify the text identifier of a public key
+export circuit verify_text(pk: Bytes<32>): Opaque<"string"> {
+    // Check if the public key exists in the registry
+    const disclosedPk = disclose(pk);
+    assert registry.member(disclosedPk)
+        "Public key not registered";
+    
+    // Return the text identifier associated with the public key
+    return registry.lookup(disclosedPk);
+}
+
+// Test Purpose
+export circuit read_own_public_key(): Bytes<32> {
+    return own_public_key().bytes;
+}
