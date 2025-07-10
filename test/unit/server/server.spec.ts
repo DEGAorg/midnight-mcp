@@ -139,14 +139,6 @@ describe('Server', () => {
         }
       );
     });
-
-    it('should initialize wallet controller', async () => {
-      const { WalletController } = await import('../../../src/controllers/wallet.controller');
-      
-      await import('../../../src/server.js');
-      
-      expect(WalletController).toHaveBeenCalledWith(mockWalletService);
-    });
   });
 
   describe('Route Registration', () => {

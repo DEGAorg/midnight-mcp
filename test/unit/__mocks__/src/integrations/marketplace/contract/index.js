@@ -6,14 +6,10 @@ const MarketplaceRegistry = {
   deploy: jest.fn(() => Promise.resolve('mock-deployed-address')),
   call: jest.fn(() => Promise.resolve({ success: true })),
   getState: jest.fn(() => Promise.resolve({ state: 'active' })),
+  // Add any other methods that might be used
   create: jest.fn(() => ({ contract: 'mock-contract' })),
   load: jest.fn(() => ({ contract: 'mock-loaded-contract' })),
-  ledger: jest.fn(() => ({ 
-    registry: { 
-      member: jest.fn(() => true), 
-      lookup: jest.fn(() => 'mock-text') 
-    } 
-  })),
+  ledger: jest.fn(() => ({ registry: { member: jest.fn(() => true), lookup: jest.fn(() => 'mock-text') } })),
   Contract: jest.fn(() => ({ contract: 'mock-contract-instance' }))
 };
 
@@ -21,12 +17,10 @@ const MarketplaceRegistry = {
 const witnesses = {
   create: jest.fn(() => ({ witness: 'mock-witness' })),
   validate: jest.fn(() => true),
+  // Add any other witness-related functions
   generate: jest.fn(() => ({ proof: 'mock-proof' })),
   verify: jest.fn(() => true)
 };
 
-// Export using CommonJS syntax to avoid ES module issues
-module.exports = {
-  MarketplaceRegistry,
-  witnesses
-}; 
+// Export using ES module syntax to match the original file
+export { MarketplaceRegistry, witnesses }; 

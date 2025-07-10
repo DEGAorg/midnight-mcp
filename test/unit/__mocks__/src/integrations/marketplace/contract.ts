@@ -1,32 +1,29 @@
-// Mock for marketplace contract index.js
+// Mock for marketplace contract module
 // This replaces the problematic ES module file that Jest can't parse
 
 // Mock MarketplaceRegistry
-const MarketplaceRegistry = {
+export const MarketplaceRegistry = {
   deploy: jest.fn(() => Promise.resolve('mock-deployed-address')),
   call: jest.fn(() => Promise.resolve({ success: true })),
   getState: jest.fn(() => Promise.resolve({ state: 'active' })),
+  // Add any other methods that might be used
   create: jest.fn(() => ({ contract: 'mock-contract' })),
   load: jest.fn(() => ({ contract: 'mock-loaded-contract' })),
-  ledger: jest.fn(() => ({ 
-    registry: { 
-      member: jest.fn(() => true), 
-      lookup: jest.fn(() => 'mock-text') 
-    } 
-  })),
+  ledger: jest.fn(() => ({ registry: { member: jest.fn(() => true), lookup: jest.fn(() => 'mock-text') } })),
   Contract: jest.fn(() => ({ contract: 'mock-contract-instance' }))
 };
 
 // Mock witnesses
-const witnesses = {
+export const witnesses = {
   create: jest.fn(() => ({ witness: 'mock-witness' })),
   validate: jest.fn(() => true),
+  // Add any other witness-related functions
   generate: jest.fn(() => ({ proof: 'mock-proof' })),
   verify: jest.fn(() => true)
 };
 
-// Export using CommonJS syntax to avoid ES module issues
-module.exports = {
+// Export as namespace for compatibility with the original export * as syntax
+export default {
   MarketplaceRegistry,
   witnesses
 }; 

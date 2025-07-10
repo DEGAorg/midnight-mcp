@@ -37,10 +37,9 @@ import {
   AgentDecisionLogger, 
   AuditTrailService 
 } from '../audit/index.js';
-import { isPublicKeyRegistered, verifyTextPure } from '../integrations/marketplace/api.js';
 
 // Import marketplace API functions
-const { joinContract, register, marketplaceRegistryContractInstance } = await import('../integrations/marketplace/api.js');
+import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance } from '../integrations/marketplace/api.js';
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;

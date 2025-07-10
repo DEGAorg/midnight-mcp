@@ -5,9 +5,10 @@
 const witnesses = {
   create: jest.fn(() => ({ witness: 'mock-witness' })),
   validate: jest.fn(() => true),
+  // Add any other witness-related functions
   generate: jest.fn(() => ({ proof: 'mock-proof' })),
   verify: jest.fn(() => true)
 };
 
-// Export using CommonJS syntax to avoid ES module issues
-module.exports = witnesses; 
+// Export using ES module syntax to match the original file
+export { witnesses }; 

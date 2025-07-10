@@ -6,6 +6,7 @@
     "dev": "tsx src/server.ts",
     "generate-seed": "tsx scripts/generate-seed.ts",
     "test:unit": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts'",
+    "test:silent": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts' --silent",
     "test:integration": "jest --config=jest.config.js --testMatch='**/test/integration/**/*.spec.ts'",
     "test:all": "jest --config=jest.config.js",
     "test:coverage": "jest --config=jest.config.js --coverage",
