@@ -383,6 +383,44 @@ export class WalletServiceMCP {
       // Don't rethrow the error, just log it
     }
   }
+
+  /**
+   * Register a user in the marketplace
+   * @param userId The user ID to register
+   * @param userData The user data to register
+   * @returns Registration result
+   */
+  public async registerInMarketplace(userId: string, userData: any): Promise<any> {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.registerInMarketplace(userId, userData);
+    } catch (error) {
+      this.logger.error('Error registering in marketplace', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to register in marketplace');
+    }
+  }
+
+  /**
+   * Verify a user in the marketplace
+   * @param userId The user ID to verify
+   * @param verificationData The verification data
+   * @returns Verification result
+   */
+  public async verifyUserInMarketplace(userId: string, verificationData: any): Promise<any> {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.verifyUserInMarketplace(userId, verificationData);
+    } catch (error) {
+      this.logger.error('Error verifying user in marketplace', error);
+      throw new WalletServiceError(WalletServiceErrorType.IDENTIFIER_VERIFICATION_FAILED, 'Failed to verify user in marketplace');
+    }
+  }
 }
 
 // Export default instance

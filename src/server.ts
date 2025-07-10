@@ -52,7 +52,10 @@ const routes = [
   { method: 'get', path: '/wallet/transactions', handler: walletController.getTransactions },
   { method: 'get', path: '/wallet/pending-transactions', handler: walletController.getPendingTransactions },
   { method: 'get', path: '/wallet/config', handler: walletController.getWalletConfig },
-  { method: 'get', path: '/health', handler: walletController.healthCheck }
+  { method: 'get', path: '/health', handler: walletController.healthCheck },
+  // Marketplace routes
+  { method: 'post', path: '/marketplace/register', handler: walletController.registerInMarketplace },
+  { method: 'post', path: '/marketplace/verify', handler: walletController.verifyUserInMarketplace }
 ] as const;
 
 // Register all routes

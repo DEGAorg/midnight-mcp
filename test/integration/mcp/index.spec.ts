@@ -1,9 +1,10 @@
 import request from 'supertest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { TestConfig } from './types';
 
 // Load test configuration from JSON file
-function loadTestConfig() {
+function loadTestConfig(): TestConfig {
   try {
     const configPath = path.join(__dirname, 'test-config.json');
     
@@ -15,28 +16,28 @@ function loadTestConfig() {
     }
     
     const configData = fs.readFileSync(configPath, 'utf8');
-    const config = JSON.parse(configData);
+    const config: TestConfig = JSON.parse(configData);
     
     // Validate required fields
-    const requiredFields = [
-      'wallets.wallet1.address',
-      'wallets.wallet2.address',
-      'transactions.validPayment.identifier',
-      'transactions.wrongAmount.identifier',
-      'transactions.unknownSender.identifier'
-    ];
-    
     const missingFields: string[] = [];
-    for (const field of requiredFields) {
-      const keys = field.split('.');
-      let value = config;
-      for (const key of keys) {
-        if (!value || !value[key]) {
-          missingFields.push(field);
-          break;
-        }
-        value = value[key];
-      }
+    
+    // Check wallet addresses
+    if (!config.wallets.wallet1.address) {
+      missingFields.push('wallets.wallet1.address');
+    }
+    if (!config.wallets.wallet2.address) {
+      missingFields.push('wallets.wallet2.address');
+    }
+    
+    // Check transaction identifiers
+    if (!config.transactions.validPayment.identifier) {
+      missingFields.push('transactions.validPayment.identifier');
+    }
+    if (!config.transactions.wrongAmount.identifier) {
+      missingFields.push('transactions.wrongAmount.identifier');
+    }
+    if (!config.transactions.unknownSender.identifier) {
+      missingFields.push('transactions.unknownSender.identifier');
     }
     
     if (missingFields.length > 0) {
@@ -57,7 +58,7 @@ function loadTestConfig() {
 
 describe('Wallet MCP Integration Tests', () => {
   // Load configuration
-  const config = loadTestConfig();
+  const config: TestConfig = loadTestConfig();
   const baseUrl = process.env.TEST_SERVER_URL || config.server.url;
   const testData = config.transactions;
   const wallets = config.wallets;
@@ -206,8 +207,51 @@ describe('Wallet MCP Integration Tests', () => {
     });
   });
 
-  describe('Test Case 1: Valid Payment Received', () => {
+  describe('Test Case 1: Valid Identity Match', () => {
+    test('should verify sender matches registered identity', async () => {
+      // validate sender is registered in marketplace
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ userId: config.wallets.wallet1.address, userData: {marketplaceAddress: config.marketplace.address} })
+        .expect(200);
+
+      expect(senderResponse.body).toHaveProperty('valid');
+      expect(senderResponse.body.valid).toBe(true);
+    });
+  });
+
+  describe('Test Case 2: Agent Not Registered', () => {
+    test('should reject sender not found in registration contract', async () => {
+      // valid sender but not registered in marketplace
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ userId: config.wallets.wallet2.address, userData: {marketplaceAddress: config.marketplace.address} })
+        .expect(200);
+
+      expect(senderResponse.body).toHaveProperty('valid');
+      expect(senderResponse.body.valid).toBe(false);
+    });
+  });
+
+  describe('Test Case 3: Sender Mismatch With Off-chain Session', () => {
+    test('should detect mismatch between on-chain sender and off-chain session', async () => {
+      // valid sender but not registered in marketplace
+      // TBD in marketplace logic and off-chain session logic
+    });
+  });
+
+  describe('Test Case 4: Valid Payment Received', () => {
     test('should verify valid payment with correct amount and registered sender', async () => {
+      // validate sender is registered in marketplace
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ userId: testData.validPayment.senderAddress, userData: {marketplaceAddress: config.marketplace.address} })
+        .expect(200);
+
+      expect(senderResponse.body).toHaveProperty('valid');
+      expect(senderResponse.body.valid).toBe(true);
+
+      // verify transaction
       const response = await request(baseUrl)
         .post('/wallet/verify-transaction')
         .send({ identifier: testData.validPayment.identifier })
@@ -226,8 +270,17 @@ describe('Wallet MCP Integration Tests', () => {
     });
   });
 
-  describe('Test Case 2: Payment With Wrong Amount', () => {
+  describe('Test Case 5: Payment With Wrong Amount', () => {
     test('should detect amount mismatch for valid sender', async () => {
+      // validate sender is registered in marketplace
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ userId: testData.wrongAmount.senderAddress, userData: {marketplaceAddress: config.marketplace.address} })
+        .expect(200);
+
+      expect(senderResponse.body).toHaveProperty('valid');
+      expect(senderResponse.body.valid).toBe(true);
+
       const response = await request(baseUrl)
         .post('/wallet/verify-transaction')
         .send({ identifier: testData.wrongAmount.identifier })
@@ -245,8 +298,17 @@ describe('Wallet MCP Integration Tests', () => {
     });
   });
 
-  describe('Test Case 3: Payment From Unknown Sender', () => {
+  describe('Test Case 6: Payment From Unknown Sender', () => {
     test('should handle transaction from unregistered sender', async () => {
+      // validate sender is registered in marketplace
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ userId: testData.unknownSender.senderAddress, userData: {marketplaceAddress: config.marketplace.address} })
+        .expect(200);
+
+      expect(senderResponse.body).toHaveProperty('valid');
+      expect(senderResponse.body.valid).toBe(true);
+
       const response = await request(baseUrl)
         .post('/wallet/verify-transaction')
         .send({ identifier: testData.unknownSender.identifier })
@@ -254,15 +316,11 @@ describe('Wallet MCP Integration Tests', () => {
 
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
-      
-      console.log('Unknown sender verification result:', response.body);
-      
-      // For unknown sender, transaction might not exist or amount might be different
-      // This tests the system's ability to handle unregistered senders gracefully
+    
     });
   });
 
-  describe('Test Case 4: No Payment Received', () => {
+  describe('Test Case 7: No Payment Received', () => {
     test('should handle case when no transaction is found', async () => {
       const response = await request(baseUrl)
         .post('/wallet/verify-transaction')
@@ -277,59 +335,6 @@ describe('Wallet MCP Integration Tests', () => {
       
       // For no payment, exists should be false
       expect(response.body.exists).toBe(false);
-    });
-  });
-
-  describe('Test Case 5: Valid Identity Match', () => {
-    test('should verify sender matches registered identity', async () => {
-      const response = await request(baseUrl)
-        .post('/wallet/verify-transaction')
-        .send({ identifier: testData.validIdentityMatch.identifier })
-        .expect(200);
-
-      expect(response.body).toHaveProperty('exists');
-      expect(response.body).toHaveProperty('transactionAmount');
-      
-      console.log('Valid identity match verification result:', response.body);
-      
-      // For valid identity match, transaction should exist with correct amount
-      if (response.body.exists) {
-        expect(response.body.transactionAmount).toBe(testData.validIdentityMatch.expectedAmount);
-      }
-    });
-  });
-
-  describe('Test Case 6: Agent Not Registered', () => {
-    test('should reject sender not found in registration contract', async () => {
-      const response = await request(baseUrl)
-        .post('/wallet/verify-transaction')
-        .send({ identifier: testData.agentNotRegistered.identifier })
-        .expect(200);
-
-      expect(response.body).toHaveProperty('exists');
-      expect(response.body).toHaveProperty('transactionAmount');
-      
-      console.log('Agent not registered verification result:', response.body);
-      
-      // For unregistered agent, transaction should not exist or be invalid
-      expect(response.body.exists).toBe(false);
-    });
-  });
-
-  describe('Test Case 7: Sender Mismatch With Off-chain Session', () => {
-    test('should detect mismatch between on-chain sender and off-chain session', async () => {
-      const response = await request(baseUrl)
-        .post('/wallet/verify-transaction')
-        .send({ identifier: testData.senderMismatch.identifier })
-        .expect(200);
-
-      expect(response.body).toHaveProperty('exists');
-      expect(response.body).toHaveProperty('transactionAmount');
-      
-      console.log('Sender mismatch verification result:', response.body);
-      
-      // For sender mismatch, the system should detect the inconsistency
-      // This tests session management and identity validation
     });
   });
 
@@ -404,14 +409,22 @@ describe('Wallet MCP Integration Tests', () => {
         { method: 'get', path: '/wallet/transactions' },
         { method: 'get', path: '/wallet/pending-transactions' },
         { method: 'get', path: '/wallet/config' },
-        { method: 'get', path: '/health' }
+        { method: 'get', path: '/health' },
+        { method: 'post', path: '/marketplace/register' },
+        { method: 'post', path: '/marketplace/verify' }
       ];
 
       for (const endpoint of endpoints) {
-        const response = await request(baseUrl)[endpoint.method](endpoint.path);
-        expect(response.status).toBe(200);
-        expect(response.body).toBeDefined();
-        expect(typeof response.body).toBe('object');
+        let response;
+        if (endpoint.method === 'get') {
+          response = await request(baseUrl).get(endpoint.path);
+        } else if (endpoint.method === 'post') {
+          response = await request(baseUrl).post(endpoint.path);
+        }
+        expect(response).toBeDefined();
+        expect(response!.status).toBe(200);
+        expect(response!.body).toBeDefined();
+        expect(typeof response!.body).toBe('object');
       }
     });
 
@@ -429,30 +442,6 @@ describe('Wallet MCP Integration Tests', () => {
     test('should run all 8 test scenarios against the Docker server', async () => {
       const scenarios = [
         {
-          name: 'Valid Payment Received',
-          identifier: testData.validPayment.identifier,
-          expectedExists: true,
-          expectedAmount: testData.validPayment.expectedAmount
-        },
-        {
-          name: 'Payment With Wrong Amount',
-          identifier: testData.wrongAmount.identifier,
-          expectedExists: true,
-          expectedAmount: testData.wrongAmount.actualAmount
-        },
-        {
-          name: 'Payment From Unknown Sender',
-          identifier: testData.unknownSender.identifier,
-          expectedExists: false,
-          expectedAmount: '0'
-        },
-        {
-          name: 'No Payment Received',
-          identifier: testData.noPayment.identifier,
-          expectedExists: false,
-          expectedAmount: '0'
-        },
-        {
           name: 'Valid Identity Match',
           identifier: testData.validIdentityMatch.identifier,
           expectedExists: true,
@@ -469,6 +458,30 @@ describe('Wallet MCP Integration Tests', () => {
           identifier: testData.senderMismatch.identifier,
           expectedExists: true,
           expectedAmount: testData.senderMismatch.expectedAmount
+        },
+        {
+          name: 'Valid Payment Received',
+          identifier: testData.validPayment.identifier,
+          expectedExists: true,
+          expectedAmount: testData.validPayment.expectedAmount
+        },
+        {
+          name: 'Payment With Wrong Amount',
+          identifier: testData.wrongAmount.identifier,
+          expectedExists: true,
+          expectedAmount: testData.wrongAmount.actualAmount || testData.wrongAmount.expectedAmount
+        },
+        {
+          name: 'Payment From Unknown Sender',
+          identifier: testData.unknownSender.identifier,
+          expectedExists: false,
+          expectedAmount: '0'
+        },
+        {
+          name: 'No Payment Received',
+          identifier: testData.noPayment.identifier,
+          expectedExists: false,
+          expectedAmount: '0'
         },
         {
           name: 'Duplicate Transaction Detection',

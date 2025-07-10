@@ -24,7 +24,10 @@ import {
   TransactionState,
   TransactionRecord,
   InitiateTransactionResult, 
-  TransactionStatusResult
+  TransactionStatusResult,
+  MarketplaceUserData,
+  RegistrationResult,
+  VerificationResult
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
 import { FileManager, FileType } from '../utils/file-manager.js';
@@ -34,6 +37,10 @@ import {
   AgentDecisionLogger, 
   AuditTrailService 
 } from '../audit/index.js';
+import { isPublicKeyRegistered, verifyTextPure } from '../integrations/marketplace/api.js';
+
+// Import marketplace API functions
+const { joinContract, register, marketplaceRegistryContractInstance } = await import('../integrations/marketplace/api.js');
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;
@@ -1352,6 +1359,147 @@ export class WalletManager {
       return this.transactionDb.getPendingTransactions();
     } catch (error) {
       this.logger.error('Failed to get pending transactions', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Register a user in the marketplace
+   * @param userId The user ID to register
+   * @param userData The user data to register
+   * @returns Registration result
+   */
+  public async registerInMarketplace(userId: string, userData: MarketplaceUserData): Promise<RegistrationResult> {
+    if (!this.ready) throw new Error('Wallet not ready');
+    if (!this.wallet) throw new Error('Wallet instance not available');
+    
+    try {
+      
+      // Get the wallet's public key
+      const walletAddress = this.getAddress();
+      
+      this.logger.info(`Registering user ${userId} in marketplace with wallet address ${walletAddress}`);
+      
+      // Create marketplace providers from the wallet
+      const providers = {
+        publicDataProvider: (this.wallet as any).publicDataProvider,
+        privateStateProvider: (this.wallet as any).privateStateProvider,
+        proofProvider: (this.wallet as any).proofProvider,
+        zkConfigProvider: (this.wallet as any).zkConfigProvider,
+        walletProvider: (this.wallet as any).walletProvider,
+        midnightProvider: (this.wallet as any).midnightProvider
+      };
+      
+      const contractAddress = userData.marketplaceAddress;
+      
+      // Join the marketplace contract
+      const marketplaceContract = await joinContract(providers, contractAddress);
+      
+      // Create the registration text (combine userId and userData)
+      const registrationText = userId;
+      
+      // Register the user in the marketplace
+      const registrationResult = await register(marketplaceContract, registrationText);
+      
+      const result = {
+        success: true,
+        userId,
+        userData,
+        walletAddress,
+        transactionId: registrationResult.txId,
+        blockHeight: registrationResult.blockHeight,
+        timestamp: new Date().toISOString(),
+        message: 'Registration successful',
+        contractAddress: marketplaceContract.deployTxData.public.contractAddress
+      };
+      
+      this.logger.info(`User ${userId} registered in marketplace with transaction ${registrationResult.txId}`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to register in marketplace', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify a user in the marketplace
+   * @param userId The user ID to verify
+   * @param verificationData The verification data
+   * @returns Verification result
+   */
+  public async verifyUserInMarketplace(userId: string, verificationData: MarketplaceUserData): Promise<VerificationResult> {
+    if (!this.ready) throw new Error('Wallet not ready');
+    if (!this.wallet) throw new Error('Wallet instance not available');
+    
+    try {
+      
+      const walletAddress = this.getAddress();
+      const walletPublicKey = Buffer.from(walletAddress.replace('0x', ''), 'hex');
+      
+      this.logger.info(`Verifying user ${userId} in marketplace with wallet address ${walletAddress}`);
+      
+      // Create marketplace providers from the wallet
+      const providers = {
+        publicDataProvider: (this.wallet as any).publicDataProvider,
+        privateStateProvider: (this.wallet as any).privateStateProvider,
+        proofProvider: (this.wallet as any).proofProvider,
+        zkConfigProvider: (this.wallet as any).zkConfigProvider,
+        walletProvider: (this.wallet as any).walletProvider,
+        midnightProvider: (this.wallet as any).midnightProvider
+      };
+      
+      const contractAddress = verificationData.marketplaceAddress;
+      
+      // Join the marketplace contract
+      const marketplaceContract = await joinContract(providers, contractAddress);
+      
+      // Check if the wallet's public key is registered
+      const isRegistered = await isPublicKeyRegistered(providers, contractAddress, walletPublicKey);
+      
+      if (!isRegistered) {
+        return {
+          valid: false,
+          userId,
+          userData: verificationData,
+          reason: 'Wallet is not registered in the marketplace'
+        }
+      }
+      
+      // Verify the text identifier for this public key
+      const verifiedText = await verifyTextPure(providers, contractAddress, walletPublicKey);
+      
+      if (!verifiedText) {
+        return {
+          valid: false,
+          userId,
+          userData: verificationData,
+          reason: 'Verification failed'
+        }
+      }
+      
+      // Verify that the userId matches
+      if (verifiedText !== userId) {
+        return {
+          valid: false,
+          userId,
+          userData: verificationData,
+          reason: 'User ID mismatch - wallet is registered for a different user'
+        }
+      }
+      
+      const result = {
+        valid: true,
+        userId,
+        userData: verificationData,
+        reason: 'Verification successful'
+      };
+      
+      this.logger.info(`User ${userId} verified in marketplace`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to verify user in marketplace', error);
       throw error;
     }
   }

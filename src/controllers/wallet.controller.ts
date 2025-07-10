@@ -123,4 +123,38 @@ export class WalletController {
   async healthCheck(req: Request, res: Response): Promise<void> {
     res.json({ status: 'ok' });
   }
+
+  async registerInMarketplace(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, userData } = req.body;
+      if (!userId || !userData) {
+        res.status(400).json({
+          error: 'Missing required parameters: userId and userData'
+        });
+        return;
+      }
+      const result = await this.walletService.registerInMarketplace(userId, userData);
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error registering in marketplace:', error);
+      next(error);
+    }
+  }
+
+  async verifyUserInMarketplace(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId, verificationData } = req.body;
+      if (!userId || !verificationData) {
+        res.status(400).json({
+          error: 'Missing required parameters: userId and verificationData'
+        });
+        return;
+      }
+      const result = await this.walletService.verifyUserInMarketplace(userId, verificationData);
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error verifying user in marketplace:', error);
+      next(error);
+    }
+  }
 } 

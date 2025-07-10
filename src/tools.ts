@@ -254,14 +254,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             "Missing required parameters: userId and userData"
           );
         }
-        // TODO: Implement actual marketplace registration logic
-        const registerResult = {
-          success: true,
-          message: "User registered successfully in marketplace (placeholder)",
-          userId,
-          userData,
-          timestamp: new Date().toISOString()
-        };
+        const registerResult = await httpClient.post('/marketplace/register', { userId, userData });
         return {
           "content": [
             {
@@ -280,14 +273,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             "Missing required parameters: userId and verificationData"
           );
         }
-        // TODO: Implement actual marketplace user verification logic
-        const verifyUserResult = {
-          success: true,
-          message: "User verified successfully in marketplace (placeholder)",
-          userId: verifyUserId,
-          verificationData,
-          verifiedAt: new Date().toISOString()
-        };
+        const verifyUserResult = await httpClient.post('/marketplace/verify', { userId: verifyUserId, verificationData });
         return {
           "content": [
             {

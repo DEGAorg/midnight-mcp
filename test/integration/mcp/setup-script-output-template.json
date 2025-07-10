@@ -13,6 +13,10 @@
       "description": "Unregistered agent wallet"
     }
   },
+  "marketplace": {
+    "address": "REPLACE_WITH_MARKETPLACE_ADDRESS_FROM_SETUP_SCRIPT",
+    "description": "Marketplace contract address"
+  },
   "transactions": {
     "validPayment": {
       "identifier": "REPLACE_WITH_VALID_PAYMENT_TX_ID_FROM_SETUP_SCRIPT",

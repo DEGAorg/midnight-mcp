@@ -124,3 +124,21 @@ export interface TransactionStatusResult {
     }
   }
 } 
+
+export type MarketplaceUserData = {
+  marketplaceAddress: string;
+}
+
+export type RegistrationResult = {
+  success: boolean;
+  userId: string;
+  userData: MarketplaceUserData;
+  transactionId: string;
+}
+
+export type VerificationResult = {
+  valid: boolean;
+  userId: string;
+  userData: MarketplaceUserData;
+  reason: string;
+}
