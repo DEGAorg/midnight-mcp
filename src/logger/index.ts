@@ -2,9 +2,9 @@ import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FileManager, FileType } from '../utils/file-manager.js';
-import { ILogger } from './types';
-import { PinoLogger } from './pino-logger';
-import { SentryLogger } from './sentry-logger';
+import { ILogger } from './types.js';
+import { PinoLogger } from './pino-logger.js';
+import { SentryLogger } from './sentry-logger.js';
 
 /**
  * Available log levels in ascending order of importance.

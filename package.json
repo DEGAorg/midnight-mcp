@@ -2,8 +2,9 @@
   "packageManager": "yarn@4.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/integrations/marketplace/contract dist/integrations/marketplace/",
     "dev": "tsx src/server.ts",
+    "dist:start": "node --experimental-specifier-resolution=node dist/server.js",
     "generate-seed": "tsx scripts/generate-seed.ts",
     "test:unit": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts'",
     "test:silent": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts' --silent",
@@ -23,26 +24,18 @@
     "setup-agent": "tsx scripts/setup-agent.ts",
     "setup-docker": "tsx scripts/setup-docker.ts"
   },
-  "resolutions": {
-    "@midnight-ntwrk/compact-runtime/@midnight-ntwrk/onchain-runtime": "^0.2.6",
-    "@midnight-ntwrk/zswap": "4.0.0"
-  },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.8.1",
-    "@midnight-ntwrk/dapp-connector-api": "2.0.0",
     "@midnight-ntwrk/ledger": "^4.0.0",
     "@midnight-ntwrk/midnight-js-contracts": "2.0.1",
-    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "1.0.0",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "2.0.1",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "2.0.1",
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "2.0.1",
-    "@midnight-ntwrk/midnight-js-network-id": "1.0.0",
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "2.0.1",
     "@midnight-ntwrk/midnight-js-types": "2.0.1",
-    "@midnight-ntwrk/midnight-js-utils": "1.0.0",
+    "@midnight-ntwrk/midnight-js-utils": "2.0.1",
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
-    "@midnight-ntwrk/wallet-sdk-address-format": "1.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@modelcontextprotocol/sdk": "^1.10.2",
     "@types/supertest": "^6.0.3",

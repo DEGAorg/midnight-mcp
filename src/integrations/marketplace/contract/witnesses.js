@@ -1,13 +1,1 @@
-// Mock for marketplace contract witnesses.js
-// This replaces the problematic ES module file that Jest can't parse
-
-// Mock witnesses
-const witnesses = {
-  create: jest.fn(() => ({ witness: 'mock-witness' })),
-  validate: jest.fn(() => true),
-  generate: jest.fn(() => ({ proof: 'mock-proof' })),
-  verify: jest.fn(() => true)
-};
-
-// Export using CommonJS syntax to avoid ES module issues
-module.exports = witnesses; 
+export const witnesses = {};

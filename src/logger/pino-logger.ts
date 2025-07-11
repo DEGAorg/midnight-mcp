@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { ILogger } from './types';
+import { ILogger } from './types.js';
 import pino from 'pino';
 
 export class PinoLogger implements ILogger {

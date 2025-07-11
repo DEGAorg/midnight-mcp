@@ -1,7 +1,7 @@
 import { ContractAddress } from "@midnight-ntwrk/compact-runtime";
 import { DeployedMarketplaceRegistryContract, MarketplaceRegistryContract, MarketplaceRegistryProviders, RegistryState } from "./common-types";
 import { assertIsContractAddress } from "@midnight-ntwrk/midnight-js-utils";
-import { MarketplaceRegistry, witnesses } from "./contract";
+import { MarketplaceRegistry, witnesses } from "./contract/index.js";
 import { findDeployedContract, FinalizedCallTxData } from "@midnight-ntwrk/midnight-js-contracts";
 import { FinalizedTxData } from "@midnight-ntwrk/midnight-js-types";
 

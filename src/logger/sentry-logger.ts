@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { ILogger } from './types';
+import { ILogger } from './types.js';
 
 export class SentryLogger implements ILogger {
   private sentry: any;

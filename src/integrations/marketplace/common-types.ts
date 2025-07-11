@@ -1,4 +1,4 @@
-import type { MarketplaceRegistry, MarketplaceRegistryPrivateState } from './contract';
+import type { MarketplaceRegistry, MarketplaceRegistryPrivateState } from './contract/index.js';
 import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import type { DeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 
