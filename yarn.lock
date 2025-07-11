@@ -8475,6 +8475,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "npm:2.0.1"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "npm:2.0.1"
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "npm:2.0.1"
+    "@midnight-ntwrk/midnight-js-network-id": "npm:2.0.1"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "npm:2.0.1"
     "@midnight-ntwrk/midnight-js-types": "npm:2.0.1"
     "@midnight-ntwrk/midnight-js-utils": "npm:2.0.1"

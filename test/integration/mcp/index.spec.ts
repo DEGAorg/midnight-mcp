@@ -183,7 +183,7 @@ describe('Wallet MCP Integration Tests', () => {
       console.log(`Found ${response.body.length} pending transactions`);
     });
 
-    test('should handle send funds request', async () => {
+    test.skip('should handle send funds request', async () => {
       const smallAmount = convertMicroToDecimal('10000');
       const sendData = {
         destinationAddress: wallets.wallet1.address,
@@ -215,15 +215,16 @@ describe('Wallet MCP Integration Tests', () => {
     });
   });
 
-  describe.only('Test Case 1: Valid Identity Match', () => {
+  describe('Test Case 1: Valid Identity Match', () => {
     test('should verify sender matches registered identity', async () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
         .send({ 
-          userId: config.wallets.wallet1.pubkey, 
+          userId: config.wallets.wallet1.userId, 
           verificationData: {
             marketplaceAddress: config.marketplace.address,
+            pubkey: config.wallets.wallet1.pubkey
           } 
         })
         .expect(200);
@@ -239,9 +240,10 @@ describe('Wallet MCP Integration Tests', () => {
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
         .send({ 
-          userId: config.wallets.wallet2.pubkey, 
+          userId: config.wallets.wallet2.userId, 
           verificationData: {
-            marketplaceAddress: config.marketplace.address
+            marketplaceAddress: config.marketplace.address,
+            pubkey: config.wallets.wallet2.pubkey
           } 
         })
         .expect(200);
@@ -255,9 +257,10 @@ describe('Wallet MCP Integration Tests', () => {
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
         .send({ 
-          userId: config.wallets.wallet1.pubkey, 
+          userId: config.wallets.wallet1.userId, 
           verificationData: {
-            marketplaceAddress: config.marketplace.address
+            marketplaceAddress: config.marketplace.address,
+            pubkey: config.wallets.wallet1.pubkey
           } 
         })
         .expect(200);

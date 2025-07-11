@@ -127,6 +127,7 @@ export interface TransactionStatusResult {
 
 export type MarketplaceUserData = {
   marketplaceAddress: string;
+  pubkey: string;
 }
 
 export type RegistrationResult = {

@@ -39,7 +39,7 @@ import {
 } from '../audit/index.js';
 
 // Import marketplace API functions
-import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance } from '../integrations/marketplace/api.js';
+import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance, configureProviders } from '../integrations/marketplace/api.js';
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;
@@ -1380,14 +1380,7 @@ export class WalletManager {
       this.logger.info(`Registering user ${userId} in marketplace with wallet address ${walletAddress}`);
       
       // Create marketplace providers from the wallet
-      const providers = {
-        publicDataProvider: (this.wallet as any).publicDataProvider,
-        privateStateProvider: (this.wallet as any).privateStateProvider,
-        proofProvider: (this.wallet as any).proofProvider,
-        zkConfigProvider: (this.wallet as any).zkConfigProvider,
-        walletProvider: (this.wallet as any).walletProvider,
-        midnightProvider: (this.wallet as any).midnightProvider
-      };
+      const providers = await configureProviders(this.wallet);
       
       const contractAddress = userData.marketplaceAddress;
       
@@ -1433,21 +1426,14 @@ export class WalletManager {
     
     try {
       // Create marketplace providers from the wallet
-      const providers = {
-        publicDataProvider: (this.wallet as any).publicDataProvider,
-        privateStateProvider: (this.wallet as any).privateStateProvider,
-        proofProvider: (this.wallet as any).proofProvider,
-        zkConfigProvider: (this.wallet as any).zkConfigProvider,
-        walletProvider: (this.wallet as any).walletProvider,
-        midnightProvider: (this.wallet as any).midnightProvider
-      };
+      const providers = await configureProviders(this.wallet);
       
       const contractAddress = verificationData.marketplaceAddress;
 
       this.logger.info(`Verifying user ${userId} in marketplace with contract address ${contractAddress}`);
       
       // Check if the wallet's public key is registered
-      const isRegistered = await isPublicKeyRegistered(providers, contractAddress, userId);
+      const isRegistered = await isPublicKeyRegistered(providers, contractAddress, verificationData.pubkey);
       
       if (!isRegistered) {
         return {
@@ -1459,7 +1445,7 @@ export class WalletManager {
       }
       
       // Verify the text identifier for this public key
-      const verifiedText = await verifyTextPure(providers, contractAddress, userId);
+      const verifiedText = await verifyTextPure(providers, contractAddress, verificationData.pubkey);
       
       if (!verifiedText) {
         return {

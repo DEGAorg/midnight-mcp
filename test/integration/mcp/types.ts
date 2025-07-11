@@ -8,11 +8,13 @@ export interface TestConfig {
       address: string;
       pubkey: string;
       description: string;
+      userId: string;
     };
     wallet2: {
       address: string;
       pubkey: string;
       description: string;
+      userId: string;
     };
   };
   marketplace: {
