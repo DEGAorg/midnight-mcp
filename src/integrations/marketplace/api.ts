@@ -5,6 +5,11 @@ import { MarketplaceRegistry, witnesses } from "./contract/index.js";
 import { findDeployedContract, FinalizedCallTxData } from "@midnight-ntwrk/midnight-js-contracts";
 import { FinalizedTxData } from "@midnight-ntwrk/midnight-js-types";
 
+// string to Uint8Array
+const stringToUint8Array = (str: string): Uint8Array => {
+  return new Uint8Array(Buffer.from(str, 'hex'));
+};
+
 export const getMarketplaceRegistryLedgerState = async (
   providers: MarketplaceRegistryProviders,
   contractAddress: ContractAddress,
@@ -44,7 +49,7 @@ export const register = async (marketplaceRegistryContract: DeployedMarketplaceR
 export const isPublicKeyRegistered = async (
   providers: MarketplaceRegistryProviders,
   contractAddress: ContractAddress,
-  pk: Uint8Array,
+  pk: string,
 ): Promise<boolean> => {
   assertIsContractAddress(contractAddress);
   console.log('Checking if public key is registered (pure read)...');
@@ -56,7 +61,8 @@ export const isPublicKeyRegistered = async (
   }
 
   try {
-    const isRegistered = state.registry.member(pk);
+    const pkUint8Array = stringToUint8Array(pk);
+    const isRegistered = state.registry.member(pkUint8Array);
     console.log(`Public key registered: ${isRegistered}`);
     return isRegistered;
   } catch (error) {
@@ -68,7 +74,7 @@ export const isPublicKeyRegistered = async (
 export const verifyTextPure = async (
   providers: MarketplaceRegistryProviders,
   contractAddress: ContractAddress,
-  pk: Uint8Array,
+  pk: string,
 ): Promise<string | null> => {
   assertIsContractAddress(contractAddress);
   console.log('Verifying text identifier (pure read)...');
@@ -80,14 +86,15 @@ export const verifyTextPure = async (
   }
 
   try {
+    const pkUint8Array = stringToUint8Array(pk);
     // Check if the public key exists in the registry
-    if (!state.registry.member(pk)) {
+    if (!state.registry.member(pkUint8Array)) {
       console.log('Public key not registered');
       return null;
     }
 
     // Return the text identifier associated with the public key
-    const text = state.registry.lookup(pk);
+    const text = state.registry.lookup(pkUint8Array);
     console.log(`Text identifier found: ${text}`);
     return text;
   } catch (error) {

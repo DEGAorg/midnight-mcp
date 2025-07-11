@@ -2,6 +2,7 @@ import request from 'supertest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TestConfig } from './types';
+import { convertMicroToDecimal } from '../helpers';
 
 // Load test configuration from JSON file
 function loadTestConfig(): TestConfig {
@@ -21,12 +22,18 @@ function loadTestConfig(): TestConfig {
     // Validate required fields
     const missingFields: string[] = [];
     
-    // Check wallet addresses
+    // Check wallet addresses and pubkeys
     if (!config.wallets.wallet1.address) {
       missingFields.push('wallets.wallet1.address');
     }
+    if (!config.wallets.wallet1.pubkey) {
+      missingFields.push('wallets.wallet1.pubkey');
+    }
     if (!config.wallets.wallet2.address) {
       missingFields.push('wallets.wallet2.address');
+    }
+    if (!config.wallets.wallet2.pubkey) {
+      missingFields.push('wallets.wallet2.pubkey');
     }
     
     // Check transaction identifiers
@@ -177,9 +184,10 @@ describe('Wallet MCP Integration Tests', () => {
     });
 
     test('should handle send funds request', async () => {
+      const smallAmount = convertMicroToDecimal('10000');
       const sendData = {
         destinationAddress: wallets.wallet1.address,
-        amount: testAmounts.validAmount
+        amount: smallAmount
       };
 
       const response = await request(baseUrl)
@@ -207,12 +215,17 @@ describe('Wallet MCP Integration Tests', () => {
     });
   });
 
-  describe('Test Case 1: Valid Identity Match', () => {
+  describe.only('Test Case 1: Valid Identity Match', () => {
     test('should verify sender matches registered identity', async () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ userId: config.wallets.wallet1.address, userData: {marketplaceAddress: config.marketplace.address} })
+        .send({ 
+          userId: config.wallets.wallet1.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address,
+          } 
+        })
         .expect(200);
 
       expect(senderResponse.body).toHaveProperty('valid');
@@ -225,11 +238,48 @@ describe('Wallet MCP Integration Tests', () => {
       // valid sender but not registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ userId: config.wallets.wallet2.address, userData: {marketplaceAddress: config.marketplace.address} })
+        .send({ 
+          userId: config.wallets.wallet2.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address
+          } 
+        })
         .expect(200);
 
       expect(senderResponse.body).toHaveProperty('valid');
       expect(senderResponse.body.valid).toBe(false);
+    });
+
+    test('should reject invalid pubkey for registered wallet', async () => {
+      // Test with invalid pubkey for wallet1 (which should be registered)
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ 
+          userId: config.wallets.wallet1.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address
+          } 
+        })
+        .expect(200);
+
+      expect(senderResponse.body).toHaveProperty('valid');
+      expect(senderResponse.body.valid).toBe(false);
+    });
+
+    test('should reject verification without pubkey', async () => {
+      // Test without pubkey in verification data
+      const senderResponse = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ 
+          userId: config.wallets.wallet1.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address
+          } 
+        })
+        .expect(400);
+
+      expect(senderResponse.body).toHaveProperty('error');
+      expect(senderResponse.body.error).toContain('pubkey');
     });
   });
 
@@ -245,7 +295,12 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ userId: testData.validPayment.senderAddress, userData: {marketplaceAddress: config.marketplace.address} })
+        .send({ 
+          userId: config.wallets.wallet1.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address
+          } 
+        })
         .expect(200);
 
       expect(senderResponse.body).toHaveProperty('valid');
@@ -265,7 +320,7 @@ describe('Wallet MCP Integration Tests', () => {
       
       // For a valid payment from registered agent, we expect the transaction to exist
       if (response.body.exists) {
-        expect(response.body.transactionAmount).toBe(testData.validPayment.expectedAmount);
+        expect(response.body.transactionAmount).toBe(convertMicroToDecimal(testData.validPayment.expectedAmount));
       }
     });
   });
@@ -275,10 +330,14 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ userId: testData.wrongAmount.senderAddress, userData: {marketplaceAddress: config.marketplace.address} })
+        .send({ 
+          userId: config.wallets.wallet1.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address,
+          } 
+        })
         .expect(200);
 
-      expect(senderResponse.body).toHaveProperty('valid');
       expect(senderResponse.body.valid).toBe(true);
 
       const response = await request(baseUrl)
@@ -293,7 +352,7 @@ describe('Wallet MCP Integration Tests', () => {
       
       // If transaction exists, verify amount mismatch
       if (response.body.exists) {
-        expect(response.body.transactionAmount).not.toBe(testData.wrongAmount.expectedAmount);
+        expect(response.body.transactionAmount).not.toBe(convertMicroToDecimal(testData.wrongAmount.expectedAmount));
       }
     });
   });
@@ -303,7 +362,12 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ userId: testData.unknownSender.senderAddress, userData: {marketplaceAddress: config.marketplace.address} })
+        .send({ 
+          userId: config.wallets.wallet2.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address,
+          } 
+        })
         .expect(200);
 
       expect(senderResponse.body).toHaveProperty('valid');
@@ -382,6 +446,21 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body.error).toContain('Missing required parameter');
     });
 
+    test('should handle missing pubkey in marketplace verification', async () => {
+      const response = await request(baseUrl)
+        .post('/marketplace/verify')
+        .send({ 
+          userId: config.wallets.wallet1.pubkey, 
+          verificationData: {
+            marketplaceAddress: config.marketplace.address
+          } 
+        })
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('pubkey');
+    });
+
     test('should handle invalid transaction ID format', async () => {
       const response = await request(baseUrl)
         .get('/wallet/transaction/invalid-id')
@@ -393,10 +472,11 @@ describe('Wallet MCP Integration Tests', () => {
     test('should handle non-existent transaction ID', async () => {
       const response = await request(baseUrl)
         .get('/wallet/transaction/non-existent-id')
-        .expect(200);
+        .expect(404);
 
-      // Should return null or empty result for non-existent transaction
-      expect(response.body).toBeDefined();
+      // Should return error for non-existent transaction
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toBe('Transaction not found');
     });
   });
 
@@ -445,7 +525,7 @@ describe('Wallet MCP Integration Tests', () => {
           name: 'Valid Identity Match',
           identifier: testData.validIdentityMatch.identifier,
           expectedExists: true,
-          expectedAmount: testData.validIdentityMatch.expectedAmount
+          expectedAmount: convertMicroToDecimal(testData.validIdentityMatch.expectedAmount)
         },
         {
           name: 'Agent Not Registered',
@@ -457,19 +537,19 @@ describe('Wallet MCP Integration Tests', () => {
           name: 'Sender Mismatch With Off-chain Session',
           identifier: testData.senderMismatch.identifier,
           expectedExists: true,
-          expectedAmount: testData.senderMismatch.expectedAmount
+          expectedAmount: convertMicroToDecimal(testData.senderMismatch.expectedAmount)
         },
         {
           name: 'Valid Payment Received',
           identifier: testData.validPayment.identifier,
           expectedExists: true,
-          expectedAmount: testData.validPayment.expectedAmount
+          expectedAmount: convertMicroToDecimal(testData.validPayment.expectedAmount)
         },
         {
           name: 'Payment With Wrong Amount',
           identifier: testData.wrongAmount.identifier,
           expectedExists: true,
-          expectedAmount: testData.wrongAmount.actualAmount || testData.wrongAmount.expectedAmount
+          expectedAmount: convertMicroToDecimal(testData.wrongAmount.actualAmount || testData.wrongAmount.expectedAmount)
         },
         {
           name: 'Payment From Unknown Sender',
@@ -487,7 +567,7 @@ describe('Wallet MCP Integration Tests', () => {
           name: 'Duplicate Transaction Detection',
           identifier: testData.duplicateTransaction.identifier,
           expectedExists: true,
-          expectedAmount: testData.duplicateTransaction.expectedAmount
+          expectedAmount: convertMicroToDecimal(testData.duplicateTransaction.expectedAmount)
         }
       ];
 

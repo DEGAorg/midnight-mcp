@@ -1432,12 +1432,6 @@ export class WalletManager {
     if (!this.wallet) throw new Error('Wallet instance not available');
     
     try {
-      
-      const walletAddress = this.getAddress();
-      const walletPublicKey = Buffer.from(walletAddress.replace('0x', ''), 'hex');
-      
-      this.logger.info(`Verifying user ${userId} in marketplace with wallet address ${walletAddress}`);
-      
       // Create marketplace providers from the wallet
       const providers = {
         publicDataProvider: (this.wallet as any).publicDataProvider,
@@ -1449,12 +1443,11 @@ export class WalletManager {
       };
       
       const contractAddress = verificationData.marketplaceAddress;
-      
-      // Join the marketplace contract
-      const marketplaceContract = await joinContract(providers, contractAddress);
+
+      this.logger.info(`Verifying user ${userId} in marketplace with contract address ${contractAddress}`);
       
       // Check if the wallet's public key is registered
-      const isRegistered = await isPublicKeyRegistered(providers, contractAddress, walletPublicKey);
+      const isRegistered = await isPublicKeyRegistered(providers, contractAddress, userId);
       
       if (!isRegistered) {
         return {
@@ -1466,7 +1459,7 @@ export class WalletManager {
       }
       
       // Verify the text identifier for this public key
-      const verifiedText = await verifyTextPure(providers, contractAddress, walletPublicKey);
+      const verifiedText = await verifyTextPure(providers, contractAddress, userId);
       
       if (!verifiedText) {
         return {
