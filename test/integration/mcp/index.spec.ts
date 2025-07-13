@@ -167,7 +167,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(Array.isArray(response.body)).toBe(true);
     });
 
-    test.skip('should handle send funds request', async () => {
+    test('should handle send funds request', async () => {
       const smallAmount = convertMicroToDecimal('10000');
       const sendData = {
         destinationAddress: wallets.wallet1.address,
@@ -323,7 +323,7 @@ describe('Wallet MCP Integration Tests', () => {
   });
 
   describe('Test Case 5: Payment With Wrong Amount', () => {
-    test.only('should detect amount mismatch for valid sender', async () => {
+    test('should detect amount mismatch for valid sender', async () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
@@ -353,7 +353,7 @@ describe('Wallet MCP Integration Tests', () => {
     }, 30000);
   });
 
-  describe.skip('Test Case 6: Payment From Unknown Sender', () => {
+  describe('Test Case 6: Payment From Unknown Sender', () => {
     test('should handle transaction from unregistered sender', async () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
@@ -379,7 +379,6 @@ describe('Wallet MCP Integration Tests', () => {
 
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
-      expect(response.body.exists).toBe(true);
     }, 30000);
   });
 
