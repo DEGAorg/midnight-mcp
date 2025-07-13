@@ -144,9 +144,9 @@ export class WalletController {
   async verifyUserInMarketplace(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { userId, verificationData } = req.body;
-      if (!userId || !verificationData) {
+      if (!userId || !verificationData || !verificationData.pubkey) {
         res.status(400).json({
-          error: 'Missing required parameters: userId and verificationData'
+          error: 'Missing required parameters: userId, verificationData and pubkey'
         });
         return;
       }
