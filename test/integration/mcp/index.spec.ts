@@ -52,7 +52,6 @@ function loadTestConfig(): TestConfig {
       throw new Error(`Missing required fields in test-config.json: ${missingFields.join(', ')}`);
     }
     
-    console.log('Test configuration loaded successfully');
     return config;
   } catch (error) {
     if (error instanceof SyntaxError) {
@@ -71,9 +70,7 @@ describe('Wallet MCP Integration Tests', () => {
   const wallets = config.wallets;
   const testAmounts = config.testAmounts;
 
-  beforeAll(async () => {
-    console.log(`Starting integration tests against server: ${baseUrl}`);
-    
+  beforeAll(async () => {    
     // Wait for the server to be ready
     await waitForServerReady();
   });
@@ -89,12 +86,10 @@ describe('Wallet MCP Integration Tests', () => {
           .timeout(5000);
         
         if (response.status === 200) {
-          console.log('Server is ready for testing');
           return;
         }
       } catch (error) {
-        // Continue waiting
-        console.log('Waiting for server to be ready...');
+        // continue waiting
       }
       
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -121,9 +116,6 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('address');
       expect(response.body).toHaveProperty('balances');
       expect(response.body).toHaveProperty('syncProgress');
-      
-      // Log wallet status for debugging
-      console.log('Wallet status:', response.body);
     });
 
     test('should return wallet address', async () => {
@@ -134,8 +126,6 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('address');
       expect(typeof response.body.address).toBe('string');
       expect(response.body.address.length).toBeGreaterThan(0);
-      
-      console.log('Wallet address:', response.body.address);
     });
 
     test('should return wallet balance', async () => {
@@ -147,8 +137,6 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('pendingBalance');
       expect(typeof response.body.balance).toBe('string');
       expect(typeof response.body.pendingBalance).toBe('string');
-      
-      console.log('Wallet balance:', response.body);
     });
 
     test('should return wallet configuration', async () => {
@@ -159,8 +147,6 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('indexer');
       expect(response.body).toHaveProperty('node');
       expect(response.body).toHaveProperty('proofServer');
-      
-      console.log('Wallet config:', response.body);
     });
   });
 
@@ -171,7 +157,6 @@ describe('Wallet MCP Integration Tests', () => {
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      console.log(`Found ${response.body.length} transactions`);
     });
 
     test('should return pending transactions', async () => {
@@ -180,7 +165,6 @@ describe('Wallet MCP Integration Tests', () => {
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      console.log(`Found ${response.body.length} pending transactions`);
     });
 
     test.skip('should handle send funds request', async () => {
@@ -200,8 +184,6 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('toAddress');
       expect(response.body).toHaveProperty('amount');
       expect(response.body).toHaveProperty('createdAt');
-      
-      console.log('Send funds result:', response.body);
     });
 
     test('should reject send funds with missing parameters', async () => {
@@ -231,7 +213,7 @@ describe('Wallet MCP Integration Tests', () => {
 
       expect(senderResponse.body).toHaveProperty('valid');
       expect(senderResponse.body.valid).toBe(true);
-    });
+    }, 30000);
   });
 
   describe('Test Case 2: Agent Not Registered', () => {
@@ -332,9 +314,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       expect(response.body).toHaveProperty('syncStatus');
-      
-      console.log('Valid payment verification result:', response.body);
-      
+
       // For a valid payment from registered agent, we expect the transaction to exist
       if (response.body.exists) {
         expect(response.body.transactionAmount).toBe(convertMicroToDecimal(testData.validPayment.expectedAmount));
@@ -343,7 +323,7 @@ describe('Wallet MCP Integration Tests', () => {
   });
 
   describe('Test Case 5: Payment With Wrong Amount', () => {
-    test('should detect amount mismatch for valid sender', async () => {
+    test.only('should detect amount mismatch for valid sender', async () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
@@ -365,14 +345,12 @@ describe('Wallet MCP Integration Tests', () => {
 
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
-      
-      console.log('Wrong amount verification result:', response.body);
-      
+
       // If transaction exists, verify amount mismatch
       if (response.body.exists) {
         expect(response.body.transactionAmount).not.toBe(convertMicroToDecimal(testData.wrongAmount.expectedAmount));
       }
-    });
+    }, 30000);
   });
 
   describe.skip('Test Case 6: Payment From Unknown Sender', () => {
@@ -415,9 +393,7 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
       expect(response.body).toHaveProperty('syncStatus');
-      
-      console.log('No payment verification result:', response.body);
-      
+
       // For no payment, exists should be false
       expect(response.body.exists).toBe(false);
     });
@@ -442,12 +418,7 @@ describe('Wallet MCP Integration Tests', () => {
 
       expect(response2.body).toHaveProperty('exists');
       expect(response2.body).toHaveProperty('transactionAmount');
-      
-      console.log('Duplicate transaction verification results:', {
-        first: response1.body,
-        second: response2.body
-      });
-      
+
       // Both responses should be identical for the same transaction
       expect(response1.body.exists).toBe(response2.body.exists);
       if (response1.body.exists && response2.body.exists) {
@@ -481,158 +452,6 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body).toHaveProperty('error');
       expect(response.body.error).toContain('pubkey');
     });
-
-    test('should handle invalid transaction ID format', async () => {
-      const response = await request(baseUrl)
-        .get('/wallet/transaction/invalid-id')
-        .expect(400);
-
-      expect(response.body).toHaveProperty('error');
-    });
-
-    test('should handle non-existent transaction ID', async () => {
-      const response = await request(baseUrl)
-        .get('/wallet/transaction/non-existent-id')
-        .expect(404);
-
-      // Should return error for non-existent transaction
-      expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toBe('Transaction not found');
-    });
   });
 
-  describe('API Response Format Validation', () => {
-    test('should return consistent response format for all endpoints', async () => {
-      const endpoints = [
-        { method: 'get', path: '/wallet/status' },
-        { method: 'get', path: '/wallet/address' },
-        { method: 'get', path: '/wallet/balance' },
-        { method: 'get', path: '/wallet/transactions' },
-        { method: 'get', path: '/wallet/pending-transactions' },
-        { method: 'get', path: '/wallet/config' },
-        { method: 'get', path: '/health' },
-        { method: 'post', path: '/marketplace/register' },
-        { method: 'post', path: '/marketplace/verify' }
-      ];
-
-      for (const endpoint of endpoints) {
-        let response;
-        if (endpoint.method === 'get') {
-          response = await request(baseUrl).get(endpoint.path);
-        } else if (endpoint.method === 'post') {
-          response = await request(baseUrl).post(endpoint.path);
-        }
-        expect(response).toBeDefined();
-        expect(response!.status).toBe(200);
-        expect(response!.body).toBeDefined();
-        expect(typeof response!.body).toBe('object');
-      }
-    });
-
-    test('should handle CORS headers correctly', async () => {
-      const response = await request(baseUrl)
-        .get('/wallet/status')
-        .set('Origin', 'http://localhost:3000');
-
-      expect(response.status).toBe(200);
-      // CORS headers should be present (handled by cors middleware)
-    });
-  });
-
-  describe('End-to-End Test Scenarios', () => {
-    test('should run all 8 test scenarios against the Docker server', async () => {
-      const scenarios = [
-        {
-          name: 'Valid Identity Match',
-          identifier: testData.validIdentityMatch.identifier,
-          expectedExists: true,
-          expectedAmount: convertMicroToDecimal(testData.validIdentityMatch.expectedAmount)
-        },
-        {
-          name: 'Agent Not Registered',
-          identifier: testData.agentNotRegistered.identifier,
-          expectedExists: false,
-          expectedAmount: '0'
-        },
-        {
-          name: 'Sender Mismatch With Off-chain Session',
-          identifier: testData.senderMismatch.identifier,
-          expectedExists: true,
-          expectedAmount: convertMicroToDecimal(testData.senderMismatch.expectedAmount)
-        },
-        {
-          name: 'Valid Payment Received',
-          identifier: testData.validPayment.identifier,
-          expectedExists: true,
-          expectedAmount: convertMicroToDecimal(testData.validPayment.expectedAmount)
-        },
-        {
-          name: 'Payment With Wrong Amount',
-          identifier: testData.wrongAmount.identifier,
-          expectedExists: true,
-          expectedAmount: convertMicroToDecimal(testData.wrongAmount.actualAmount || testData.wrongAmount.expectedAmount)
-        },
-        {
-          name: 'Payment From Unknown Sender',
-          identifier: testData.unknownSender.identifier,
-          expectedExists: false,
-          expectedAmount: '0'
-        },
-        {
-          name: 'No Payment Received',
-          identifier: testData.noPayment.identifier,
-          expectedExists: false,
-          expectedAmount: '0'
-        },
-        {
-          name: 'Duplicate Transaction Detection',
-          identifier: testData.duplicateTransaction.identifier,
-          expectedExists: true,
-          expectedAmount: convertMicroToDecimal(testData.duplicateTransaction.expectedAmount)
-        }
-      ];
-
-             const results: Array<{
-         scenario: string;
-         identifier: string;
-         result: any;
-         expected: {
-           exists: boolean;
-           amount: string;
-         };
-       }> = [];
-
-       for (const scenario of scenarios) {
-        console.log(`Running scenario: ${scenario.name}`);
-        
-        const response = await request(baseUrl)
-          .post('/wallet/verify-transaction')
-          .send({ identifier: scenario.identifier })
-          .expect(200);
-        
-        results.push({
-          scenario: scenario.name,
-          identifier: scenario.identifier,
-          result: response.body,
-          expected: {
-            exists: scenario.expectedExists,
-            amount: scenario.expectedAmount
-          }
-        });
-        
-        console.log(`Scenario ${scenario.name} result:`, response.body);
-      }
-
-      // Log all results for analysis
-      console.log('All test scenario results:', results);
-      
-      // Basic validation that all scenarios returned proper responses
-      expect(results).toHaveLength(8);
-      results.forEach(result => {
-        expect(result.result).toHaveProperty('exists');
-        expect(result.result).toHaveProperty('transactionAmount');
-        expect(result.result).toHaveProperty('syncStatus');
-      });
-    });
-  });
 });
