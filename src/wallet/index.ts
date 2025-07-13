@@ -968,11 +968,6 @@ export class WalletManager {
           transactionAmount: '0'
         };
       }
-
-      const allTxIdentifiers = this.walletState.transactionHistory.map((tx: TransactionHistoryEntry) => tx.identifiers).flat();
-      const singleMatch = allTxIdentifiers.find((txIdentifier: string) => txIdentifier === identifier);
-
-      console.log('===============singleMatch===============', singleMatch);
       
       const matchingTransaction = this.walletState.transactionHistory.find((tx: TransactionHistoryEntry) => 
         tx && Array.isArray(tx.identifiers) && tx.identifiers.length > 0 && tx.identifiers.includes(identifier)
