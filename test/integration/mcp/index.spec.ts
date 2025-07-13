@@ -379,6 +379,7 @@ describe('Wallet MCP Integration Tests', () => {
 
       expect(response.body).toHaveProperty('exists');
       expect(response.body).toHaveProperty('transactionAmount');
+      expect(response.body.exists).toBe(true);
     }, 30000);
   });
 
