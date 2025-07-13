@@ -9,6 +9,7 @@ jest.mock('../../../src/wallet/wallet');
 jest.mock('../../../src/mcp/index');
 jest.mock('../../../src/controllers/wallet.controller');
 jest.mock('../../../src/utils/file-manager');
+jest.mock('../../../src/integrations/marketplace/api.js', () => require('../__mocks__/marketplace-api.ts'));
 
 import { of, Subscription } from 'rxjs';
 import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';

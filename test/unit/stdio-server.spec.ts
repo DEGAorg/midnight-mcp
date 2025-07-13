@@ -16,6 +16,7 @@ jest.mock('../../src/config.js');
 jest.mock('../../src/tools.js');
 jest.mock('../../src/resources.js');
 jest.mock('../../src/utils/seed-manager.js');
+jest.mock('../../src/integrations/marketplace/api.js', () => require('./__mocks__/marketplace-api.ts'));
 
 const mockServer = {
   connect: jest.fn() as jest.Mock,

@@ -4,6 +4,7 @@ jest.mock('@midnight-ntwrk/ledger');
 jest.mock('@midnight-ntwrk/midnight-js-network-id');
 jest.mock('../../../src/utils/file-manager');
 jest.mock('../../../src/logger');
+jest.mock('../../../src/integrations/marketplace/api.js', () => require('../__mocks__/marketplace-api.ts'));
 
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';

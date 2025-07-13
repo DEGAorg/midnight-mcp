@@ -32,6 +32,8 @@ export default {
     '^.+/wallet/db/TransactionDatabase$': '<rootDir>/test/unit/__mocks__/TransactionDatabase.ts',
     '^.+/wallet/utils$': '<rootDir>/test/unit/__mocks__/wallet-utils.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^src/integrations/marketplace/api$': '<rootDir>/test/unit/__mocks__/marketplace-api.ts',
+    '^src/integrations/marketplace/api.js$': '<rootDir>/test/unit/__mocks__/marketplace-api.ts',
     '^src/integrations/marketplace/contract$': '<rootDir>/test/unit/__mocks__/marketplace-contract-complete.ts',
     '^src/integrations/marketplace/contract/index$': '<rootDir>/test/unit/__mocks__/marketplace-contract-complete.ts',
     '^src/integrations/marketplace/contract/index.js$': '<rootDir>/test/unit/__mocks__/marketplace-contract-complete.ts',
@@ -53,6 +55,7 @@ export default {
   ],
   transformIgnorePatterns: [
     '/node_modules/(?!(@midnight-ntwrk/ledger|@midnight-ntwrk/midnight-js-network-id|@midnight-ntwrk/wallet|@midnight-ntwrk/zswap|@midnight-ntwrk/midnight-js-utils)/)',
+    'src/integrations/marketplace/api.ts',
     'src/integrations/marketplace/contract/',
     'src/integrations/marketplace/contract/index.js',
     'src/integrations/marketplace/contract/witnesses.js',

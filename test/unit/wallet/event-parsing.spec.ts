@@ -1,5 +1,6 @@
 // IMPORTANT: Mock wallet utils before any other imports
 jest.mock('../../../src/wallet/utils');
+jest.mock('../../../src/integrations/marketplace/api.js', () => require('../__mocks__/marketplace-api.ts'));
 
 import { describe, it, beforeEach, jest, expect } from '@jest/globals';
 import { WalletManager } from '../../../src/wallet/index';

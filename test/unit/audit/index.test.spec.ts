@@ -1,3 +1,5 @@
+jest.mock('../../../src/integrations/marketplace/api.js', () => require('../__mocks__/marketplace-api.ts'));
+
 import * as auditIndex from '../../../src/audit/index';
 
 describe('initializeAuditServices', () => {

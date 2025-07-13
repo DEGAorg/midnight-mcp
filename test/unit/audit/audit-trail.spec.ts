@@ -1,4 +1,5 @@
 jest.mock('../../../src/utils/file-manager');
+jest.mock('../../../src/integrations/marketplace/api.js', () => require('../__mocks__/marketplace-api.ts'));
 
 import { describe, it, beforeEach, jest, expect } from '@jest/globals';
 import {
