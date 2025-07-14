@@ -2,23 +2,124 @@
 const fetch = globalThis.fetch;
 
 /**
+ * Configuration for Eliza client
+ */
+export interface ElizaClientConfig {
+  baseUrl?: string;
+  timeout?: number;
+  retries?: number;
+  logger?: any;
+}
+
+/**
+ * Options for sending messages
+ */
+export interface SendMessageOptions {
+  clearHistory?: boolean;
+  waitForResponse?: boolean;
+  responseTimeout?: number; // Default: 15000ms (15 seconds)
+}
+
+/**
+ * Response from sending a message
+ */
+export interface SendMessageResponse {
+  success: boolean;
+  messageId?: string;
+  response?: any[];
+  error?: string;
+}
+
+/**
+ * Options for getting channel messages
+ */
+export interface GetChannelMessagesOptions {
+  after?: string;
+  limit?: number;
+}
+
+/**
+ * Agent information
+ */
+export interface Agent {
+  id: string;
+  name: string;
+  [key: string]: any;
+}
+
+/**
+ * Channel information
+ */
+export interface Channel {
+  id: string;
+  messageServerId: string;
+  name: string;
+  type: string;
+  metadata: {
+    isDm: boolean;
+    user1: string;
+    user2: string;
+    forAgent: string;
+    createdAt: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Message information
+ */
+export interface Message {
+  id: string;
+  channelId: string;
+  authorId: string;
+  content: string;
+  rawMessage: any;
+  sourceType: string;
+  metadata: any;
+  inReplyToRootMessageId?: string;
+  createdAt: string;
+  updatedAt: string;
+  created_at: number;
+  updated_at: number;
+}
+
+/**
+ * Type definition for ElizaClient
+ */
+export interface IElizaClient {
+  // Agent management
+  getAgents(): Promise<Agent[]>;
+  getC3POAgent(): Promise<Agent>;
+  
+  // Channel management
+  getAgentChannelId(): Promise<string>;
+  clearChannelHistory(channelId: string): Promise<any>;
+  
+  // Message operations
+  sendMessage(message: string, options?: SendMessageOptions): Promise<SendMessageResponse>;
+  sendMessageWithRetry(message: string, options?: SendMessageOptions): Promise<SendMessageResponse>;
+  waitForResponse(channelId: string, messageId: string, timeout?: number): Promise<Message[]>;
+  getChannelMessages(channelId: string, options?: GetChannelMessagesOptions): Promise<{ messages: Message[] }>;
+  
+  // Utility methods
+  getLatestResponseContent(responseMessages: Message[]): string | null;
+  sleep(ms: number): Promise<void>;
+}
+
+/**
  * Enhanced Eliza client that incorporates query.ts logic
  * for sending messages and waiting for specific responses
  */
-export class ElizaClient {
+export class ElizaClient implements IElizaClient {
   private baseUrl: string;
   private timeout: number;
   private retries: number;
   private logger: any;
 
-  constructor(config: {
-    baseUrl?: string;
-    timeout?: number;
-    retries?: number;
-    logger?: any;
-  } = {}) {
+  constructor(config: ElizaClientConfig = {}) {
     this.baseUrl = config.baseUrl || process.env.ELIZA_API_URL || 'http://localhost:3001';
-    this.timeout = config.timeout || 30000;
+    this.timeout = config.timeout || 15000;
     this.retries = config.retries || 3;
     this.logger = config.logger || console;
   }
@@ -26,7 +127,7 @@ export class ElizaClient {
   /**
    * Get all available agents
    */
-  async getAgents(): Promise<any[]> {
+  async getAgents(): Promise<Agent[]> {
     const url = `${this.baseUrl}/api/agents`;
     const response = await fetch(url);
     const parsedResponse = await response.json();
@@ -45,7 +146,7 @@ export class ElizaClient {
   /**
    * Get C3PO agent specifically
    */
-  async getC3POAgent(): Promise<any> {
+  async getC3POAgent(): Promise<Agent> {
     const agents = await this.getAgents();
     this.logger.info('Attempting to find C3PO agent...');
     
@@ -65,7 +166,7 @@ export class ElizaClient {
   /**
    * Get or create a DM channel with the C3PO agent
    */
-  async getAgentChannelId(): Promise<any> {
+  async getAgentChannelId(): Promise<string> {
     const agent = await this.getC3POAgent();
     if (!agent || !agent.id) {
       throw new Error('C3PO agent not found');
@@ -124,16 +225,7 @@ export class ElizaClient {
   /**
    * Send a message using the query.ts logic
    */
-  async sendMessage(message: string, options: {
-    clearHistory?: boolean;
-    waitForResponse?: boolean;
-    responseTimeout?: number;
-  } = {}): Promise<{
-    success: boolean;
-    messageId?: string;
-    response?: any;
-    error?: string;
-  }> {
+  async sendMessage(message: string, options: SendMessageOptions = {}): Promise<SendMessageResponse> {
     try {
       // Get the channel
       const channelId = await this.getAgentChannelId();
@@ -209,8 +301,8 @@ export class ElizaClient {
   async waitForResponse(
     channelId: string, 
     messageId: string, 
-    timeout: number = 10000
-  ): Promise<any> {
+    timeout: number = 30000
+  ): Promise<Message[]> {
     const startTime = Date.now();
     const interval = 1000; // Check every second
 
@@ -244,10 +336,7 @@ export class ElizaClient {
   /**
    * Get channel messages
    */
-  async getChannelMessages(channelId: string, options: {
-    after?: string;
-    limit?: number;
-  } = {}): Promise<any> {
+  async getChannelMessages(channelId: string, options: GetChannelMessagesOptions = {}): Promise<{ messages: Message[] }> {
     const url = `${this.baseUrl}/api/messaging/channel/${channelId}/messages`;
     const params = new URLSearchParams();
     
@@ -272,17 +361,8 @@ export class ElizaClient {
    */
   async sendMessageWithRetry(
     message: string, 
-    options: {
-      clearHistory?: boolean;
-      waitForResponse?: boolean;
-      responseTimeout?: number;
-    } = {}
-  ): Promise<{
-    success: boolean;
-    messageId?: string;
-    response?: any;
-    error?: string;
-  }> {
+    options: SendMessageOptions = {}
+  ): Promise<SendMessageResponse> {
     let lastError: string | undefined;
 
     for (let attempt = 1; attempt <= this.retries; attempt++) {
@@ -313,7 +393,7 @@ export class ElizaClient {
   /**
    * Get the latest response message content
    */
-  getLatestResponseContent(responseMessages: any[]): string | null {
+  getLatestResponseContent(responseMessages: Message[]): string | null {
     if (!responseMessages || responseMessages.length === 0) {
       return null;
     }
@@ -334,11 +414,6 @@ export class ElizaClient {
 /**
  * Convenience function to create a new Eliza client
  */
-export function createElizaClient(config?: {
-  baseUrl?: string;
-  timeout?: number;
-  retries?: number;
-  logger?: any;
-}): ElizaClient {
+export function createElizaClient(config?: ElizaClientConfig): ElizaClient {
   return new ElizaClient(config);
 } 

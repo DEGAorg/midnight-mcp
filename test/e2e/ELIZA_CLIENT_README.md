@@ -4,31 +4,35 @@ This directory contains an enhanced Eliza client that incorporates the logic fro
 
 ## Files
 
-- `eliza-client.ts` - Main client implementation with query.ts logic
+- `eliza-client.ts` - Main client implementation with query.ts logic and TypeScript types
 - `eliza-client-example.ts` - Example usage of the client
+- `eliza-client-types-example.ts` - Example demonstrating TypeScript types
 - `helpers.ts` - Original helpers (now deprecated in favor of eliza-client.ts)
 
 ## Quick Start
 
 ```typescript
-import { createElizaClient } from './eliza-client';
+import { createElizaClient, IElizaClient, SendMessageOptions } from './eliza-client';
 
-// Create a client instance
-const client = createElizaClient({
+// Create a typed client instance
+const client: IElizaClient = createElizaClient({
   baseUrl: 'http://localhost:3001',
   timeout: 30000,
   retries: 3
 });
 
-// Send a message and wait for response
-const result = await client.sendMessage('Hello, can you tell me about Midnight?', {
+// Send a message with typed options
+const options: SendMessageOptions = {
   clearHistory: true, // Clear chat history first
   waitForResponse: true, // Wait for the agent to respond
   responseTimeout: 15000 // Wait up to 15 seconds for response
-});
+};
 
-if (result.success) {
-  console.log('Agent response:', result.response);
+const result = await client.sendMessage('Hello, can you tell me about Midnight?', options);
+
+if (result.success && result.response) {
+  const content = client.getLatestResponseContent(result.response);
+  console.log('Agent response:', content);
 }
 ```
 
@@ -40,7 +44,7 @@ Creates a new Eliza client instance.
 
 **Parameters:**
 - `config.baseUrl` (optional): API base URL (default: `http://localhost:3001`)
-- `config.timeout` (optional): Request timeout in ms (default: `30000`)
+- `config.timeout` (optional): Request timeout in ms (default: `15000`)
 - `config.retries` (optional): Number of retry attempts (default: `3`)
 - `config.logger` (optional): Logger instance (default: `console`)
 
@@ -52,7 +56,7 @@ Sends a message to the Eliza agent.
 - `message`: The message to send
 - `options.clearHistory` (optional): Clear chat history before sending (default: `false`)
 - `options.waitForResponse` (optional): Wait for agent response (default: `false`)
-- `options.responseTimeout` (optional): Timeout for waiting response in ms (default: `10000`)
+- `options.responseTimeout` (optional): Timeout for waiting response in ms (default: `15000`)
 
 **Returns:**
 ```typescript
@@ -79,7 +83,7 @@ Manually wait for a response to a specific message.
 **Parameters:**
 - `channelId`: The channel ID
 - `messageId`: The message ID to wait for response to
-- `timeout` (optional): Timeout in ms (default: `10000`)
+- `timeout` (optional): Timeout in ms (default: `15000`)
 
 **Returns:** Array of response messages that have `inReplyToRootMessageId` matching the provided `messageId`
 
@@ -134,6 +138,46 @@ Gets the DM channel with the C3PO agent from the central server.
   createdAt: string;
   updatedAt: string;
 }
+```
+
+## TypeScript Interfaces
+
+The client provides several TypeScript interfaces for type safety:
+
+- `IElizaClient` - Main client interface with all available methods
+- `ElizaClientConfig` - Configuration options for creating the client
+- `SendMessageOptions` - Options for sending messages
+- `SendMessageResponse` - Response structure from sending messages
+- `Agent` - Agent information structure
+- `Message` - Message information structure
+- `Channel` - Channel information structure
+- `GetChannelMessagesOptions` - Options for getting channel messages
+
+### Example with Types
+
+```typescript
+import { 
+  createElizaClient, 
+  IElizaClient, 
+  SendMessageOptions, 
+  SendMessageResponse,
+  Agent 
+} from './eliza-client';
+
+// Create a typed client
+const client: IElizaClient = createElizaClient();
+
+// Get agents with proper typing
+const agents: Agent[] = await client.getAgents();
+
+// Send message with typed options
+const options: SendMessageOptions = {
+  clearHistory: true,
+  waitForResponse: true,
+  responseTimeout: 15000
+};
+
+const response: SendMessageResponse = await client.sendMessage('Hello', options);
 ```
 
 ## Usage Examples

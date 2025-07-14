@@ -5,12 +5,12 @@ import { createElizaClient } from './eliza-client';
  */
 async function exampleUsage() {
   // Create a client instance
-  const client = createElizaClient({
-    baseUrl: 'http://localhost:3001',
-    timeout: 30000,
-    retries: 3,
-    logger: console
-  });
+const client = createElizaClient({
+  baseUrl: 'http://localhost:3001',
+  timeout: 15000, // 15 seconds default
+  retries: 3,
+  logger: console
+});
 
   try {
     console.log('🚀 Starting Eliza client example...');
