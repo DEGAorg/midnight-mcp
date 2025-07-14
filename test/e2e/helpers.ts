@@ -41,6 +41,7 @@ export const DEFAULT_ELIZA_CONFIG: ElizaConfig = {
 
 /**
  * HTTP client for making requests to Eliza AI agent
+ * @deprecated Use ElizaClient from './eliza-client' instead for better functionality
  */
 export class ElizaHttpClient {
   private config: ElizaConfig;
@@ -102,6 +103,7 @@ export class ElizaHttpClient {
 
   /**
    * Send a message to the Eliza AI agent via Discord-style external messaging
+   * @deprecated Use ElizaClient.sendMessage() instead for better functionality
    */
   async sendMessage(message: string): Promise<ElizaResponse> {
     const url = `${this.config.baseUrl}/api/messaging/external-messages`;
@@ -158,6 +160,7 @@ export class ElizaHttpClient {
 
   /**
    * Send a message with retries
+   * @deprecated Use ElizaClient.sendMessageWithRetry() instead for better functionality
    */
   async sendMessageWithRetry(message: string): Promise<ElizaResponse> {
     let lastError: string | undefined;
@@ -508,4 +511,7 @@ export class TestLogger {
       console.warn(JSON.stringify(data, null, 2));
     }
   }
-} 
+}
+
+// Export the new Eliza client for better functionality
+export { ElizaClient, createElizaClient } from './eliza-client';

@@ -24,9 +24,11 @@
     "verify:e2e": "tsx scripts/verify-e2e-setup.ts",
     "start:local-network": "./scripts/start-local-network.sh",
     "setup-agent": "tsx scripts/setup-agent.ts",
-    "setup-docker": "tsx scripts/setup-docker.ts"
+    "setup-docker": "tsx scripts/setup-docker.ts",
+    "query": "tsx scripts/query.ts"
   },
   "dependencies": {
+    "@elizaos/api-client": "^1.2.5",
     "@midnight-ntwrk/compact-runtime": "^0.8.1",
     "@midnight-ntwrk/ledger": "^4.0.0",
     "@midnight-ntwrk/midnight-js-contracts": "2.0.1",
