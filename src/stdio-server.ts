@@ -11,13 +11,10 @@ import {
   ReadResourceRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import { 
-  WalletServiceMCP as MidnightMCPServer,
   WalletServiceError as MidnightMCPError
 } from './mcp/index.js';
-import { config } from './config.js';
 import { ALL_TOOLS, handleToolCall } from './tools.js';
 import { handleListResources, handleReadResource } from './resources.js';
-import { SeedManager } from './utils/seed-manager.js';
 
 /**
  * Simple logging function
@@ -50,33 +47,6 @@ export function createServer() {
     throw new Error('AGENT_ID environment variable is required');
   }
 
-  // Get seed from file
-  let seed: string;
-  try {
-    seed = SeedManager.getAgentSeed(agentId);
-    log('Seed loaded from file for agent:', agentId);
-  } catch (error) {
-    log('Failed to load seed from file:', error);
-    throw new Error('Seed file not found. Please ensure the seed file exists for this agent.');
-  }
-
-  // Initialize Midnight wallet instance
-  const externalConfig = {
-    proofServer: config.proofServer,
-    indexer: config.indexer,
-    indexerWS: config.indexerWS,
-    node: config.node,
-    useExternalProofServer: config.useExternalProofServer,
-    networkId: config.networkId
-  };
-
-  const midnightServer = new MidnightMCPServer(
-    config.networkId,
-    seed,
-    config.walletFilename,
-    externalConfig
-  );
-
   // Create server instance
   const server = new Server({
     name: "midnight-mcp-server",
@@ -89,7 +59,7 @@ export function createServer() {
   });
 
   // Set up request handlers
-  setupRequestHandlers(server, midnightServer);
+  setupRequestHandlers(server);
 
   // Create STDIO transport
   const transport = new StdioServerTransport();
@@ -98,7 +68,7 @@ export function createServer() {
     start: async () => {
       try {
         await server.connect(transport);
-        log("Server started successfully");
+        log("Server created successfully");
       } catch (error) {
         log("Failed to start server:", error);
         throw error;
@@ -107,7 +77,6 @@ export function createServer() {
     stop: async () => {
       try {
         await server.close();
-        await midnightServer.close();
         log("Server stopped");
       } catch (error) {
         log("Error stopping server:", error);
@@ -143,7 +112,7 @@ function handleError(context: string, error: unknown): never {
 /**
  * Set up server request handlers
  */
-function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer) {
+function setupRequestHandlers(server: Server) {
   // Handle tool calls
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     try {
@@ -151,7 +120,7 @@ function setupRequestHandlers(server: Server, midnightServer: MidnightMCPServer)
       const toolArgs = request.params.arguments;
 
       log(`Tool call received: ${toolName}`);
-      return await handleToolCall(toolName, toolArgs, midnightServer, log);
+      return await handleToolCall(toolName, toolArgs, log);
     } catch (error) {
       /* istanbul ignore next */
       return handleError("handling tool call", error);

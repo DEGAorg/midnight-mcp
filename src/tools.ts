@@ -112,7 +112,7 @@ export const ALL_TOOLS = [
 ];
 
 // Define tool handlers
-export async function handleToolCall(toolName: string, toolArgs: any, midnightServer: any, log: (...args: any[]) => void) {
+export async function handleToolCall(toolName: string, toolArgs: any, log: (...args: any[]) => void) {
   try {
     switch (toolName) {
       // Midnight wallet tool handlers
