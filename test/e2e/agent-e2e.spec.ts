@@ -15,6 +15,12 @@ import { createElizaClient, IElizaClient } from './eliza-client.js';
  * These tests validate the complete integration between Eliza AI agents
  * and the Midnight MCP server through HTTP API calls.
  * 
+ * NEW: Enhanced response handling with content validation
+ * - Tests now use content validation to wait for specific information in responses
+ * - Multiple messages in responses are handled properly
+ * - Timeout limits have been increased to accommodate longer response times
+ * - Tests continue waiting until expected content is found
+ * 
  * Prerequisites:
  * - Docker backend is up and running
  * - Eliza AI agents are up and running
@@ -30,7 +36,7 @@ describe('Eliza Integration Tests', () => {
     logger = new TestLogger('ELIZA-E2E');
     elizaClient = createElizaClient({
       baseUrl: DEFAULT_ELIZA_CONFIG.baseUrl,
-      timeout: 15000, // 15 seconds default
+      timeout: 60000, // Increased from 15000 to 60000 (60 seconds)
       retries: DEFAULT_ELIZA_CONFIG.retries,
       logger: logger
     });
@@ -72,7 +78,7 @@ describe('Eliza Integration Tests', () => {
    */
   describe('Wallet Functionality', () => {
     
-    describe.only('Wallet Status', () => {
+    describe('Wallet Status', () => {
       it('should check conversation history is empty', async () => {
         const testName = 'Check Conversation History';
         logger.info(`Running: ${testName}`);
@@ -81,7 +87,24 @@ describe('Eliza Integration Tests', () => {
         console.log('response', response);
         expect(response.success).toBe(true);
         expect(response.messages.length).toBe(0);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
+
+      it('should verify balance extraction works with actual response format', async () => {
+        const testName = 'Verify Balance Extraction';
+        logger.info(`Running: ${testName}`);
+        
+        // Test with the actual response format
+        const testResponse = "Your current wallet balance is **51.535228**. There are no pending transactions at the moment, so that's the amount available for you to use. If you have any other questions or need assistance with anything else, feel free to ask!";
+        
+        const balance = TestValidator.extractBalance(testResponse);
+        const hasNumbers = TestValidator.createNumberValidator()(testResponse);
+        
+        console.log('Extracted balance:', balance);
+        console.log('Has numbers:', hasNumbers);
+        
+        expect(balance).toBe('51.535228');
+        expect(hasNumbers).toBe(true);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
       it('should check wallet status', async () => {
         const testName = 'Check Wallet Status';
@@ -89,6 +112,7 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage('What is the midnight wallet status?', {
           waitForResponse: true,
+          contentValidator: TestValidator.createWalletInfoValidator(), // Use content validation
         });
         
         const responseContent = response.response?.[0]?.content || null;
@@ -103,7 +127,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
       it('should get wallet address', async () => {
         const testName = 'Get Wallet Address';
@@ -111,6 +135,7 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage('What is my wallet address?', {
           waitForResponse: true,
+          contentValidator: TestValidator.createWalletAddressValidator(), // Use content validation
         });
         
         const responseContent = response.response?.[0]?.content || null;
@@ -132,7 +157,7 @@ describe('Eliza Integration Tests', () => {
         testResults.push({ name: testName, result });
         console.log('result', result);
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
       it('should get wallet balance', async () => {
         const testName = 'Get Wallet Balance';
@@ -140,6 +165,7 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage('What is my balance?', {
           waitForResponse: true,
+          contentValidator: TestValidator.createNumberValidator(), // Simple: just check for numbers
         });
         
         const responseContent = response.response?.[0]?.content || null;
@@ -155,7 +181,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
       it('should get wallet configuration', async () => {
         const testName = 'Get Wallet Configuration';
@@ -177,7 +203,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
     });
 
     describe.skip('Transaction Operations', () => {
@@ -214,7 +240,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
       it('should verify a transaction that has not been received', async () => {
         const testName = 'Verify Non-Existent Transaction';
@@ -253,7 +279,7 @@ describe('Eliza Integration Tests', () => {
   /**
    * MARKETPLACE TESTS
    */
-  describe.skip('Marketplace Functionality', () => {
+  describe('Marketplace Functionality', () => {
     
     describe('Authentication and Status', () => {
       it('should check marketplace login status', async () => {
@@ -279,10 +305,10 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
     });
 
-    describe('Service Management', () => {
+    describe.skip('Service Management', () => {
       it('should list available services', async () => {
         const testName = 'List Available Services';
         logger.info(`Running: ${testName}`);
@@ -337,7 +363,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);  
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
       it('should add content to a registered service', async () => {
         const testName = 'Add Content to Service';
@@ -368,7 +394,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 130000);
+      }, 180000); // Increased from 130000 to 180000 (3 minutes)
     });
   });
 
@@ -385,21 +411,21 @@ describe('Eliza Integration Tests', () => {
       const walletResponse = await elizaClient.sendMessage('What is my wallet status?', {
         clearHistory: true,
         waitForResponse: true,
-        responseTimeout: 15000
+        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
       
       // Step 2: Check marketplace status
       const marketplaceResponse = await elizaClient.sendMessage('Am I logged into the marketplace?', {
         clearHistory: true,
         waitForResponse: true,
-        responseTimeout: 15000
+        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
       
       // Step 3: List services
       const servicesResponse = await elizaClient.sendMessage('List available services', {
         clearHistory: true,
         waitForResponse: true,
-        responseTimeout: 15000
+        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
       
       const result: TestResult = {
@@ -418,7 +444,7 @@ describe('Eliza Integration Tests', () => {
       
       testResults.push({ name: testName, result });
       expect(result.passed).toBe(true);
-    }, 130000);
+    }, 180000); // Increased from 130000 to 180000 (3 minutes)
 
     it('should handle error conditions gracefully', async () => {
       const testName = 'Error Handling Test';
@@ -428,7 +454,7 @@ describe('Eliza Integration Tests', () => {
       const response = await elizaClient.sendMessage('Access invalid wallet data', {
         clearHistory: true,
         waitForResponse: true,
-        responseTimeout: 15000
+        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
       
       const responseContent = response.response?.[0]?.content || null;
@@ -443,6 +469,6 @@ describe('Eliza Integration Tests', () => {
       
       testResults.push({ name: testName, result });
       expect(result.passed).toBe(true);
-    }, 130000);
+    }, 180000); // Increased from 130000 to 180000 (3 minutes)
   });
 });

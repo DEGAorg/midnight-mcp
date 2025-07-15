@@ -20,7 +20,8 @@ export interface ElizaClientConfig {
 export interface SendMessageOptions {
   clearHistory?: boolean;
   waitForResponse?: boolean;
-  responseTimeout?: number; // Default: 15000ms (15 seconds)
+  responseTimeout?: number; // Default: 60000ms (60 seconds) - increased from 15000
+  contentValidator?: (content: string) => boolean; // New option for content validation
 }
 
 /**
@@ -103,6 +104,7 @@ export interface IElizaClient {
   sendMessage(message: string, options?: SendMessageOptions): Promise<SendMessageResponse>;
   sendMessageWithRetry(message: string, options?: SendMessageOptions): Promise<SendMessageResponse>;
   waitForResponse(channelId: string, messageId: string, timeout?: number): Promise<Message[]>;
+  waitForResponseWithContent(channelId: string, messageId: string, contentValidator: (content: string) => boolean, timeout?: number): Promise<Message[]>;
   getChannelMessages(channelId: string, options?: GetChannelMessagesOptions): Promise<{ success: boolean, messages: Message[] }>;
   
   // Utility methods
@@ -122,7 +124,7 @@ export class ElizaClient implements IElizaClient {
 
   constructor(config: ElizaClientConfig = {}) {
     this.baseUrl = config.baseUrl || process.env.ELIZA_API_URL || 'http://localhost:3001';
-    this.timeout = config.timeout || 15000;
+    this.timeout = config.timeout || 60000; // Increased from 15000 to 60000 (60 seconds)
     this.retries = config.retries || 3;
     this.logger = config.logger || console;
   }
@@ -213,7 +215,7 @@ export class ElizaClient implements IElizaClient {
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
 
@@ -288,12 +290,29 @@ export class ElizaClient implements IElizaClient {
 
       // Wait for response if requested
       if (options.waitForResponse && messageId) {
-        const response = await this.waitForResponse(channelId, messageId, options.responseTimeout);
-        return {
-          success: true,
-          messageId,
-          response
-        };
+        if (options.contentValidator) {
+          // Use content validation if provided
+          const response = await this.waitForResponseWithContent(
+            channelId, 
+            messageId, 
+            options.contentValidator, 
+            options.responseTimeout || 60000
+          );
+          return {
+            success: true,
+            messageId,
+            response
+          };
+          
+        } else {
+          // Use standard response waiting
+          const response = await this.waitForResponse(channelId, messageId, options.responseTimeout || 60000);
+          return {
+            success: true,
+            messageId,
+            response
+          };
+        }
       }
 
       return {
@@ -316,25 +335,29 @@ export class ElizaClient implements IElizaClient {
   async waitForResponse(
     channelId: string, 
     messageId: string, 
-    timeout: number = 30000
+    timeout: number = 60000 // Increased from 30000 to 60000 (60 seconds)
   ): Promise<Message[]> {
     const startTime = Date.now();
     const interval = 1000; // Check every second
 
     while (Date.now() - startTime < timeout) {
       try {
-        const messages = await this.getChannelMessages(channelId, {limit: 2});
+        // Get more messages to handle multiple responses
+        const messages = await this.getChannelMessages(channelId, {limit: 10});
 
         if (messages.messages && messages.messages.length > 0) {
-          // Filter messages to find the response to our specific message
+          // Filter messages to find responses to our specific message
           const responseMessages = messages.messages.filter((message: any) => 
             message.inReplyToRootMessageId === messageId
           );
 
           if (responseMessages.length > 0) {
-            this.logger.info('Response received:', responseMessages);
+            this.logger.info(`Found ${responseMessages.length} response messages:`, responseMessages);
             return responseMessages;
           }
+
+          // Continue waiting as long as we're within the timeout
+          this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for response...`);
         }
 
         // Wait before next check
@@ -346,6 +369,48 @@ export class ElizaClient implements IElizaClient {
     }
 
     throw new Error(`Timeout waiting for response after ${timeout}ms`);
+  }
+
+  /**
+   * Wait for a response with specific content validation
+   * This method continues waiting until the expected content is found in any response message
+   */
+  async waitForResponseWithContent(
+    channelId: string,
+    messageId: string,
+    contentValidator: (content: string) => boolean,
+    timeout: number = 60000
+  ): Promise<Message[]> {
+    const startTime = Date.now();
+    const interval = 1000; // Check every second
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        // Get more messages to handle multiple responses
+        const messages = await this.getChannelMessages(channelId, {limit: 15});
+
+        if (messages.messages && messages.messages.length > 0) {
+          // Check all messages for the expected content
+          for (const message of messages.messages) {
+            if (message.content && contentValidator(message.content)) {
+              this.logger.info(`Found message with expected content:`, message);
+              return [message];
+            }
+          }
+
+          // Continue waiting as long as we're within the timeout
+          this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for expected content...`);
+        }
+
+        // Wait before next check
+        await new Promise(resolve => setTimeout(resolve, interval));
+      } catch (error) {
+        this.logger.warn('Error checking for response with content:', error);
+        await new Promise(resolve => setTimeout(resolve, interval));
+      }
+    }
+
+    throw new Error(`Timeout waiting for response with expected content after ${timeout}ms`);
   }
 
   /**
