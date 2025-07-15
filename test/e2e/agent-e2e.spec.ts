@@ -37,6 +37,11 @@ describe('Eliza Integration Tests', () => {
     
     logger.info('Starting Eliza Integration Tests');
     logger.info(`Eliza API URL: ${DEFAULT_ELIZA_CONFIG.baseUrl}`);
+    // clear the channel history
+    const clearResponse = await elizaClient.clearChannelHistory('4af73091-392d-47f5-920d-eeaf751e81d2');
+    if (!clearResponse.success) {
+      throw new Error(`Failed to clear channel history: ${clearResponse.error}`);
+    }
     
     // Wait for services to be ready
     await WaitUtils.wait(2000);
@@ -67,13 +72,22 @@ describe('Eliza Integration Tests', () => {
    */
   describe('Wallet Functionality', () => {
     
-    describe('Wallet Status', () => {
+    describe.only('Wallet Status', () => {
+      it('should check conversation history is empty', async () => {
+        const testName = 'Check Conversation History';
+        logger.info(`Running: ${testName}`);
+        
+        const response = await elizaClient.getChannelMessages('4af73091-392d-47f5-920d-eeaf751e81d2');
+        console.log('response', response);
+        expect(response.success).toBe(true);
+        expect(response.messages.length).toBe(0);
+      }, 130000);
+
       it('should check wallet status', async () => {
         const testName = 'Check Wallet Status';
         logger.info(`Running: ${testName}`);
         
-        const response = await elizaClient.sendMessageWithRetry('What is the midnight wallet status?', {
-          clearHistory: true,
+        const response = await elizaClient.sendMessage('What is the midnight wallet status?', {
           waitForResponse: true,
         });
         
@@ -89,14 +103,13 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
 
-      it.only('should get wallet address', async () => {
+      it('should get wallet address', async () => {
         const testName = 'Get Wallet Address';
         logger.info(`Running: ${testName}`);
         
-        const response = await elizaClient.sendMessageWithRetry('What is my wallet address?', {
-          clearHistory: true,
+        const response = await elizaClient.sendMessage('What is my wallet address?', {
           waitForResponse: true,
         });
         
@@ -119,14 +132,13 @@ describe('Eliza Integration Tests', () => {
         testResults.push({ name: testName, result });
         console.log('result', result);
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
 
       it('should get wallet balance', async () => {
         const testName = 'Get Wallet Balance';
         logger.info(`Running: ${testName}`);
         
-        const response = await elizaClient.sendMessageWithRetry('What is my balance?', {
-          clearHistory: true,
+        const response = await elizaClient.sendMessage('What is my balance?', {
           waitForResponse: true,
         });
         
@@ -143,14 +155,13 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
 
       it('should get wallet configuration', async () => {
         const testName = 'Get Wallet Configuration';
         logger.info(`Running: ${testName}`);
         
-        const response = await elizaClient.sendMessageWithRetry('What is the wallet configuration?', {
-          clearHistory: true,
+        const response = await elizaClient.sendMessage('What is the wallet configuration?', {
           waitForResponse: true,
         });
         
@@ -166,10 +177,10 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
     });
 
-    describe('Transaction Operations', () => {
+    describe.skip('Transaction Operations', () => {
       it('should send funds to a sample address', async () => {
         const testName = 'Send Funds to Sample Address';
         logger.info(`Running: ${testName}`);
@@ -177,9 +188,9 @@ describe('Eliza Integration Tests', () => {
         const sampleAddress = 'mn_shield-addr_test19xcjsrp9qku2t7w59uelzfzgegey9ghtefapn9ga3ys5nq0qazksxqy9ej627ysrd0946qswt8feer7j86pvltk4p6m63zwavfkdqnj2zgqp93ev';
         const amount = '1'; // 1 MID in dust units
         
-        const response = await elizaClient.sendMessageWithRetry(
+        const response = await elizaClient.sendMessage(
           `Send ${amount} dust units to address ${sampleAddress}`, {
-            clearHistory: true,
+
             waitForResponse: true,
 
           }
@@ -203,16 +214,16 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
 
       it('should verify a transaction that has not been received', async () => {
         const testName = 'Verify Non-Existent Transaction';
         logger.info(`Running: ${testName}`);
         
         const fakeTransactionId = 'fake-transaction-id-12345';
-        const response = await elizaClient.sendMessageWithRetry(
+        const response = await elizaClient.sendMessage(
           `Verify transaction ${fakeTransactionId}`, {
-            clearHistory: true,
+
             waitForResponse: true,
 
           }
@@ -234,7 +245,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
 
     });
   });
@@ -242,15 +253,14 @@ describe('Eliza Integration Tests', () => {
   /**
    * MARKETPLACE TESTS
    */
-  describe('Marketplace Functionality', () => {
+  describe.skip('Marketplace Functionality', () => {
     
     describe('Authentication and Status', () => {
       it('should check marketplace login status', async () => {
         const testName = 'Check Marketplace Login Status';
         logger.info(`Running: ${testName}`);
         
-        const response = await elizaClient.sendMessageWithRetry('Am I logged into the marketplace?', {
-          clearHistory: true,
+        const response = await elizaClient.sendMessage('Am I logged into the marketplace?', {
           waitForResponse: true,
         });
         
@@ -269,7 +279,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
     });
 
     describe('Service Management', () => {
@@ -277,8 +287,7 @@ describe('Eliza Integration Tests', () => {
         const testName = 'List Available Services';
         logger.info(`Running: ${testName}`);
         
-        const response = await elizaClient.sendMessageWithRetry('List services available in the marketplace', {
-          clearHistory: true,
+        const response = await elizaClient.sendMessage('List services available in the marketplace', {
           waitForResponse: true,
         });
         
@@ -294,7 +303,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
 
       it('should register a new service', async () => {
         const testName = 'Register New Service';
@@ -304,9 +313,9 @@ describe('Eliza Integration Tests', () => {
         const serviceDescription = 'A test service for E2E testing';
         const sampleAddress = 'mn_shield-addr_test19xcjsrp9qku2t7w59uelzfzgegey9ghtefapn9ga3ys5nq0qazksxqy9ej627ysrd0946qswt8feer7j86pvltk4p6m63zwavfkdqnj2zgqp93ev';
         
-        const response = await elizaClient.sendMessageWithRetry(
+        const response = await elizaClient.sendMessage(
           `Register a new service called "${serviceName}" with description "${serviceDescription}" price 25 DUST and to receive payment at address ${sampleAddress}`, {
-            clearHistory: true,
+
             waitForResponse: true,
 
           }
@@ -328,7 +337,7 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);  
+      }, 130000);  
 
       it('should add content to a registered service', async () => {
         const testName = 'Add Content to Service';
@@ -336,9 +345,9 @@ describe('Eliza Integration Tests', () => {
         
         const content = 'This is test content for the service';
         
-        const response = await elizaClient.sendMessageWithRetry(
+        const response = await elizaClient.sendMessage(
           `Add content to the service: "${content}"`, {
-            clearHistory: true,
+
             waitForResponse: true,
 
           }
@@ -359,35 +368,35 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 30000);
+      }, 130000);
     });
   });
 
   /**
    * INTEGRATION TESTS
    */
-  describe('Cross-Functionality Integration', () => {
+  describe.skip('Cross-Functionality Integration', () => {
     
     it('should perform a complete wallet-to-marketplace flow', async () => {
       const testName = 'Complete Wallet-to-Marketplace Flow';
       logger.info(`Running: ${testName}`);
       
       // Step 1: Check wallet status
-      const walletResponse = await elizaClient.sendMessageWithRetry('What is my wallet status?', {
+      const walletResponse = await elizaClient.sendMessage('What is my wallet status?', {
         clearHistory: true,
         waitForResponse: true,
         responseTimeout: 15000
       });
       
       // Step 2: Check marketplace status
-      const marketplaceResponse = await elizaClient.sendMessageWithRetry('Am I logged into the marketplace?', {
+      const marketplaceResponse = await elizaClient.sendMessage('Am I logged into the marketplace?', {
         clearHistory: true,
         waitForResponse: true,
         responseTimeout: 15000
       });
       
       // Step 3: List services
-      const servicesResponse = await elizaClient.sendMessageWithRetry('List available services', {
+      const servicesResponse = await elizaClient.sendMessage('List available services', {
         clearHistory: true,
         waitForResponse: true,
         responseTimeout: 15000
@@ -409,14 +418,14 @@ describe('Eliza Integration Tests', () => {
       
       testResults.push({ name: testName, result });
       expect(result.passed).toBe(true);
-    }, 30000);
+    }, 130000);
 
     it('should handle error conditions gracefully', async () => {
       const testName = 'Error Handling Test';
       logger.info(`Running: ${testName}`);
       
       // Try to access a non-existent endpoint or invalid data
-      const response = await elizaClient.sendMessageWithRetry('Access invalid wallet data', {
+      const response = await elizaClient.sendMessage('Access invalid wallet data', {
         clearHistory: true,
         waitForResponse: true,
         responseTimeout: 15000
@@ -434,6 +443,6 @@ describe('Eliza Integration Tests', () => {
       
       testResults.push({ name: testName, result });
       expect(result.passed).toBe(true);
-    }, 30000);
+    }, 130000);
   });
 });

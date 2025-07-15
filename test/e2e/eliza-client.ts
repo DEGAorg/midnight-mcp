@@ -1,6 +1,9 @@
 // Use the global fetch available in Node.js 18+
 const fetch = globalThis.fetch;
 
+// Import the API client
+import { ElizaClient as ApiClient } from '@elizaos/api-client';
+
 /**
  * Configuration for Eliza client
  */
@@ -94,13 +97,13 @@ export interface IElizaClient {
   
   // Channel management
   getAgentChannelId(): Promise<string>;
-  clearChannelHistory(channelId: string): Promise<any>;
+  clearChannelHistory(channelId: string): Promise<{ success: boolean, error?: string }>;
   
   // Message operations
   sendMessage(message: string, options?: SendMessageOptions): Promise<SendMessageResponse>;
   sendMessageWithRetry(message: string, options?: SendMessageOptions): Promise<SendMessageResponse>;
   waitForResponse(channelId: string, messageId: string, timeout?: number): Promise<Message[]>;
-  getChannelMessages(channelId: string, options?: GetChannelMessagesOptions): Promise<{ messages: Message[] }>;
+  getChannelMessages(channelId: string, options?: GetChannelMessagesOptions): Promise<{ success: boolean, messages: Message[] }>;
   
   // Utility methods
   getLatestResponseContent(responseMessages: Message[]): string | null;
@@ -205,21 +208,25 @@ export class ElizaClient implements IElizaClient {
   /**
    * Clear channel history to start fresh
    */
-  async clearChannelHistory(channelId: string): Promise<any> {
-    const url = `${this.baseUrl}/api/messaging/clear-channel-history`;
+  async clearChannelHistory(channelId: string): Promise<{ success: boolean, error?: string }> {
+    const url = `${this.baseUrl}/api/messaging/central-channels/${channelId}/messages`;
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        channel_id: channelId 
-      }),
+      }
     });
-    
-    const result = await response.json();
-    this.logger.info('Channel history cleared:', result);
-    return result;
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    if (response.status === 204) {
+      this.logger.info('Channel history cleared');
+      return { success: true };
+    }
+
+    return { success: false, error: 'Failed to clear channel history' };
   }
 
   /**
@@ -227,6 +234,14 @@ export class ElizaClient implements IElizaClient {
    */
   async sendMessage(message: string, options: SendMessageOptions = {}): Promise<SendMessageResponse> {
     try {
+      // validate message
+      if (!message) {
+        throw new Error('Message is required');
+      }
+
+      if (message.length > 1000) {
+        throw new Error('Message is too long');
+      }
       // Get the channel
       const channelId = await this.getAgentChannelId();
       
@@ -336,8 +351,8 @@ export class ElizaClient implements IElizaClient {
   /**
    * Get channel messages
    */
-  async getChannelMessages(channelId: string, options: GetChannelMessagesOptions = {}): Promise<{ messages: Message[] }> {
-    const url = `${this.baseUrl}/api/messaging/channel/${channelId}/messages`;
+  async getChannelMessages(channelId: string, options: GetChannelMessagesOptions = {}): Promise<{ success: boolean, messages: Message[] }> {
+    const url = `${this.baseUrl}/api/messaging/central-channels/${channelId}/messages`;
     const params = new URLSearchParams();
     
     if (options.after) {
@@ -353,7 +368,12 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+
+    return {
+      success: true,
+      messages: result.data.messages
+    };
   }
 
   /**

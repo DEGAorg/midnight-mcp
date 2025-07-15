@@ -54,7 +54,7 @@ export default {
     '**/test/**/*.test.ts'
   ],
   transformIgnorePatterns: [
-    '/node_modules/(?!(@midnight-ntwrk/ledger|@midnight-ntwrk/midnight-js-network-id|@midnight-ntwrk/wallet|@midnight-ntwrk/zswap|@midnight-ntwrk/midnight-js-utils|node-fetch)/)',
+    '/node_modules/(?!(@midnight-ntwrk/ledger|@midnight-ntwrk/midnight-js-network-id|@midnight-ntwrk/wallet|@midnight-ntwrk/zswap|@midnight-ntwrk/midnight-js-utils|node-fetch|@elizaos/api-client)/)',
     'src/integrations/marketplace/api.ts',
     'src/integrations/marketplace/contract/',
     'src/integrations/marketplace/contract/index.js',

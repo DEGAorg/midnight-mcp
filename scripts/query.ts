@@ -30,7 +30,8 @@ const sendMessage = async () => {
     const C3PO = await getAgent('C3PO');
     // console.log(C3PO);
   
-    // const channels = await client.messaging.getServerChannels('00000000-0000-0000-0000-000000000000');
+    const channels = await client.messaging.getServerChannels('00000000-0000-0000-0000-000000000000');
+    console.log('Channels:', channels);
     const channelToUse = {
       id: "4af73091-392d-47f5-920d-eeaf751e81d2"
     };
@@ -40,35 +41,41 @@ const sendMessage = async () => {
   // const clearResponse = await client.messaging.clearChannelHistory(channelToUse.id as `${string}-${string}-${string}-${string}-${string}`);
   // console.log('Channel cleared:', clearResponse);
   // fetch the post message without the client
-  const messageResponse = await fetch('http://localhost:3001/api/messaging/submit', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      channel_id: channelToUse.id,
-      server_id: "00000000-0000-0000-0000-000000000000",
-      author_id: "5c9f5d45-8015-4b76-8a87-cf2efabcaccd",
-      content: 'This a test message, reply: "Hello Honduras 2"',
-      source_type: "client_chat",
-      raw_message: {},
-      metadata: {
-        channelType: "DM",
-        isDm: true,
-        targetUserId: "22d22d5f-e650-03f9-8a74-1f0aa3107035"
-      }
-    }),
-  });
+  // const messageResponse = await fetch('http://localhost:3001/api/messaging/submit', {
+  //   method: 'POST',
+  //   headers: {
+  //     'Content-Type': 'application/json'
+  //   },
+  //   body: JSON.stringify({
+  //     channel_id: channelToUse.id,
+  //     server_id: "00000000-0000-0000-0000-000000000000",
+  //     author_id: "5c9f5d45-8015-4b76-8a87-cf2efabcaccd",
+  //     content: 'This a test message, reply: "Hello Honduras 2"',
+  //     source_type: "client_chat",
+  //     raw_message: {},
+  //     metadata: {
+  //       channelType: "DM",
+  //       isDm: true,
+  //       targetUserId: "22d22d5f-e650-03f9-8a74-1f0aa3107035"
+  //     }
+  //   }),
+  // });
 
-  const responseData = await messageResponse.json();
-  console.log('Message sent:', responseData);
+  // const responseData = await messageResponse.json();
+  // console.log('Message sent:', responseData);
 
-  await sleep(5000);
+  // await sleep(5000);
+
+  const responseData = {
+    data: {
+      id: "9314c73b-4270-4f27-bd31-fe375f16ca7d"
+    }
+  }
 
   const messageId = responseData.data.id;
-  const message = await client.messaging.getChannelMessages(channelToUse.id as `${string}-${string}-${string}-${string}-${string}`, {
-    after: messageId,
-  });
+  console.log('Message ID:', messageId);
+  const message = await client.messaging.getChannelMessages(channelToUse.id as `${string}-${string}-${string}-${string}-${string}`);
+  
   console.log('Retrieved message:', message);
     
   } catch (error) {
