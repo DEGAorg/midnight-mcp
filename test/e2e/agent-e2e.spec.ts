@@ -55,13 +55,6 @@ describe('Eliza Integration Tests', () => {
     
     // Wait for services to be ready
     await WaitUtils.wait(2000);
-    // send main instruciton to the agent
-    const mainInstructionResponse = await elizaClient.sendMessage('Please provide final and complete responses without including intermediate or waiting messages. Only respond once the requested action has been successfully completed.', {
-      waitForResponse: true,
-    });
-    if (!mainInstructionResponse.success) {
-      throw new Error(`Failed to send main instruction: ${mainInstructionResponse.error}`);
-    }
   });
 
   afterAll(async () => {
