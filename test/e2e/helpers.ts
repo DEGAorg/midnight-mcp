@@ -894,6 +894,58 @@ export class TestValidator {
       return isValid;
     };
   }
+
+  /**
+   * Create a simple validator for service content storage
+   * Accepts simple success keywords and rejects "please wait" messages
+   */
+  static createServiceContentStorageValidator(): (content: string) => boolean {
+    return (content: string) => {
+      // Reject processing messages like "please wait" or "hold on"
+      const hasProcessingWords = /please wait|hold on|checking|verifying|moment|gathering|processing|working on/i.test(content);
+      const hasProcessingMessage = hasProcessingWords;
+      
+      if (hasProcessingMessage) {
+        console.log('Service content storage validation: Rejecting processing message');
+        return false;
+      }
+      
+      // Reject error messages
+      const hasErrorWords = /issue|problem|error|failed|sorry|inconvenience|try again|adjustments/i.test(content);
+      const hasErrorMessage = hasErrorWords;
+      
+      if (hasErrorMessage) {
+        console.log('Service content storage validation: Rejecting error message');
+        return false;
+      }
+      
+      // Simple list of success keywords for content storage
+      const successKeywords = [
+        'registered',
+        'stored', 
+        'saved',
+        'ready',
+        'added',
+        'updated',
+        'content',
+        'service'
+      ];
+      
+      const hasSuccessKeyword = successKeywords.some(keyword => 
+        content.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      const isValid = hasSuccessKeyword;
+      
+      if (!isValid) {
+        console.log('Service content storage validation failed for content:', content.substring(0, 200) + '...');
+      } else {
+        console.log('Service content storage validation succeeded');
+      }
+      
+      return isValid;
+    };
+  }
 }
 
 /**

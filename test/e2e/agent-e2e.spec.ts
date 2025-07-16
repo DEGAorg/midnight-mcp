@@ -65,7 +65,7 @@ describe('Eliza Integration Tests', () => {
   /**
    * WALLET TESTS
    */
-  describe.skip('Wallet Functionality', () => {
+  describe('Wallet Functionality', () => {
     
     describe('Wallet Status', () => {
       it('01 - should check conversation history is empty', async () => {
@@ -289,7 +289,7 @@ describe('Eliza Integration Tests', () => {
    */
   describe('Marketplace Functionality', () => {
     
-    describe.skip('Authentication and Status', () => {
+    describe('Authentication and Status', () => {
       it('09 - should check marketplace login status', async () => {
         const testName = 'Check Marketplace Login Status';
         logger.info(`Running: ${testName}`);
@@ -367,7 +367,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 130000);
 
-      it.only('11 - should register a new service', async () => {
+      it('11 - should register a new service', async () => {
         const testName = 'Register New Service';
         logger.info(`Running: ${testName}`);
         
@@ -376,7 +376,7 @@ describe('Eliza Integration Tests', () => {
         const sampleAddress = 'mn_shield-addr_test19xcjsrp9qku2t7w59uelzfzgegey9ghtefapn9ga3ys5nq0qazksxqy9ej627ysrd0946qswt8feer7j86pvltk4p6m63zwavfkdqnj2zgqp93ev';
         
         const response = await elizaClient.sendMessage(
-          `Register a new service called "${serviceName}" with description "${serviceDescription}" price 25 DUST and to receive payment at address ${sampleAddress}`, {
+          `Register a new service and return the service id, the service is called "${serviceName}" with description "${serviceDescription}" price 25 DUST and to receive payment at address ${sampleAddress} and private privacy`, {
             waitForResponse: true,
             contentValidator: TestValidator.createMarketplaceServiceRegistrationValidator(),
           }
@@ -408,9 +408,8 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage(
           `Add content to the service: "${content}"`, {
-
             waitForResponse: true,
-
+            contentValidator: TestValidator.createServiceContentStorageValidator(),
           }
         );
         
@@ -436,7 +435,7 @@ describe('Eliza Integration Tests', () => {
   /**
    * INTEGRATION TESTS
    */
-  describe.skip('Extra Tests', () => {
+  describe('Extra Tests', () => {
 
     it('13 - should handle non sense messages gracefully', async () => {
       const testName = 'Non Sense Message Handling Test';
