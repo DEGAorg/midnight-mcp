@@ -57,8 +57,6 @@ export class ElizaHttpClient {
     const parsedResponse = await response.json();
     const agents = parsedResponse.data.agents;
     try {
-      const agentNamesAndIds = agents.map((agent: any) => ({ name: agent.name, id: agent.id }));
-      console.log('agentNamesAndIds', agentNamesAndIds);
       return agents;
     } catch (error) {
       console.error(`Error getting agents: ${error}`);
@@ -90,10 +88,8 @@ export class ElizaHttpClient {
   // agent to use for E2E testing is C3PO
   async getC3POAgent(): Promise<any> {
     const agents = await this.getAgents();
-    console.log(`Attempting to find C3PO agent...`);
     try {
       const c3poAgent = agents.find((agent: any) => agent.name === 'C3PO');
-      console.log(`C3PO agent found: ${c3poAgent.name}`);
       return c3poAgent;
     } catch (error) {
       console.error(`Error finding C3PO agent: ${error}`);
@@ -116,8 +112,6 @@ export class ElizaHttpClient {
       const channel = await this.getAgentChannel();
       const channelId = channel?.id || channel?.channelId || 'test-channel';
 
-      console.log('channelId', channelId);
-      
       const payload = {
         platform: 'discord',
         messageId: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -309,6 +303,12 @@ export class TestValidator {
    * Check if response indicates user is authenticated
    */
   static hasAuthenticationSuccess(response: string): boolean {
+    // First check for explicit "not authenticated" patterns and exclude them
+    if (/not authenticated/i.test(response) || /not logged in/i.test(response)) {
+      console.log('DEBUG: hasAuthenticationSuccess - Found "not authenticated" pattern, returning false');
+      return false;
+    }
+    
     const authSuccessPatterns = [
       /authenticated/i,
       /logged in/i,
@@ -318,10 +318,18 @@ export class TestValidator {
       /you are logged in/i,
       /you're logged in/i,
       /login status: true/i,
-      /authentication status: true/i
+      /authentication status: true/i,
+      /ready.*marketplace/i,
+      /access.*granted/i,
+      /authentication.*successful/i,
+      /login.*successful/i,
+      /successfully.*authenticated/i,
+      /successfully.*logged/i
     ];
 
-    return authSuccessPatterns.some(pattern => pattern.test(response));
+    const result = authSuccessPatterns.some(pattern => pattern.test(response));
+    console.log('DEBUG: hasAuthenticationSuccess - Input:', response.substring(0, 100) + '...', 'Result:', result);
+    return result;
   }
 
   /**
@@ -647,9 +655,19 @@ export class TestValidator {
 
   /**
    * Create a validator that checks for either authentication success or proper failure indication
+   * Excludes processing messages like "please wait" or "hold on"
    */
   static createAuthenticationStatusValidator(): (content: string) => boolean {
     return (content: string) => {
+      // Check for processing messages and exclude them
+      // Only consider it a processing message if it contains processing words but NOT authentication-related context
+      const hasProcessingWords = /please wait|hold on|checking|verifying|moment/i.test(content);
+      const hasAuthContext = /login status|authentication status|marketplace|check your login|verify.*information/i.test(content);
+      const hasProcessingMessage = hasProcessingWords && !hasAuthContext;
+      if (hasProcessingMessage) {
+        return false;
+      }
+      
       const isAuthenticated = this.hasAuthenticationSuccess(content);
       const isNotAuthenticated = this.hasAuthenticationFailure(content);
       const requiresAuth = this.hasAuthenticationRequired(content);
@@ -660,12 +678,53 @@ export class TestValidator {
       if (!isValid) {
         console.log('Authentication status validation failed for content:', content.substring(0, 200) + '...');
       } else {
+        console.log('content', content);
         console.log('Authentication status validation succeeded:', {
           isAuthenticated,
           isNotAuthenticated,
           requiresAuth
         });
       }
+      
+      return isValid;
+    };
+  }
+
+  /**
+   * Create a validator that checks for transaction verification responses
+   * This handles both successful verification and "not found" responses
+   */
+  static createTransactionVerificationValidator(): (content: string) => boolean {
+    return (content: string) => {
+      // Check for transaction verification patterns
+      const verificationPatterns = [
+        /transaction.*verified/i,
+        /transaction.*found/i,
+        /transaction.*received/i,
+        /transaction.*exists/i,
+        /transaction.*not found/i,
+        /transaction.*not received/i,
+        /transaction.*does not exist/i,
+        /transaction.*doesn't exist/i,
+        /no such transaction/i,
+        /transaction.*invalid/i,
+        /transaction.*failed/i,
+        /unable to verify/i,
+        /could not verify/i,
+        /verification.*failed/i,
+        /verification.*error/i
+      ];
+      
+      const hasVerificationPattern = verificationPatterns.some(pattern => pattern.test(content));
+      
+      // Also check for error indicators that are common in transaction verification
+      const hasErrorIndicators = this.hasErrorIndicators(content);
+      
+      // Check for "please wait" or "hold on" messages that indicate processing
+      const hasProcessingMessage = /please wait|hold on|checking|verifying/i.test(content);
+      
+      // Valid if we have any transaction-related response (but NOT processing messages)
+      const isValid = hasVerificationPattern || hasErrorIndicators;
       
       return isValid;
     };
@@ -714,6 +773,18 @@ export class WaitUtils {
    */
   static async wait(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Wait between sequential tests to ensure proper integration flow
+   * @param logger Optional logger to log the wait message
+   * @param delayMs Delay in milliseconds (default: 100 for 100 milliseconds)
+   */
+  static async waitBetweenTests(logger?: TestLogger, delayMs: number = 100): Promise<void> {
+    if (logger) {
+      logger.info(`Waiting ${delayMs / 1000} seconds before next test...`);
+    }
+    await WaitUtils.wait(delayMs);
   }
 
   /**

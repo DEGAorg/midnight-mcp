@@ -2,6 +2,10 @@
 export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
+  // Run tests sequentially for integration tests
+  maxWorkers: 1,
+  // Increase timeout for integration tests
+  testTimeout: 300000, // 5 minutes
   transform: {
    '^.+\\.tsx?$': [
       'ts-jest',

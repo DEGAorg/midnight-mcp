@@ -139,8 +139,6 @@ export class ElizaClient implements IElizaClient {
     const agents = parsedResponse.data.agents;
     
     try {
-      const agentNamesAndIds = agents.map((agent: any) => ({ name: agent.name, id: agent.id }));
-      this.logger.info('Available agents:', agentNamesAndIds);
       return agents;
     } catch (error) {
       this.logger.error(`Error getting agents: ${error}`);
@@ -153,14 +151,12 @@ export class ElizaClient implements IElizaClient {
    */
   async getC3POAgent(): Promise<Agent> {
     const agents = await this.getAgents();
-    this.logger.info('Attempting to find C3PO agent...');
     
     try {
       const c3poAgent = agents.find((agent: any) => agent.name === 'C3PO');
       if (!c3poAgent) {
         throw new Error('C3PO agent not found');
       }
-      this.logger.info(`C3PO agent found: ${c3poAgent.name}`);
       return c3poAgent;
     } catch (error) {
       this.logger.error(`Error finding C3PO agent: ${error}`);
@@ -191,7 +187,6 @@ export class ElizaClient implements IElizaClient {
     }
     
     const channels = await response.json();
-    this.logger.info('Channels obtained:', channels);
     
     // Find the DM channel with the C3PO agent
     const dmChannel = channels.data?.channels?.find((channel: any) => 
@@ -203,7 +198,6 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`No DM channel found for C3PO agent (${agent.id}). Available channels:`, channels.data?.channels);
     }
     
-    this.logger.info('DM channel found:', dmChannel);
     return dmChannel.id;
   }
 
@@ -251,8 +245,6 @@ export class ElizaClient implements IElizaClient {
         throw new Error('Could not obtain channel ID');
       }
 
-      this.logger.info('Using channel ID:', channelId);
-
       // Clear history if requested
       if (options.clearHistory) {
         await this.clearChannelHistory(channelId);
@@ -284,7 +276,6 @@ export class ElizaClient implements IElizaClient {
       }
 
       const responseData = await messageResponse.json();
-      this.logger.info('Message sent successfully:', responseData);
 
       const messageId = responseData.data?.id;
 
@@ -352,7 +343,7 @@ export class ElizaClient implements IElizaClient {
           );
 
           if (responseMessages.length > 0) {
-            this.logger.info(`Found ${responseMessages.length} response messages:`, responseMessages);
+            this.logger.info(`Found ${responseMessages.length} response messages for messageId: ${messageId}`);
             return responseMessages;
           }
 
@@ -390,16 +381,27 @@ export class ElizaClient implements IElizaClient {
         const messages = await this.getChannelMessages(channelId, {limit: 15});
 
         if (messages.messages && messages.messages.length > 0) {
-          // Check all messages for the expected content
-          for (const message of messages.messages) {
+          // Filter messages to find responses to our specific message
+          const responseMessages = messages.messages.filter((message: any) => 
+            message.inReplyToRootMessageId === messageId
+          );
+
+          // Debug: Log all messages to see what we're working with
+          this.logger.info(`Debug: Found ${messages.messages.length} total messages, ${responseMessages.length} responses`);
+          messages.messages.forEach((msg: any, index: number) => {
+            this.logger.info(`Debug: Message ${index}: content="${msg.content?.substring(0, 100)}...", inReplyToRootMessageId="${msg.inReplyToRootMessageId}", authorId="${msg.authorId}"`);
+          });
+
+          // Check only response messages for the expected content
+          for (const message of responseMessages) {
             if (message.content && contentValidator(message.content)) {
-              this.logger.info(`Found message with expected content:`, message);
+              this.logger.info(`Found message with expected content for messageId: ${messageId}`);
               return [message];
             }
           }
 
           // Continue waiting as long as we're within the timeout
-          this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for expected content...`);
+          this.logger.info(`Found ${messages.messages.length} total messages, ${responseMessages.length} responses, continuing to wait for expected content...`);
         }
 
         // Wait before next check

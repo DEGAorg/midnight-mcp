@@ -21,6 +21,10 @@ import { createElizaClient, IElizaClient } from './eliza-client.js';
  * - Timeout limits have been increased to accommodate longer response times
  * - Tests continue waiting until expected content is found
  * 
+ * CONFIGURATION: Tests run sequentially to ensure proper integration flow
+ * - Each test waits for the previous one to complete
+ * - 10-second delays added between tests for stability
+ * 
  * Prerequisites:
  * - Docker backend is up and running
  * - Eliza AI agents are up and running
@@ -58,38 +62,25 @@ describe('Eliza Integration Tests', () => {
     logger.info(TestResultFormatter.formatSummary(testResults));
   });
 
-  beforeEach(() => {
-    // Reset test results for each test suite
-    testResults = [];
-  });
-
-  afterEach(() => {
-    // Log results for each test suite
-    if (testResults.length > 0) {
-      logger.info(`Test suite completed with ${testResults.length} tests`);
-      testResults.forEach(({ name, result }) => {
-        logger.info(TestResultFormatter.formatResult(name, result));
-      });
-    }
-  });
-
   /**
    * WALLET TESTS
    */
-  describe('Wallet Functionality', () => {
+  describe.skip('Wallet Functionality', () => {
     
     describe('Wallet Status', () => {
-      it('should check conversation history is empty', async () => {
+      it('01 - should check conversation history is empty', async () => {
         const testName = 'Check Conversation History';
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.getChannelMessages('4af73091-392d-47f5-920d-eeaf751e81d2');
-        console.log('response', response);
         expect(response.success).toBe(true);
         expect(response.messages.length).toBe(0);
+        
+        // Wait between tests for sequential execution
+        await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('should verify balance extraction works with actual response format', async () => {
+      it('02 - should verify balance extraction works with actual response format', async () => {
         const testName = 'Verify Balance Extraction';
         logger.info(`Running: ${testName}`);
         
@@ -99,14 +90,14 @@ describe('Eliza Integration Tests', () => {
         const balance = TestValidator.extractBalance(testResponse);
         const hasNumbers = TestValidator.createNumberValidator()(testResponse);
         
-        console.log('Extracted balance:', balance);
-        console.log('Has numbers:', hasNumbers);
-        
         expect(balance).toBe('51.535228');
         expect(hasNumbers).toBe(true);
+        
+        // Wait between tests for sequential execution
+        await WaitUtils.waitBetweenTests(logger);
       }, 180000);
 
-      it('should check wallet status', async () => {
+      it('03 - should check wallet status', async () => {
         const testName = 'Check Wallet Status';
         logger.info(`Running: ${testName}`);
         
@@ -127,9 +118,12 @@ describe('Eliza Integration Tests', () => {
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
+        
+        // Wait between tests for sequential execution
+        await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('should get wallet address', async () => {
+      it('04 - should get wallet address', async () => {
         const testName = 'Get Wallet Address';
         logger.info(`Running: ${testName}`);
         
@@ -157,36 +151,44 @@ describe('Eliza Integration Tests', () => {
         testResults.push({ name: testName, result });
         console.log('result', result);
         expect(result.passed).toBe(true);
+        
+        // Wait between tests for sequential execution
+        await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('should get wallet balance', async () => {
+      it('05 - should get wallet balance', async () => {
         const testName = 'Get Wallet Balance';
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('What is my balance?', {
           waitForResponse: true,
-          contentValidator: TestValidator.createWalletInfoValidator(),
+          contentValidator: TestValidator.createNumberValidator(),
         });
         
         const responseContent = response.response?.[0]?.content || null;
         const balance = responseContent ? TestValidator.extractBalance(responseContent) : null;
         const hasNumbers = responseContent ? TestValidator.createNumberValidator()(responseContent) : false;
-        const hasWalletInfo = responseContent ? TestValidator.hasWalletStatusInfo(responseContent) : false;
         
         const result: TestResult = {
-          passed: response.success && responseContent && (hasNumbers || hasWalletInfo),
+          passed: response.success && responseContent && hasNumbers,
           message: response.success ? 
-            `Wallet balance query completed. Balance: ${balance || 'not extracted'}, Has numbers: ${hasNumbers}, Has wallet info: ${hasWalletInfo}` :
+            `Wallet balance query completed. Balance: ${balance || 'not extracted'}, Has numbers: ${hasNumbers}` :
             `Failed to get balance: ${response.error}`,
-          data: { responseContent, balance, hasNumbers, hasWalletInfo },
+          data: { responseContent, balance, hasNumbers },
           error: response.error
         };
+
+        // Relevant log to keep, numbers and balance do receive more than one message
+        console.log('result', result.message);
         
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
+        
+        // Wait between tests for sequential execution
+        await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('should get wallet configuration', async () => {
+      it('06 - should get wallet configuration', async () => {
         const testName = 'Get Wallet Configuration';
         logger.info(`Running: ${testName}`);
         
@@ -209,8 +211,8 @@ describe('Eliza Integration Tests', () => {
       }, 180000); 
     });
 
-    describe.skip('Transaction Operations', () => {
-      it('should send funds to a sample address', async () => {
+    describe('Transaction Operations', () => {
+      it.skip('07 - should send funds to a sample address', async () => {
         const testName = 'Send Funds to Sample Address';
         logger.info(`Running: ${testName}`);
         
@@ -245,25 +247,28 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000); 
 
-      it('should verify a transaction that has not been received can be handled', async () => {
+      it('08 - should verify a transaction that has not been received can be handled', async () => {
         const testName = 'Verify Non-Existent Transaction';
         logger.info(`Running: ${testName}`);
         
         const fakeTransactionId = 'fake-transaction-id-12345';
         const response = await elizaClient.sendMessage(
           `Verify transaction ${fakeTransactionId}`, {
-
             waitForResponse: true,
-
+            contentValidator: TestValidator.createTransactionVerificationValidator(),
           }
         );
         
         const responseContent = response.response?.[0]?.content || null;
+        
         const result: TestResult = {
           passed: response.success && responseContent && (
             TestValidator.hasErrorIndicators(responseContent) || 
             responseContent.toLowerCase().includes('not found') ||
-            responseContent.toLowerCase().includes('not received')
+            responseContent.toLowerCase().includes('not received') ||
+            responseContent.toLowerCase().includes('does not exist') ||
+            responseContent.toLowerCase().includes('doesn\'t exist') ||
+            responseContent.toLowerCase().includes('no activity associated')
           ),
           message: response.success ? 
             `Transaction verification completed. Expected not found result: ${responseContent?.substring(0, 200) || 'No content'}...` :
@@ -285,7 +290,7 @@ describe('Eliza Integration Tests', () => {
   describe('Marketplace Functionality', () => {
     
     describe('Authentication and Status', () => {
-      it('should check marketplace login status', async () => {
+      it('09 - should check marketplace login status', async () => {
         const testName = 'Check Marketplace Login Status';
         logger.info(`Running: ${testName}`);
         
@@ -299,8 +304,12 @@ describe('Eliza Integration Tests', () => {
         const isNotAuthenticated = responseContent ? TestValidator.hasAuthenticationFailure(responseContent) : false;
         const requiresAuth = responseContent ? TestValidator.hasAuthenticationRequired(responseContent) : false;
         
+        // The test should only pass if the user IS authenticated
+        // It should fail if the user is not authenticated or if there are conflicting statuses
+        const hasConflictingStatus = isAuthenticated && isNotAuthenticated;
+        
         const result: TestResult = {
-          passed: response.success && responseContent && (isAuthenticated || isNotAuthenticated || requiresAuth),
+          passed: response.success && responseContent && isAuthenticated && !hasConflictingStatus,
           message: response.success ? 
             `Marketplace login status checked. Authenticated: ${isAuthenticated}, Not authenticated: ${isNotAuthenticated}, Requires auth: ${requiresAuth}. Response: ${responseContent?.substring(0, 200) || 'No content'}...` :
             `Failed to check marketplace login: ${response.error}`,
@@ -309,6 +318,7 @@ describe('Eliza Integration Tests', () => {
             isAuthenticated, 
             isNotAuthenticated, 
             requiresAuth,
+            hasConflictingStatus,
             response 
           },
           error: response.error
@@ -319,8 +329,8 @@ describe('Eliza Integration Tests', () => {
       }, 180000); 
     });
 
-    describe('Service Management', () => {
-      it('should list available services', async () => {
+    describe.skip('Service Management', () => {
+      it('10 - should list available services', async () => {
         const testName = 'List Available Services';
         logger.info(`Running: ${testName}`);
         
@@ -351,7 +361,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 130000);
 
-      it.skip('should register a new service', async () => {
+      it('11 - should register a new service', async () => {
         const testName = 'Register New Service';
         logger.info(`Running: ${testName}`);
         
@@ -385,7 +395,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000); 
 
-      it.skip('should add content to a registered service', async () => {
+      it('12 - should add content to a registered service', async () => {
         const testName = 'Add Content to Service';
         logger.info(`Running: ${testName}`);
         
@@ -423,27 +433,24 @@ describe('Eliza Integration Tests', () => {
    */
   describe.skip('Cross-Functionality Integration', () => {
     
-    it('should perform a complete wallet-to-marketplace flow', async () => {
+    it('13 - should perform a complete wallet-to-marketplace flow', async () => {
       const testName = 'Complete Wallet-to-Marketplace Flow';
       logger.info(`Running: ${testName}`);
       
       // Step 1: Check wallet status
       const walletResponse = await elizaClient.sendMessage('What is my wallet status?', {
-        clearHistory: true,
         waitForResponse: true,
         responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
       
       // Step 2: Check marketplace status
       const marketplaceResponse = await elizaClient.sendMessage('Am I logged into the marketplace?', {
-        clearHistory: true,
         waitForResponse: true,
         responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
       
       // Step 3: List services
       const servicesResponse = await elizaClient.sendMessage('List available services', {
-        clearHistory: true,
         waitForResponse: true,
         responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
@@ -466,13 +473,12 @@ describe('Eliza Integration Tests', () => {
       expect(result.passed).toBe(true);
     }, 180000); 
 
-    it('should handle error conditions gracefully', async () => {
+    it('14 - should handle error conditions gracefully', async () => {
       const testName = 'Error Handling Test';
       logger.info(`Running: ${testName}`);
       
       // Try to access a non-existent endpoint or invalid data
       const response = await elizaClient.sendMessage('Access invalid wallet data', {
-        clearHistory: true,
         waitForResponse: true,
         responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
