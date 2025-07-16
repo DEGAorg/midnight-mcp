@@ -24,70 +24,78 @@ Tests the MCP server directly using the MCP SDK:
 yarn test:e2e
 ```
 
-### 2. ElizaOS Integration Testing (`eliza-integration.spec.ts`)
+### 2. ElizaOS Integration Testing (`agent-e2e.spec.ts`)
 
-Tests the integration between elizaOS and the MCP server using the [@fleek-platform/eliza-plugin-mcp](https://github.com/fleek-platform/eliza-plugin-mcp):
+Tests the integration between Eliza AI agents and the MCP server using HTTP API calls:
 
-- **ElizaOS Setup**: Creates and configures elizaOS projects
-- **Plugin Integration**: Tests MCP plugin loading and configuration
-- **Agent Conversations**: Tests AI agent interactions with MCP tools
-- **Tool Integration**: Validates tool exposure through elizaOS
-- **Error Handling**: Tests graceful error handling in agent context
-- **Performance**: Tests conversation response times
+- **Enhanced Response Handling**: Uses content validation to wait for specific information in responses
+- **Multiple Message Handling**: Properly handles multiple messages in responses
+- **Extended Timeouts**: 60-second timeouts to accommodate longer response times
+- **Sequential Execution**: Tests run sequentially with delays between tests for stability
+- **Content Validation**: Tests continue waiting until expected content is found
 
 **Features:**
-- Automatic elizaOS project creation
-- MCP plugin installation and configuration
-- Agent conversation simulation
+- HTTP API communication with Eliza AI agents
+- Content validation for response verification
+- Sequential test execution for stability
+- Comprehensive logging and result tracking
 - Real-time tool execution testing
 
 ## Eliza Integration Tests
 
 ### Overview
 
-The Eliza integration tests (`eliza-integration.spec.ts`) provide comprehensive end-to-end testing of the AI agent integration with the Midnight MCP server. These tests simulate real user interactions with the AI agent and validate that the agent can successfully interact with blockchain functionality.
+The Eliza integration tests (`agent-e2e.spec.ts`) provide comprehensive end-to-end testing of the AI agent integration with the Midnight MCP server. These tests simulate real user interactions with the AI agent and validate that the agent can successfully interact with blockchain functionality.
+
+### Test Configuration
+
+#### Enhanced Response Handling
+- **Content Validation**: Tests use content validators to wait for specific information in responses
+- **Multiple Message Support**: Properly handles responses with multiple messages
+- **Extended Timeouts**: 60-second timeouts (increased from 15 seconds) to accommodate longer response times
+- **Sequential Execution**: Each test waits for the previous one to complete with 10-second delays between tests
+
+#### Test Structure
+- **Channel Management**: Tests use a specific channel ID (`4af73091-392d-47f5-920d-eeaf751e81d2`)
+- **History Clearing**: Channel history is cleared before test execution
+- **Result Tracking**: Comprehensive result tracking with detailed logging
+- **Error Handling**: Graceful error handling and validation
 
 ### Test Categories
 
 #### 1. Wallet Functionality Tests
 
 **Wallet Status Tests:**
+- Check conversation history is empty
+- Verify balance extraction with actual response format
 - Check wallet status and synchronization
-- Get wallet address
-- Get current balance
+- Get wallet address with validation
+- Get current balance with number validation
 - Get wallet configuration
 
 **Transaction Operations:**
 - Send funds to sample addresses
-- Verify transactions (both received and non-existent)
-- List transaction history
+- Verify transactions (including non-existent transactions)
+- Handle transaction verification errors gracefully
 
 #### 2. Marketplace Functionality Tests
 
 **Authentication and Status:**
 - Check marketplace login status
-- Verify user authentication
+- Verify user authentication with conflict detection
 
 **Service Management:**
-- List available services
-- Register new services
+- List available services with pattern validation
+- Register new services with detailed parameters
 - Add content to services
-- Hire services from marketplace
+- Handle service registration responses
 
 #### 3. Integration Tests
 
-**Cross-Functionality Flows:**
-- Complete wallet-to-marketplace workflows
-- Error handling and graceful degradation
-- End-to-end user journeys
-
-#### 4. Performance Tests
-
-**Load Testing:**
-- Concurrent request handling
-- Rapid successive requests
-- Response time validation
-- System stability under load
+**Error Handling:**
+- Handle nonsensical messages gracefully
+- Validate error response patterns
+- Test system stability under invalid inputs
 
 ### Running Eliza Integration Tests
 
@@ -101,12 +109,12 @@ The Eliza integration tests (`eliza-integration.spec.ts`) provide comprehensive 
 2. **Eliza AI Agents**: Make sure Eliza AI agents are running and accessible
    ```bash
    # Check if Eliza is running
-   curl http://localhost:3000/health
+   curl http://localhost:{PORT}/health
    ```
 
 3. **Wallet Server**: Verify the wallet server is accessible
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:{PORT}/health
    ```
 
 #### Quick Start
@@ -130,7 +138,7 @@ Configure test behavior with environment variables:
 ```bash
 # Eliza API configuration
 export ELIZA_API_URL=http://localhost:3000
-export TEST_TIMEOUT=30000
+export TEST_TIMEOUT=180000  # 3 minutes per test
 export TEST_RETRIES=3
 
 # Run tests
@@ -143,11 +151,11 @@ yarn test:e2e
 
 The test suite includes comprehensive helper functions:
 
-- **ElizaHttpClient**: HTTP client for communicating with Eliza AI agents
 - **TestValidator**: Utility functions for validating test responses with flexible pattern matching
 - **TestResultFormatter**: Formatting and reporting test results
 - **WaitUtils**: Utilities for handling async operations and timeouts
 - **TestLogger**: Structured logging for test operations
+- **ElizaHttpClient**: HTTP client for communicating with Eliza AI agents
 
 #### Test Validation
 
@@ -161,7 +169,7 @@ TestValidator.hasSuccessIndicators(response)
 TestValidator.hasErrorIndicators(response)
 
 // Wallet information
-TestValidator.hasWalletInfo(response)
+TestValidator.hasWalletStatusInfo(response)
 
 // Marketplace information
 TestValidator.hasMarketplaceInfo(response)
@@ -186,47 +194,63 @@ const txId = TestValidator.extractTransactionId(response);
 
 #### Wallet Tests
 
-1. **Wallet Status Check**
+1. **Conversation History Check**
+   - Validates that channel history is empty before tests
+   - Expected: Empty message array
+
+2. **Balance Extraction Verification**
+   - Tests balance extraction with actual response format
+   - Expected: Correct balance extraction from formatted response
+
+3. **Wallet Status Check**
    - Message: "What is the midnight wallet status?"
    - Expected: Response contains wallet information and status
 
-2. **Get Wallet Address**
+4. **Get Wallet Address**
    - Message: "What is my wallet address?"
-   - Expected: Response contains valid wallet address
+   - Expected: Response contains valid wallet address with validation
 
-3. **Get Balance**
+5. **Get Balance**
    - Message: "What is my balance?"
-   - Expected: Response contains balance information
+   - Expected: Response contains balance information with number validation
 
-4. **Send Funds**
-   - Message: "Send 1000000 dust units to address 0x1234..."
+6. **Get Wallet Configuration**
+   - Message: "What is the wallet configuration?"
+   - Expected: Response contains wallet configuration information
+
+#### Transaction Tests
+
+1. **Send Funds**
+   - Message: "Send 1 dust units to address [sample_address]"
    - Expected: Response indicates successful transaction initiation
 
-5. **Verify Transaction**
-   - Message: "Verify transaction abc123"
-   - Expected: Response contains transaction verification result
+2. **Verify Non-Existent Transaction**
+   - Message: "Verify transaction fake-transaction-id-12345"
+   - Expected: Response contains appropriate error or "not found" message
 
 #### Marketplace Tests
 
 1. **Login Status**
    - Message: "Am I logged into the marketplace?"
-   - Expected: Response indicates login status
+   - Expected: Response indicates authentication status with conflict detection
 
 2. **List Services**
    - Message: "List services available in the marketplace"
-   - Expected: Response contains list of available services
+   - Expected: Response contains list of available services with pattern validation
 
 3. **Register Service**
-   - Message: "Register a new service called 'Test Service'"
+   - Message: "Register a new service and return the service id, the service is called 'Test Service' with description 'A test service for E2E testing' price 25 DUST and to receive payment at address [address] and private privacy"
    - Expected: Response indicates successful registration
 
 4. **Add Content**
-   - Message: "Add content to the service: 'Test content'"
+   - Message: "Add content to the service: 'This is test content for the service'"
    - Expected: Response indicates content addition
 
-5. **Hire Service**
-   - Message: "Hire a service from the marketplace"
-   - Expected: Response indicates service hiring process
+#### Error Handling Tests
+
+1. **Nonsensical Message Handling**
+   - Message: "Access invalid wallet data"
+   - Expected: System handles gracefully without crashing
 
 ### Debugging Tests
 
@@ -247,8 +271,8 @@ yarn test:e2e --testNamePattern="Wallet"
 # Run only marketplace tests  
 yarn test:e2e --testNamePattern="Marketplace"
 
-# Run only performance tests
-yarn test:e2e --testNamePattern="Performance"
+# Run only error handling tests
+yarn test:e2e --testNamePattern="Extra"
 ```
 
 #### Response Analysis
@@ -258,6 +282,7 @@ The tests include comprehensive logging that shows:
 - Extracted data
 - Validation results
 - Performance metrics
+- Detailed test results with data
 
 ### Troubleshooting
 
@@ -273,9 +298,9 @@ The tests include comprehensive logging that shows:
 
 2. **Timeout Errors**
    ```
-   ❌ Request timeout after 30000ms
+   ❌ Request timeout after 180000ms
    ```
-   - Increase timeout value: `--timeout 60000`
+   - Tests now use 3-minute timeouts
    - Check system performance
    - Verify service responsiveness
 
@@ -312,36 +337,18 @@ yarn test:e2e --verbose --detectOpenHandles
 
 #### Expected Response Times
 
-- **Basic Queries**: < 5 seconds
-- **Wallet Operations**: < 10 seconds  
-- **Transaction Operations**: < 15 seconds
-- **Marketplace Operations**: < 8 seconds
-- **Concurrent Requests**: < 20 seconds
+- **Basic Queries**: < 10 seconds
+- **Wallet Operations**: < 30 seconds  
+- **Transaction Operations**: < 60 seconds
+- **Marketplace Operations**: < 45 seconds
+- **Error Handling**: < 30 seconds
 
 #### Success Rate Targets
 
 - **Individual Tests**: > 95% success rate
-- **Concurrent Tests**: > 80% success rate
-- **Performance Tests**: > 90% success rate
+- **Sequential Tests**: > 90% success rate
+- **Error Handling Tests**: > 85% success rate
 
-### Continuous Integration
-
-#### GitHub Actions
-
-Add to your CI pipeline:
-
-```yaml
-- name: Run Eliza Integration Tests
-  run: |
-    # Start services
-    docker-compose up -d
-    
-    # Wait for services
-    sleep 30
-    
-    # Run tests
-    tsx test/e2e/run-tests.ts --timeout 60000
-```
 
 #### Local Development
 
@@ -354,131 +361,6 @@ yarn test:e2e --watch
 # Run with coverage
 yarn test:e2e --coverage
 ```
-
-## Test Scripts
-
-### 1. STDIO Protocol Testing (`scripts/test-e2e-stdio.ts`)
-
-Direct JSON-RPC testing over STDIO interface:
-
-```bash
-yarn test:e2e:stdio
-```
-
-**Features:**
-- Raw JSON-RPC protocol testing
-- Protocol initialization validation
-- Tool and resource discovery
-- Error condition testing
-- Performance benchmarking
-
-### 2. ElizaOS CLI Testing (`scripts/test-e2e-eliza.ts`)
-
-Full elizaOS integration testing:
-
-```bash
-yarn test:e2e:eliza
-```
-
-**Features:**
-- ElizaOS CLI installation verification
-- Project creation and setup
-- MCP plugin installation
-- Agent-to-MCP communication testing
-- End-to-end conversation flows
-
-### 3. Comprehensive Testing (`scripts/test-e2e-full.ts`)
-
-Runs all test suites in sequence:
-
-```bash
-yarn test:e2e:full
-```
-
-**Includes:**
-- Unit tests
-- Integration tests
-- All E2E test approaches
-- Performance benchmarking
-- Test report generation
-
-## ElizaOS Integration Setup
-
-### Prerequisites
-
-1. **Install ElizaOS CLI:**
-```bash
-npm install -g @elizaos/cli@beta
-```
-
-2. **Verify Installation:**
-```bash
-elizaos --version
-```
-
-### Manual Setup for Development
-
-1. **Create ElizaOS Project:**
-```bash
-elizaos create my-mcp-project
-cd my-mcp-project
-```
-
-2. **Install MCP Plugin:**
-```bash
-bun add @fleek-platform/eliza-plugin-mcp
-```
-
-3. **Configure Character with MCP:**
-```json
-{
-  "name": "Midnight Agent",
-  "bio": "AI agent with Midnight blockchain capabilities",
-  "plugins": ["@fleek-platform/eliza-plugin-mcp"],
-  "settings": {
-    "mcp": {
-      "servers": {
-        "midnight-mcp": {
-          "type": "stdio",
-          "name": "Midnight MCP Server",
-          "command": "node",
-          "args": ["path/to/midnight-mcp/dist/stdio-server.js"],
-          "env": {
-            "AGENT_ID": "your-agent-id"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-4. **Start ElizaOS:**
-```bash
-elizaos start
-```
-
-## Test Configuration
-
-### Environment Variables
-
-Tests use these environment variables:
-
-- `AGENT_ID`: Unique identifier for test agents
-- `NODE_ENV`: Set to 'test' for test runs
-- `WALLET_SERVER_HOST`: Localhost for test servers
-- `WALLET_SERVER_PORT`: Different ports for each test suite
-- `NETWORK_ID`: 'TestNet' for test environment
-- `USE_EXTERNAL_PROOF_SERVER`: 'false' for local testing
-
-### Test Isolation
-
-Each test suite uses:
-
-- **Unique Agent IDs**: Prevents test interference
-- **Separate Seed Files**: Isolated wallet data
-- **Different Ports**: Prevents port conflicts
-- **Cleanup Procedures**: Removes test artifacts
 
 ## Available Tools for Testing
 
@@ -499,151 +381,10 @@ The MCP server exposes these tools for testing:
 
 ## Test Data and Fixtures
 
-### Test Seed Files
+### Test Sample Data
 
-Generated automatically for each test:
-- Location: `.storage/seeds/{agent-id}.seed`
-- Content: Test-specific seed values
-- Cleanup: Automatic removal after tests
-
-### Mock Data
-
-Tests use mock data for:
-- Wallet addresses
-- Transaction hashes
-- Balance amounts
-- Network responses
-
-## Performance Benchmarks
-
-### Expected Response Times
-
-- **Tool Listing**: < 1 second
-- **Wallet Status**: < 2 seconds
-- **Balance Query**: < 3 seconds
-- **Transaction List**: < 5 seconds
-- **Agent Conversation**: < 10 seconds
-
-### Concurrent Operations
-
-Tests validate:
-- Multiple simultaneous tool calls
-- Concurrent agent conversations
-- Server stability under load
-- Resource cleanup efficiency
-
-## Troubleshooting
-
-### Common Issues
-
-1. **ElizaOS CLI Not Found**
-   ```bash
-   npm install -g @elizaos/cli@beta
-   ```
-
-2. **MCP Plugin Installation Fails**
-   ```bash
-   bun add @fleek-platform/eliza-plugin-mcp
-   # or
-   npm install @fleek-platform/eliza-plugin-mcp
-   ```
-
-3. **Port Conflicts**
-   - Tests use ports 3001-3004
-   - Stop any running services on these ports
-   - Or modify port configurations in test files
-
-4. **Seed File Permissions**
-   ```bash
-   chmod 755 .storage/seeds/
-   ```
-
-5. **Node.js Version**
-   - Requires Node.js 18.20.5+
-   - ElizaOS requires Node.js 23.3.0+
-
-### Debug Mode
-
-Enable detailed logging:
-
-```bash
-DEBUG=mcp:* yarn test:e2e:full
-```
-
-### Test Logs
-
-Check test outputs in:
-- `test-results/`: Generated test reports
-- `logs/`: Server and application logs
-- Console output during test execution
-
-## CI/CD Integration
-
-### GitHub Actions
-
-Tests run automatically on:
-- Pull requests
-- Main branch commits
-- Release tags
-
-### Test Reports
-
-Generated artifacts:
-- Jest test reports
-- Coverage reports
-- Performance benchmarks
-- Integration test results
-
-## Contributing to Tests
-
-### Adding New Tests
-
-1. **Unit Tests**: Add to `test/unit/`
-2. **Integration Tests**: Add to `test/integration/`
-3. **E2E Tests**: Add to `test/e2e/`
-4. **Scripts**: Add to `scripts/`
-
-### Test Guidelines
-
-1. **Isolation**: Tests should not depend on each other
-2. **Cleanup**: Always clean up test artifacts
-3. **Timeout**: Set appropriate timeouts for async operations
-4. **Mocking**: Mock external dependencies when possible
-5. **Documentation**: Document test purpose and setup
-
-### Running Specific Tests
-
-```bash
-# Run only MCP protocol tests
-yarn test:e2e --testNamePattern="MCP.*Protocol"
-
-# Run only elizaOS integration tests  
-yarn test:e2e --testNamePattern="ElizaOS.*Integration"
-
-# Run with coverage
-yarn test:e2e --coverage
-
-# Run in watch mode
-yarn test:e2e --watch
-```
-
-## Future Enhancements
-
-### Planned Additions
-
-1. **Visual Testing**: Screenshot comparisons for UI
-2. **Load Testing**: High-concurrency scenarios
-3. **Security Testing**: Vulnerability assessments
-4. **Cross-platform**: Windows/macOS/Linux testing
-5. **Browser Testing**: Web interface validation
-6. **Mobile Testing**: Mobile app integration
-
-### Tool Improvements
-
-1. **Better Mocking**: More realistic mock responses
-2. **Test Data**: Expanded test datasets
-3. **Reporting**: Enhanced test reports
-4. **Monitoring**: Real-time test monitoring
-5. **Automation**: Fully automated CI/CD pipelines
-
-For questions or issues with E2E testing, please refer to the main project documentation or create an issue in the repository. 
+Tests use consistent sample data:
+- **Sample Address**: `mn_shield-addr_test19xcjsrp9qku2t7w59uelzfzgegey9ghtefapn9ga3ys5nq0qazksxqy9ej627ysrd0946qswt8feer7j86pvltk4p6m63zwavfkdqnj2zgqp93ev`
+- **Sample Transaction ID**: `fake-transaction-id-12345`
+- **Test Service Name**: "Test Service"
+- **Test Service Description**: "A test service for E2E testing"
