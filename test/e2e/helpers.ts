@@ -729,6 +729,74 @@ export class TestValidator {
       return isValid;
     };
   }
+
+  /**
+   * Create a validator that checks for marketplace services list responses
+   * Rejects "please wait" messages and accepts both empty list responses and responses with service counts/descriptions
+   */
+  static createMarketplaceServicesListValidator(): (content: string) => boolean {
+    return (content: string) => {
+      // Reject processing messages like "please wait" or "hold on"
+      // These messages indicate the AI is still working and haven't provided the actual result yet
+      const hasProcessingWords = /please wait|hold on|checking|verifying|moment|gathering|retrieving/i.test(content);
+      const hasProcessingMessage = hasProcessingWords;
+      
+      if (hasProcessingMessage) {
+        console.log('Marketplace services list validation: Rejecting processing message');
+        return false;
+      }
+      
+      // Use the helper methods to check for acceptable patterns
+      const hasNoServicesPattern = this.hasNoServicesPattern(content);
+      const hasServiceCount = this.hasServiceCountPattern(content);
+      const hasServiceDescription = this.hasServiceDescriptionPattern(content);
+      const hasServiceList = this.hasServiceListPattern(content);
+      
+      // Valid if we have any of the acceptable patterns
+      const isValid = hasNoServicesPattern || hasServiceCount || hasServiceDescription || hasServiceList;
+      
+      if (!isValid) {
+        console.log('Marketplace services list validation failed for content:', content.substring(0, 200) + '...');
+      } else {
+        console.log('Marketplace services list validation succeeded:', {
+          hasNoServicesPattern,
+          hasServiceCount,
+          hasServiceDescription,
+          hasServiceList,
+        });
+      }
+      
+      return isValid;
+    };
+  }
+
+  /**
+   * Check if response indicates no services are available in marketplace
+   */
+  static hasNoServicesPattern(content: string): boolean {
+    return /no services available|no services.*available|currently no services|no services.*registered|all services.*inactive/i.test(content);
+  }
+
+  /**
+   * Check if response indicates services are available with count
+   */
+  static hasServiceCountPattern(content: string): boolean {
+    return /services.*available|found.*services|services.*found|services.*list|available.*services/i.test(content);
+  }
+
+  /**
+   * Check if response contains service descriptions
+   */
+  static hasServiceDescriptionPattern(content: string): boolean {
+    return /service.*description|service.*details|service.*information/i.test(content);
+  }
+
+  /**
+   * Check if response contains a list of services
+   */
+  static hasServiceListPattern(content: string): boolean {
+    return /services.*:|services.*are|services.*include|here.*services/i.test(content);
+  }
 }
 
 /**

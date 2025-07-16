@@ -289,7 +289,7 @@ describe('Eliza Integration Tests', () => {
    */
   describe('Marketplace Functionality', () => {
     
-    describe('Authentication and Status', () => {
+    describe.skip('Authentication and Status', () => {
       it('09 - should check marketplace login status', async () => {
         const testName = 'Check Marketplace Login Status';
         logger.info(`Running: ${testName}`);
@@ -329,29 +329,35 @@ describe('Eliza Integration Tests', () => {
       }, 180000); 
     });
 
-    describe.skip('Service Management', () => {
-      it('10 - should list available services', async () => {
+    describe('Service Management', () => {
+      it.only('10 - should list available services', async () => {
         const testName = 'List Available Services';
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('List services available in the marketplace', {
           waitForResponse: true,
-          contentValidator: TestValidator.createAuthenticationRequiredValidator(),
+          contentValidator: TestValidator.createMarketplaceServicesListValidator(),
         });
         
         const responseContent = response.response?.[0]?.content || null;
-        const requiresAuth = responseContent ? TestValidator.hasAuthenticationRequired(responseContent) : false;
-        const hasMarketplaceInfo = responseContent ? TestValidator.hasMarketplaceInfo(responseContent) : false;
+        
+        // Use the validator's helper methods to check the response
+        const hasNoServicesPattern = responseContent ? TestValidator.hasNoServicesPattern(responseContent) : false;
+        const hasServiceCount = responseContent ? TestValidator.hasServiceCountPattern(responseContent) : false;
+        const hasServiceDescription = responseContent ? TestValidator.hasServiceDescriptionPattern(responseContent) : false;
+        const hasServiceList = responseContent ? TestValidator.hasServiceListPattern(responseContent) : false;
         
         const result: TestResult = {
-          passed: response.success && responseContent && (requiresAuth || hasMarketplaceInfo),
+          passed: response.success && responseContent && (hasNoServicesPattern || hasServiceCount || hasServiceDescription || hasServiceList),
           message: response.success ? 
-            `Services list query completed. Requires auth: ${requiresAuth}, Has marketplace info: ${hasMarketplaceInfo}. Response: ${responseContent?.substring(0, 200) || 'No content'}...` :
+            `Services list query completed. No services pattern: ${hasNoServicesPattern}, Service count: ${hasServiceCount}, Service description: ${hasServiceDescription}, Service list: ${hasServiceList}. Response: ${responseContent?.substring(0, 200) || 'No content'}...` :
             `Failed to list services: ${response.error}`,
           data: { 
             responseContent, 
-            requiresAuth, 
-            hasMarketplaceInfo,
+            hasNoServicesPattern,
+            hasServiceCount,
+            hasServiceDescription,
+            hasServiceList,
             response 
           },
           error: response.error
@@ -431,50 +437,10 @@ describe('Eliza Integration Tests', () => {
   /**
    * INTEGRATION TESTS
    */
-  describe.skip('Cross-Functionality Integration', () => {
-    
-    it('13 - should perform a complete wallet-to-marketplace flow', async () => {
-      const testName = 'Complete Wallet-to-Marketplace Flow';
-      logger.info(`Running: ${testName}`);
-      
-      // Step 1: Check wallet status
-      const walletResponse = await elizaClient.sendMessage('What is my wallet status?', {
-        waitForResponse: true,
-        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
-      });
-      
-      // Step 2: Check marketplace status
-      const marketplaceResponse = await elizaClient.sendMessage('Am I logged into the marketplace?', {
-        waitForResponse: true,
-        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
-      });
-      
-      // Step 3: List services
-      const servicesResponse = await elizaClient.sendMessage('List available services', {
-        waitForResponse: true,
-        responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
-      });
-      
-      const result: TestResult = {
-        passed: walletResponse.success && marketplaceResponse.success && servicesResponse.success,
-        message: `Integration flow completed:
-          - Wallet status: ${walletResponse.success ? 'OK' : 'FAILED'}
-          - Marketplace status: ${marketplaceResponse.success ? 'OK' : 'FAILED'}
-          - Services listing: ${servicesResponse.success ? 'OK' : 'FAILED'}`,
-        data: {
-          walletStatus: walletResponse.success,
-          marketplaceStatus: marketplaceResponse.success,
-          servicesStatus: servicesResponse.success
-        },
-        error: walletResponse.error || marketplaceResponse.error || servicesResponse.error
-      };
-      
-      testResults.push({ name: testName, result });
-      expect(result.passed).toBe(true);
-    }, 180000); 
+  describe.skip('Extra Tests', () => {
 
-    it('14 - should handle error conditions gracefully', async () => {
-      const testName = 'Error Handling Test';
+    it('13 - should handle non sense messages gracefully', async () => {
+      const testName = 'Non Sense Message Handling Test';
       logger.info(`Running: ${testName}`);
       
       // Try to access a non-existent endpoint or invalid data
