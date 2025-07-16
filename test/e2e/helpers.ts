@@ -797,6 +797,103 @@ export class TestValidator {
   static hasServiceListPattern(content: string): boolean {
     return /services.*:|services.*are|services.*include|here.*services/i.test(content);
   }
+
+  /**
+   * Create a validator that checks for marketplace service registration responses
+   * Rejects "please wait" messages and accepts only successful registration responses
+   */
+  static createMarketplaceServiceRegistrationValidator(): (content: string) => boolean {
+    return (content: string) => {
+      // Reject processing messages like "please wait" or "hold on"
+      // These messages indicate the AI is still working and haven't provided the actual result yet
+      const hasProcessingWords = /please wait|hold on|checking|verifying|moment|gathering|processing|working on/i.test(content);
+      const hasProcessingMessage = hasProcessingWords;
+      
+      if (hasProcessingMessage) {
+        console.log('Marketplace service registration validation: Rejecting processing message');
+        return false;
+      }
+      
+      // Check for successful service registration patterns
+      const registrationSuccessPatterns = [
+        /service.*registered/i,
+        /service.*created/i,
+        /service.*successfully.*registered/i,
+        /service.*successfully.*created/i,
+        /registration.*successful/i,
+        /registration.*completed/i,
+        /service.*added/i,
+        /service.*listed/i,
+        /service.*available/i,
+        /service.*ready/i,
+        /service.*active/i,
+        /service.*published/i,
+        /service.*live/i,
+        /service.*activated/i,
+        /service.*confirmed/i,
+        /service.*processed/i,
+        /service.*executed/i,
+        /service.*initiated/i,
+        /service.*set up/i,
+        /service.*configured/i,
+        /service.*established/i,
+        /service.*enabled/i,
+        /service.*deployed/i,
+        /service.*launched/i,
+        /service.*started/i,
+        /service.*begun/i,
+        /service.*commenced/i,
+        /service.*initiated/i,
+        /service.*began/i,
+        /service.*started/i,
+        /service.*launched/i,
+        /service.*deployed/i,
+        /service.*enabled/i,
+        /service.*established/i,
+        /service.*configured/i,
+        /service.*set up/i,
+        /service.*processed/i,
+        /service.*executed/i,
+        /service.*confirmed/i,
+        /service.*live/i,
+        /service.*published/i,
+        /service.*active/i,
+        /service.*ready/i,
+        /service.*available/i,
+        /service.*listed/i,
+        /service.*added/i,
+        /service.*completed/i,
+        /service.*successful/i,
+        /service.*created/i,
+        /service.*registered/i
+      ];
+      
+      const hasRegistrationSuccess = registrationSuccessPatterns.some(pattern => pattern.test(content));
+      
+      // Also check for general success indicators in the context of service registration
+      const hasSuccessIndicators = this.hasSuccessIndicators(content);
+      
+      // Check for marketplace/service-related keywords to ensure it's a service registration response
+      const hasServiceKeywords = /service|marketplace|register|registration|create|add|list/i.test(content);
+      
+      // Valid if we have registration success patterns AND service-related keywords
+      const isValid = hasRegistrationSuccess && hasServiceKeywords;
+      
+      if (!isValid) {
+        console.log('Marketplace service registration validation failed for content:', content.substring(0, 200) + '...');
+        console.log('Validation details:', {
+          hasRegistrationSuccess,
+          hasSuccessIndicators,
+          hasServiceKeywords,
+          hasProcessingMessage
+        });
+      } else {
+        console.log('Marketplace service registration validation succeeded');
+      }
+      
+      return isValid;
+    };
+  }
 }
 
 /**

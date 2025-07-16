@@ -330,7 +330,7 @@ describe('Eliza Integration Tests', () => {
     });
 
     describe('Service Management', () => {
-      it.only('10 - should list available services', async () => {
+      it('10 - should list available services', async () => {
         const testName = 'List Available Services';
         logger.info(`Running: ${testName}`);
         
@@ -367,7 +367,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 130000);
 
-      it('11 - should register a new service', async () => {
+      it.only('11 - should register a new service', async () => {
         const testName = 'Register New Service';
         logger.info(`Running: ${testName}`);
         
@@ -377,9 +377,8 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage(
           `Register a new service called "${serviceName}" with description "${serviceDescription}" price 25 DUST and to receive payment at address ${sampleAddress}`, {
-
             waitForResponse: true,
-
+            contentValidator: TestValidator.createMarketplaceServiceRegistrationValidator(),
           }
         );
         
