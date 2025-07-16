@@ -2,7 +2,45 @@
 
 This document defines the API methods exposed by the **Midnight Wallet MCP** module for integration with Eliza AI agents.
 
-The Wallet MCP is responsible for securely managing private keys, maintaining wallet sync state, and providing an interface for Eliza to perform blockchain operations.
+The Wallet MCP consists of two components:
+1. **Wallet Server** (`server.ts`) - An Express.js HTTP server that runs the wallet logic and exposes REST API endpoints
+2. **STDIO Server** (`stdio-server.ts`) - An MCP-compliant server that acts as a proxy, forwarding tool calls to the wallet server via HTTP requests
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    AI[AI Agent<br/>via MCP] --> STDIO[STDIO Server<br/>MCP Proxy]
+    STDIO --> HTTP[HTTP Requests]
+    HTTP --> WALLET[Wallet Server<br/>Express.js]
+    WALLET --> BLOCKCHAIN[Midnight<br/>Blockchain]
+    
+    subgraph "MCP Protocol"
+        AI
+        STDIO
+    end
+    
+    subgraph "HTTP Layer"
+        HTTP
+    end
+    
+    subgraph "Wallet Logic"
+        WALLET
+    end
+    
+    subgraph "Blockchain"
+        BLOCKCHAIN
+    end
+    
+    style AI fill:#e1f5fe
+    style STDIO fill:#fff3e0
+    style WALLET fill:#f3e5f5
+    style BLOCKCHAIN fill:#e8f5e8
+```
+
+The STDIO server receives MCP tool calls from AI agents and forwards them as HTTP requests to the wallet server, which performs the actual wallet operations and returns the results.
 
 ---
 
@@ -80,34 +118,52 @@ WALLET_SERVER_HOST=wallet-server
 
 ## API Methods
 
-### `isReady()`
+### `walletStatus`
 **Purpose:**
-- Checks if the wallet is fully synced and ready to process operations.
+- Gets detailed wallet status including sync progress, readiness, and recovery state.
+
+**Parameters:**
+- None
 
 **Returns:**
-- `true` if wallet is ready.
-- `false` if wallet is still syncing.
+- WalletStatus object containing:
+  - `ready`: Whether the wallet is ready for operations
+  - `syncing`: Whether the wallet is currently syncing
+  - `syncProgress`: Sync progress information
+  - `address`: The wallet's address
+  - `balances`: Current wallet balances
+  - `recovering`: Whether the wallet is in recovery mode
+  - `recoveryAttempts`: Number of recovery attempts
+  - `maxRecoveryAttempts`: Maximum number of recovery attempts
+  - `isFullySynced`: Whether the wallet is fully synced
 
 **Error Handling:**
-- None. Always returns a boolean.
+- If issues retrieving status: returns error `WALLET_NOT_READY`.
 
 ---
 
-### `getAddress()`
+### `walletAddress`
 **Purpose:**
 - Returns the wallet's receiving address.
 
+**Parameters:**
+- None
+
 **Returns:**
-- String: Base address of the wallet.
+- Object containing:
+  - `address`: Base address of the wallet
 
 **Error Handling:**
 - If wallet has issues: returns error `WALLET_NOT_READY`.
 
 ---
 
-### `getBalance()`
+### `walletBalance`
 **Purpose:**
 - Retrieves the wallet's available balance.
+
+**Parameters:**
+- None
 
 **Returns:**
 - WalletBalances object containing:
@@ -141,27 +197,21 @@ WALLET_SERVER_HOST=wallet-server
 
 ---
 
-### `sendFundsAndWait(destinationAddress: string, amount: string)`
+### `verifyTransaction(identifier: string)`
 **Purpose:**
-- Sends funds and waits for the transaction to be fully processed (blocking).
+- Verifies if a transaction with the specified identifier has been received by the wallet.
 
 **Parameters:**
-- `destinationAddress`: Address to send funds to.
-- `amount`: Amount to transfer (as a string).
+- `identifier`: The transaction identifier to verify.
 
 **Returns:**
-- SendFundsResult object containing:
-  - `txIdentifier`: Transaction identifier
+- TransactionVerificationResult object containing:
+  - `exists`: Whether the transaction exists
   - `syncStatus`: Current sync status information
-  - `amount`: Amount sent
 
 **Error Handling:**
 - If wallet is not ready: returns error `WALLET_NOT_READY`.
-- If insufficient balance: returns error `INSUFFICIENT_FUNDS`.
-- If transaction submission fails: returns error `TX_SUBMISSION_FAILED`.
-
-**Note:**
-- This method is deprecated in favor of the non-blocking `sendFunds` method.
+- If verification fails: returns error `IDENTIFIER_VERIFICATION_FAILED`.
 
 ---
 
@@ -183,69 +233,52 @@ WALLET_SERVER_HOST=wallet-server
 
 ---
 
-### `getTransactions(state?: TransactionState)`
+### `getTransactions()`
 **Purpose:**
-- Gets all transactions, optionally filtered by state.
+- Gets all transactions.
 
 **Parameters:**
-- `state`: Optional filter for transaction state (INITIATED, SENT, COMPLETED, FAILED).
+- None
 
 **Returns:**
-- Array of TransactionRecord objects matching the specified state (or all if no state specified).
+- Array of TransactionRecord objects.
 
 **Error Handling:**
 - If wallet is not ready: returns error `WALLET_NOT_READY`.
 
 ---
 
-### `getPendingTransactions()`
+### `getWalletConfig()`
 **Purpose:**
-- Gets all pending transactions (those in INITIATED or SENT state).
-
-**Returns:**
-- Array of TransactionRecord objects that are in a pending state.
-
-**Error Handling:**
-- If wallet is not ready: returns error `WALLET_NOT_READY`.
-
----
-
-### `confirmTransactionHasBeenReceived(identifier: string)`
-**Purpose:**
-- Verifies if a transaction with the specified identifier has been received by the wallet.
+- Gets the configuration of the wallet NODE and Indexer.
 
 **Parameters:**
-- `identifier`: The transaction identifier to verify.
+- None
 
 **Returns:**
-- TransactionVerificationResult object containing:
-  - `exists`: Whether the transaction exists
-  - `syncStatus`: Current sync status information
+- Object containing wallet configuration information.
 
 **Error Handling:**
 - If wallet is not ready: returns error `WALLET_NOT_READY`.
-- If verification fails: returns error `IDENTIFIER_VERIFICATION_FAILED`.
 
 ---
 
-### `getWalletStatus()`
-**Purpose:**
-- Gets detailed wallet status including sync progress, readiness, and recovery state.
+## HTTP Endpoints
 
-**Returns:**
-- WalletStatus object containing:
-  - `ready`: Whether the wallet is ready for operations
-  - `syncing`: Whether the wallet is currently syncing
-  - `syncProgress`: Sync progress information
-  - `address`: The wallet's address
-  - `balances`: Current wallet balances
-  - `recovering`: Whether the wallet is in recovery mode
-  - `recoveryAttempts`: Number of recovery attempts
-  - `maxRecoveryAttempts`: Maximum number of recovery attempts
-  - `isFullySynced`: Whether the wallet is fully synced
+The wallet server exposes the following REST API endpoints:
 
-**Error Handling:**
-- If issues retrieving status: returns error `WALLET_NOT_READY`.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/wallet/status` | Get wallet status |
+| GET | `/wallet/address` | Get wallet address |
+| GET | `/wallet/balance` | Get wallet balance |
+| POST | `/wallet/send` | Send funds |
+| POST | `/wallet/verify-transaction` | Verify transaction |
+| GET | `/wallet/transaction/:transactionId` | Get transaction status |
+| GET | `/wallet/transactions` | Get all transactions |
+| GET | `/wallet/pending-transactions` | Get pending transactions |
+| GET | `/wallet/config` | Get wallet configuration |
+| GET | `/health` | Health check |
 
 ---
 
@@ -253,6 +286,7 @@ WALLET_SERVER_HOST=wallet-server
 - **Seed management is internal**: no external createWallet, exportSeed, or modifySeed operations are allowed.
 - **State persistence**: Wallet state (seed, address, UTXOs) is saved locally to survive restarts.
 - **Non-blocking design**: Most operations return immediately, transaction states can be tracked separately.
+- **HTTP proxy**: The STDIO server acts as a proxy, forwarding MCP tool calls to the wallet server via HTTP requests.
 
 ---
 
@@ -273,4 +307,3 @@ WALLET_SERVER_HOST=wallet-server
 ---
 
 # End of Document
-

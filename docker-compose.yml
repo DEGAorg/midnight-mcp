@@ -6,7 +6,9 @@ services:
       - RUST_LOG=info
     ports:
       - "6300:6300"
-    command: ["midnight-proof-server", "--network", "testnet"]
+    command: "'midnight-proof-server --network testnet'"
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", ":> /dev/tcp/127.0.0.1/6300 || exit 1"]
     restart: unless-stopped
 
   wallet-server:
@@ -21,9 +23,9 @@ services:
       - NETWORK_ID=TestNet
       - USE_EXTERNAL_PROOF_SERVER=true
       - PROOF_SERVER=http://proof-server:6300
-      - INDEXER=${INDEXER:-http://indexer:8080}
-      - INDEXER_WS=${INDEXER_WS:-ws://indexer:8080}
-      - MN_NODE=${MN_NODE:-http://midnight-node:8080}
+      - INDEXER=https://indexer.testnet-02.midnight.network/api/v1/graphql
+      - INDEXER_WS=wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws
+      - MN_NODE=https://rpc.testnet-02.midnight.network
       - LOG_LEVEL=info
       - STORAGE_BASE_DIR=/app/.storage
     ports:

@@ -80,3 +80,6 @@ Thumbs.db
 
 # Agent directories
 /agents/
+
+# Test configuration files (dynamic data from setup scripts)
+test/integration/mcp/test-config.json

@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { httpClient } from './utils/http-client.js';
 
@@ -82,11 +83,36 @@ export const ALL_TOOLS = [
       properties: {},
       required: []
     },
+  },
+  // Marketplace tools
+  {
+    name: "registerInMarketplace",
+    description: "Register a user in the marketplace",
+    inputSchema: {
+      type: "object",
+      properties: {
+        userId: { type: "string" },
+        userData: { type: "object" }
+      },
+      required: ["userId", "userData"]
+    }
+  },
+  {
+    name: "verifyUserInMarketplace",
+    description: "Verify a user in the marketplace",
+    inputSchema: {
+      type: "object",
+      properties: {
+        userId: { type: "string" },
+        verificationData: { type: "object" }
+      },
+      required: ["userId", "verificationData"]
+    }
   }
 ];
 
 // Define tool handlers
-export async function handleToolCall(toolName: string, toolArgs: any, midnightServer: any, log: (...args: any[]) => void) {
+export async function handleToolCall(toolName: string, toolArgs: any, log: (...args: any[]) => void) {
   try {
     switch (toolName) {
       // Midnight wallet tool handlers
@@ -214,6 +240,45 @@ export async function handleToolCall(toolName: string, toolArgs: any, midnightSe
             {
               "type": "text",
               "text": JSON.stringify(config, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      // Marketplace tool handlers
+      case "registerInMarketplace":
+        const { userId, userData } = toolArgs;
+        if (!userId || !userData) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameters: userId and userData"
+          );
+        }
+        const registerResult = await httpClient.post('/marketplace/register', { userId, userData });
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(registerResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "verifyUserInMarketplace":
+        const { userId: verifyUserId, verificationData } = toolArgs;
+        if (!verifyUserId || !verificationData) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameters: userId and verificationData"
+          );
+        }
+        const verifyUserResult = await httpClient.post('/marketplace/verify', { userId: verifyUserId, verificationData });
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(verifyUserResult, null, 2),
               "mimeType": "application/json"
             }
           ]

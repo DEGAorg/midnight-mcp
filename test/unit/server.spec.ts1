@@ -1,0 +1,124 @@
+import request from 'supertest';
+import express from 'express';
+import { app, server } from '../../src/server'; 
+import { WalletController } from '../../src/controllers/wallet.controller';
+import { WalletServiceMCP } from '../../src/mcp/index';
+
+jest.mock('../../src/controllers/wallet.controller');
+jest.mock('../../src/logger/index', () => ({
+  createLogger: () => ({
+    info: jest.fn(),
+    error: jest.fn()
+  })
+}));
+jest.mock('../../src/config', () => ({
+  config: {
+    agentId: 'agent-1',
+    proofServer: 'http://localhost:8000',
+    indexer: 'http://localhost:8001',
+    indexerWS: 'ws://localhost:8002',
+    node: 'http://localhost:8003',
+    useExternalProofServer: true,
+    networkId: 'testnet',
+    walletFilename: 'wallet.dat'
+  }
+}));
+jest.mock('../../src/utils/seed-manager', () => ({
+  SeedManager: {
+    getAgentSeed: jest.fn(() => 'fake-seed')
+  }
+}));
+jest.mock('../../src/mcp/index', () => ({
+  WalletServiceMCP: jest.fn().mockImplementation(() => ({
+    close: jest.fn()
+  }))
+}));
+
+const mockMethods = {
+  getStatus: jest.fn((req, res) => res.status(200).json({ status: 'ok' })),
+  getAddress: jest.fn((req, res) => res.status(200).json({ address: 'addr' })),
+  getBalance: jest.fn((req, res) => res.status(200).json({ balance: 100 })),
+  sendFunds: jest.fn((req, res) => res.status(200).json({ sent: true })),
+  verifyTransaction: jest.fn((req, res) => res.status(200).json({ verified: true })),
+  getTransactionStatus: jest.fn((req, res) => res.status(200).json({ status: 'confirmed' })),
+  getTransactions: jest.fn((req, res) => res.status(200).json({ txs: [] })),
+  getPendingTransactions: jest.fn((req, res) => res.status(200).json({ pending: [] })),
+  getWalletConfig: jest.fn((req, res) => res.status(200).json({ config: true })),
+  healthCheck: jest.fn((req, res) => res.status(200).json({ health: 'ok' }))
+};
+
+beforeAll(() => {
+  // Replace controller prototype with mocks
+  (WalletController as jest.Mock).mockImplementation(() => mockMethods);
+});
+
+afterAll(() => {
+  server.close();
+});
+
+describe('Server routes', () => {
+  it.each([
+    ['/wallet/status', 200],
+    ['/wallet/address', 200],
+    ['/wallet/balance', 200],
+    ['/wallet/transactions', 200],
+    ['/wallet/transaction/abc123', 200],
+    ['/wallet/pending-transactions', 200],
+    ['/wallet/config', 200],
+    ['/health', 200]
+  ])('GET %s returns 200', async (url, status) => {
+    const res = await request(app).get(url);
+    expect(res.status).toBe(status);
+  });
+
+  it.each([
+    ['/wallet/send', 200],
+    ['/wallet/verify-transaction', 200]
+  ])('POST %s returns 200', async (url, status) => {
+    const res = await request(app).post(url).send({});
+    expect(res.status).toBe(status);
+  });
+
+  it('should handle internal errors', async () => {
+    const faultyApp = express();
+    faultyApp.use(() => {
+      throw new Error('Unexpected error');
+    });
+    faultyApp.use(app._router); // attach the real router
+    const res = await request(faultyApp).get('/wallet/status');
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Internal server error');
+  });
+});
+
+describe('Shutdown handling', () => {
+  let exitSpy: jest.SpyInstance;
+  let closeSpy: jest.Mock;
+
+  beforeEach(() => {
+    exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as (code?: number) => never);
+    closeSpy = jest.fn();
+    (WalletServiceMCP as jest.Mock).mockImplementation(() => ({
+      close: closeSpy
+    }));
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
+  });
+
+  it('handles SIGTERM gracefully', async () => {
+    process.emit('SIGTERM');
+    // Wait for async close
+    await new Promise(res => setTimeout(res, 10));
+    expect(closeSpy).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
+  it('handles SIGINT gracefully', async () => {
+    process.emit('SIGINT');
+    await new Promise(res => setTimeout(res, 10));
+    expect(closeSpy).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+});

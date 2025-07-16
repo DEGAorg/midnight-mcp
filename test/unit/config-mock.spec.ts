@@ -1,4 +1,10 @@
-import { jest } from '@jest/globals';
+// Mock dependencies - must be at the very top
+jest.mock('@midnight-ntwrk/wallet');
+jest.mock('@midnight-ntwrk/ledger');
+jest.mock('@midnight-ntwrk/midnight-js-network-id');
+jest.mock('../../../src/utils/file-manager');
+
+import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 // Mock configuration for testing
@@ -37,4 +43,12 @@ describe('Config Mock', () => {
     expect(loadConfig).toBeDefined();
     expect(loadConfig()).toBe(mockConfig);
   });
+});
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
 }); 
