@@ -4,13 +4,12 @@ This directory contains integration tests for the Wallet MCP system that test th
 
 ## Overview
 
-The integration tests make HTTP calls to the server running in Docker and verify the responses for the 8 planned test scenarios. The test environment (wallets, contracts, transactions) is created by an external script in a different repository.
+The integration tests make HTTP calls to the server running in Docker and verify the responses for the 8 planned test scenarios. The test environment (wallets, contracts, transactions) is created by an external script in the [marketplace-registry-contract repository](https://github.com/DEGAorg/marketplace-registry-contract).
 
 ## Prerequisites
 
 1. **Docker Server**: The server must be running in Docker (started manually)
 2. **External Setup**: Test environment created by external script (wallets, contracts, transactions)
-3. **Dependencies**: supertest package for HTTP testing
 
 ### Test Scenarios
 
@@ -27,29 +26,17 @@ The tests cover 8 main scenarios:
 
 ## Running the Tests
 
-### 1. Install Dependencies
+### 1. Create Test Configuration
+
+Run the setup script in the [marketplace-registry-contract repository](https://github.com/DEGAorg/marketplace-registry-contract/blob/main/marketplace-registry-cli/src/test-setup.ts) to generate the test environment (wallets, contracts, transactions). Copy the output from that script to `test-config.json`:
 
 ```bash
-# Install supertest for HTTP testing
-yarn add -D supertest @types/supertest
+# Run the setup script in the marketplace-registry-contract repository
+# Copy the output to this location:
+cp <path-to-setup-script-output> test/integration/mcp/test-config.json
 ```
 
-### 2. Ensure Docker Server is Running
-
-```bash
-# Make sure your Docker server is running (started manually)
-# The server should be accessible at http://localhost:3000 (or set TEST_SERVER_URL)
-```
-
-### 3. Create Test Configuration
-
-Copy `setup-script-output-template.json` to `test-config.json` and update it with the actual values from your setup script (in the other repository):
-
-```bash
-cp test/integration/mcp/setup-script-output-template.json test/integration/mcp/test-config.json
-```
-
-Then edit `test-config.json` and replace the placeholder values with actual data from your setup script:
+The `test-config.json` file should contain the actual output from the setup script, including:
 
 **Required fields to update:**
 - `wallets.wallet1.address` - Registered agent wallet address
@@ -58,14 +45,12 @@ Then edit `test-config.json` and replace the placeholder values with actual data
 - `transactions.wrongAmount.identifier` - Wrong amount transaction ID
 - `transactions.unknownSender.identifier` - Unknown sender transaction ID
 
-### 4. Run Integration Tests
+### 2. Run Integration Tests
 
 ```bash
 # Run all integration tests
 yarn test:integration
 
-# Run only MCP integration tests
-yarn test:integration --testPathPattern="test/integration/mcp"
 ```
 
 ## Test Configuration
@@ -214,8 +199,7 @@ curl -X POST http://localhost:3000/wallet/verify-transaction \
 ```
 test/integration/mcp/
 ├── index.spec.ts                    # Main integration test file
-├── test-config.json                 # Test configuration (update with setup script output)
-├── setup-script-output-template.json # Template showing required format
+├── test-config.json                 # Test configuration (copy from setup script output)
 └── README.md                        # This file
 ```
 
