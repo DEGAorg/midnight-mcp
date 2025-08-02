@@ -1,0 +1,82 @@
+{
+  "server": {
+    "url": "http://localhost:3000",
+    "timeout": 60000
+  },
+  "wallets": {
+    "wallet1": {
+      "address": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Registered agent wallet"
+    },
+    "wallet2": {
+      "address": "REPLACE_WITH_WALLET2_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Unregistered agent wallet"
+    }
+  },
+  "marketplace": {
+    "address": "REPLACE_WITH_MARKETPLACE_ADDRESS_FROM_SETUP_SCRIPT",
+    "description": "Marketplace contract address"
+  },
+  "transactions": {
+    "validPayment": {
+      "identifier": "REPLACE_WITH_VALID_PAYMENT_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "senderAddress": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Valid payment from registered agent (Wallet1) with correct amount"
+    },
+    "wrongAmount": {
+      "identifier": "REPLACE_WITH_WRONG_AMOUNT_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "actualAmount": "500000",
+      "senderAddress": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Payment from valid sender but wrong amount"
+    },
+    "unknownSender": {
+      "identifier": "REPLACE_WITH_UNKNOWN_SENDER_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "senderAddress": "REPLACE_WITH_WALLET2_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Payment from unregistered sender (Wallet2)"
+    },
+    "noPayment": {
+      "identifier": "non-existent-transaction-123",
+      "expectedAmount": "1000000",
+      "description": "No payment received (transaction does not exist)"
+    },
+    "validIdentityMatch": {
+      "identifier": "REPLACE_WITH_VALID_PAYMENT_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "senderAddress": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "registeredIdentity": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Valid identity match between on-chain sender and registered identity"
+    },
+    "agentNotRegistered": {
+      "identifier": "REPLACE_WITH_UNKNOWN_SENDER_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "senderAddress": "REPLACE_WITH_WALLET2_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Agent not registered in the contract (Wallet2)"
+    },
+    "senderMismatch": {
+      "identifier": "REPLACE_WITH_VALID_PAYMENT_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "senderAddress": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "sessionIdentity": "REPLACE_WITH_WALLET2_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Sender mismatch between on-chain transaction and off-chain session"
+    },
+    "duplicateTransaction": {
+      "identifier": "REPLACE_WITH_VALID_PAYMENT_TX_ID_FROM_SETUP_SCRIPT",
+      "expectedAmount": "1000000",
+      "senderAddress": "REPLACE_WITH_WALLET1_ADDRESS_FROM_SETUP_SCRIPT",
+      "description": "Duplicate transaction detection test"
+    }
+  },
+  "testAmounts": {
+    "validAmount": "1000000",
+    "wrongAmount": "500000",
+    "zeroAmount": "0"
+  },
+  "metadata": {
+    "setupScriptVersion": "1.0.0",
+    "lastUpdated": "REPLACE_WITH_CURRENT_TIMESTAMP",
+    "description": "Configuration file for Wallet MCP integration tests. Update this file with actual values from your setup script."
+  }
+} 

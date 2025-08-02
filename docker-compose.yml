@@ -1,62 +1,44 @@
-version: '3.8'
-
 services:
-  # Midnight MCP (Midnight Coordination Point) server
-  mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: midnight-mcp
-    env_file: .env
-    environment:
-      # Only keeping service-specific variables that differ from .env
-      - PROOF_SERVER=http://proof-server:6300
-      - WALLET_BACKUP_FOLDER=/app/wallet-backups
-      # This validation ensures the critical SEED variable is provided
-      - SEED=${SEED:?SEED environment variable is required}
-    ports:
-      - "${MCP_PORT:-3000}:3000"
-    depends_on:
-      - proof-server
-    volumes:
-      - wallet-backups:/app/wallet-backups
-      - logs:/app/logs
-    networks:
-      - midnight-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Proof server for zero-knowledge proofs
   proof-server:
-    image: midnightnetwork/proof-server:3.0.7
+    image: midnightnetwork/proof-server:4.0.0
     container_name: midnight-proof-server
     environment:
       - RUST_LOG=info
     ports:
-      - "${PROOF_SERVER_PORT:-6300}:6300"
-    entrypoint: []
-    command: ["midnight-proof-server", "--network", "testnet"]
-    networks:
-      - midnight-network
+      - "6300:6300"
+    command: "'midnight-proof-server --network testnet'"
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", ":> /dev/tcp/127.0.0.1/6300 || exit 1"]
+    restart: unless-stopped
+
+  wallet-server:
+    build:
+      context: ../..  # Adjust this path to your Dockerfile location
+      dockerfile: Dockerfile
+    container_name: midnight-wallet-server-${AGENT_ID:-default}
+    environment:
+      - AGENT_ID=${AGENT_ID}
+      - WALLET_SERVER_HOST=wallet-server
+      - WALLET_SERVER_PORT=${WALLET_SERVER_PORT:-3000}
+      - NETWORK_ID=TestNet
+      - USE_EXTERNAL_PROOF_SERVER=true
+      - PROOF_SERVER=http://proof-server:6300
+      - INDEXER=https://indexer.testnet-02.midnight.network/api/v1/graphql
+      - INDEXER_WS=wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws
+      - MN_NODE=https://rpc.testnet-02.midnight.network
+      - LOG_LEVEL=info
+      - STORAGE_BASE_DIR=/app/.storage
+    ports:
+      - "${WALLET_SERVER_PORT:-3000}:3000"
+    volumes:
+      - ./data:/app/.storage
+      - ./logs:/app/logs
+    depends_on:
+      - proof-server
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:6300/health"]
+      test: ["CMD-SHELL", "wget --spider --quiet http://localhost:3000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
-
-volumes:
-  wallet-backups:
-    driver: local
-  logs:
-    driver: local
-
-networks:
-  midnight-network:
-    driver: bridge 

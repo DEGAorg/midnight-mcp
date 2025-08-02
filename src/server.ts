@@ -1,74 +1,27 @@
-import express from 'express';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { z } from 'zod';
-import { 
-  MCPServer as MidnightMCPServer,
-  createSimpleToolHandler,
-  createParameterizedToolHandler
-} from './mcp/index.js';
-import { CloudProvider, configureGlobalLogging, createLogger, logger } from './logger/index.js';
+import express, { Router, RequestHandler } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import pkg from 'body-parser';
+const { json } = pkg;
+import { WalletServiceMCP } from './mcp/index.js';
+import { WalletController } from './controllers/wallet.controller.js';
 import { config } from './config.js';
+import { SeedManager } from './utils/seed-manager.js';
+import { createLogger } from './logger/index.js';
 
 const app = express();
-app.use(express.json());
+const router = Router();
+const port = process.env.PORT || 3000;
+const logger = createLogger('server');
 
-// Initialize Midnight MCP server
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(json());
 
-// Configure global logging settings based on environment
-configureGlobalLogging({
-  level: (process.env.LOG_LEVEL as any) || 'info',
-  prettyPrint: process.env.NODE_ENV !== 'production',
-  enableFileOutput: process.env.NODE_ENV === 'production',
-  defaultLogFile: './logs/midnight-mcp.log',
-  // Example: Configure GCP logging if in production and GCP_PROJECT_ID is set
-  ...(process.env.NODE_ENV === 'production' && process.env.GCP_PROJECT_ID ? {
-    cloud: {
-      provider: CloudProvider.GCP,
-      config: {
-        projectId: process.env.GCP_PROJECT_ID,
-        logName: 'midnight-mcp-logs',
-        resource: {
-          type: 'k8s_container',
-          labels: {
-            cluster_name: process.env.K8S_CLUSTER_NAME || 'midnight-cluster',
-            namespace_name: process.env.K8S_NAMESPACE || 'default',
-            pod_name: process.env.POD_NAME || 'midnight-mcp',
-            container_name: 'midnight-mcp',
-          },
-        },
-      },
-    },
-  } : {}),
-  // Standard fields to include with all logs
-  standardFields: {
-    application: 'midnight-mcp',
-    environment: process.env.NODE_ENV || 'development',
-    version: process.env.APP_VERSION || '0.0.1',
-  },
-});
+// Initialize services
 
-const shouldCheckAuth = process.env.CHECK_AUTH === 'true';
-const API_KEY = process.env.API_KEY;
-
-if (shouldCheckAuth && API_KEY) {
-  // Mask key in logs for security
-  const maskedKey = API_KEY.length > 8 
-    ? `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}`
-    : '********';
-  
-  if (process.env.NODE_ENV !== 'production') {
-    logger.info(`Using development API key: ${API_KEY}`);
-  } else {
-    logger.info(`API authentication enabled with key: ${maskedKey}`);
-  }
-} else if (shouldCheckAuth && !API_KEY) {
-  logger.info('API authentication disabled');
-  throw new Error('No API_KEY defined. Authentication is mandatory.');
-} else {
-  logger.info('API authentication disabled');
-}
-
+const seed = SeedManager.getAgentSeed(config.agentId);
 const externalConfig = {
   proofServer: config.proofServer,
   indexer: config.indexer,
@@ -78,186 +31,96 @@ const externalConfig = {
   networkId: config.networkId
 };
 
-// Initialize Midnight wallet instance
-const midnightServer = new MidnightMCPServer(
+const walletService = new WalletServiceMCP(
   config.networkId,
-  config.seed,
+  seed,
   config.walletFilename,
   externalConfig
 );
 
-// Helper: Create a new MCP Protocol Server instance with tools and resources
-function getServer() {
-  const server = new McpServer({
-    name: 'MidnightMCPServer',
-    version: '1.0.0'
-  });
+// Initialize controller
+const walletController = new WalletController(walletService);
 
-  // Add wallet status tool
-  server.tool(
-    'walletStatus',
-    'Get the current status of the wallet',
-    createSimpleToolHandler(() => midnightServer.getWalletStatus())
-  );
+// Register routes with bound methods
+const routes = [
+  { method: 'get', path: '/wallet/status', handler: walletController.getStatus },
+  { method: 'get', path: '/wallet/address', handler: walletController.getAddress },
+  { method: 'get', path: '/wallet/balance', handler: walletController.getBalance },
+  { method: 'post', path: '/wallet/send', handler: walletController.sendFunds },
+  { method: 'post', path: '/wallet/verify-transaction', handler: walletController.verifyTransaction },
+  { method: 'get', path: '/wallet/transaction/:transactionId', handler: walletController.getTransactionStatus },
+  { method: 'get', path: '/wallet/transactions', handler: walletController.getTransactions },
+  { method: 'get', path: '/wallet/pending-transactions', handler: walletController.getPendingTransactions },
+  { method: 'get', path: '/wallet/config', handler: walletController.getWalletConfig },
+  { method: 'get', path: '/health', handler: walletController.healthCheck },
+  // Marketplace routes
+  { method: 'post', path: '/marketplace/register', handler: walletController.registerInMarketplace },
+  { method: 'post', path: '/marketplace/verify', handler: walletController.verifyUserInMarketplace }
+] as const;
 
-  // Add wallet address tool
-  server.tool(
-    'walletAddress',
-    'Get the wallet address',
-    createSimpleToolHandler(() => midnightServer.getAddress())
-  );
+// Register all routes
+routes.forEach(({ method, path, handler }) => {
+  const boundHandler = (handler as RequestHandler).bind(walletController);
+  /* istanbul ignore else */
+  if (method === 'get') {
+    router.get(path, boundHandler);
+  } else if (method === 'post') {
+    router.post(path, boundHandler);
 
-  // Add wallet balance tool
-  server.tool(
-    'walletBalance',
-    'Get the current balance of the wallet',
-    createSimpleToolHandler(() => midnightServer.getBalance())
-  );
-
-  // Add send funds tool
-  server.tool(
-    'sendFunds', 
-    'Send funds to another wallet address',
-    {
-      destinationAddress: z.string().min(1), 
-      amount: z.string().min(1) 
-    },
-    createParameterizedToolHandler((args: { destinationAddress: string, amount: string }) => 
-      midnightServer.sendFunds(args.destinationAddress, args.amount)
-    )
-  );
-
-  // Add transaction verification tool
-  server.tool(
-    'verifyTransaction',
-    'Verify if a transaction has been received',
-    {
-      identifier: z.string().min(1) 
-    },
-    createParameterizedToolHandler((args: { identifier: string }) => 
-      midnightServer.confirmTransactionHasBeenReceived(args.identifier)
-    )
-  );
-
-  // Add transaction status tool
-  server.tool(
-    'getTransactionStatus',
-    'Get the status of a transaction by ID',
-    {
-      transactionId: z.string().min(1)
-    },
-    createParameterizedToolHandler((args: { transactionId: string }) => 
-      midnightServer.getTransactionStatus(args.transactionId)
-    )
-  );
-
-  // Add get all transactions tool
-  server.tool(
-    'getTransactions',
-    'Get all transactions, optionally filtered by state',
-    {
-      state: z.string().optional()
-    },
-    createParameterizedToolHandler((args: { state?: string }) => 
-      midnightServer.getTransactions(args.state as any)
-    )
-  );
-
-  // Add get pending transactions tool
-  server.tool(
-    'getPendingTransactions',
-    'Get all pending transactions (INITIATED or SENT)',
-    createSimpleToolHandler(() => midnightServer.getPendingTransactions())
-  );
-
-  return server;
-}
-
-// MCP POST endpoint (streamable)
-app.post('/mcp', (async (req, res) => {
-  try {
-    logger.info('Received MCP POST request');
-    // handle request authentication
-    const authHeader = req.headers['Authorization'] || req.headers['authorization'];
-    if (shouldCheckAuth && authHeader !== `Bearer ${API_KEY}`) {
-      return res.status(401).json({
-        jsonrpc: '2.0',
-        error: { code: -32000, message: 'Unauthorized' },
-        id: null
-      });
-    }
-
-    logger.info('Getting MCP server');
-    const server = getServer();
-    logger.info('Getting MCP transport');
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined
-    });
-    logger.info('Transport created');
-    res.on('close', () => {
-      logger.info('Request closed');
-      transport.close();
-      server.close();
-    });
-    logger.info('Connecting server to transport');
-    await server.connect(transport);
-    logger.info('Transport handling request');
-    await transport.handleRequest(req, res, req.body);
-  } catch (error) {
-    logger.error('Error handling MCP request:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32603,
-          message: 'Internal server error',
-        },
-        id: null,
-      });
-    }
+  } else if (method === 'put') {
+    router.put(path, boundHandler);
+    
+  } else if (method === 'delete') {
+    router.delete(path, boundHandler);
   }
-}) as express.RequestHandler);
+});
 
-// Disallow GET and DELETE
-app.get('/mcp', (async (req, res) => {
-  logger.info('Received GET MCP request');
-  res.status(405).json({
-    jsonrpc: '2.0',
-    error: {
-      code: -32000,
-      message: 'Method not allowed.'
-    },
-    id: null
+// Mount router
+app.use(router);
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('Unhandled error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err.message
   });
-}) as express.RequestHandler);
+});
 
-app.delete('/mcp', (async (req, res) => {
-  logger.info('Received DELETE MCP request');
-  res.status(405).json({
-    jsonrpc: '2.0',
-    error: {
-      code: -32000,
-      message: 'Method not allowed.'
-    },
-    id: null
+// Start server
+const server = app.listen(port, () => {
+  logger.info(`Server is running on port ${port}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received. Closing HTTP server...');
+  server.close(async () => {
+    logger.info('HTTP server closed');
+    try {
+      await walletService.close();
+      logger.info('Wallet service closed');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown:', error);
+      process.exit(1);
+    }
   });
-}) as express.RequestHandler);
-
-// Handle graceful shutdown
-process.on('SIGINT', async () => {
-  logger.info('Shutting down server...');
-  await midnightServer.close();
-  process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  logger.info('Shutting down server...');
-  await midnightServer.close();
-  process.exit(0);
+process.on('SIGINT', () => {
+  logger.info('SIGINT signal received. Closing HTTP server...');
+  server.close(async () => {
+    logger.info('HTTP server closed');
+    try {
+      await walletService.close();
+      logger.info('Wallet service closed');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  });
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info(`Midnight MCP Server listening on port ${PORT}`);
-});
+export { app, server };
