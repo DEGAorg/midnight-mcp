@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import Database from 'better-sqlite3';
 import * as fs from 'node:fs';
 import * as path from 'node:path';

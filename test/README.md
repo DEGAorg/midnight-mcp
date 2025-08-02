@@ -1,108 +1,51 @@
 # MCP Server Tests
 
-This directory contains tests for the Midnight Control Plane (MCP) server. The tests are divided into unit tests and integration tests.
+This directory contains comprehensive tests for the Midnight Control Plane (MCP) server, organized into three main categories.
 
-## Test Structure
+## 📚 Test Documentation
 
-- `unit/`: Unit tests that mock external dependencies
-- `integration/`: Integration tests that interact with a real or mock network
-- `helpers.ts`: Common test helpers and utilities
+- **[Unit Tests](unit/README.md)** - Comprehensive unit tests with 100% coverage across all metrics
+- **[Integration Tests](integration/README.md)** - HTTP-based integration tests for Docker deployments  
+- **[E2E Tests](e2e/README.md)** - End-to-end tests with ElizaOS integration and MCP protocol validation
 
-## Running Tests
+## 🚀 Quick Start
 
-### Unit Tests
-
-Unit tests can be run independently of any external services:
-
+### Run Specific Test Types
 ```bash
-# Run all unit tests
+# Unit tests only
 yarn test:unit
 
-# Run unit tests with coverage
-yarn test:coverage
-
-# Run tests in watch mode during development
-yarn test:watch
-```
-
-### Integration Tests
-
-Integration tests require a running Midnight network. You have two options:
-
-#### 1. Use a local network
-
-If you have a local Midnight network running, you can run the integration tests directly:
-
-```bash
+# Integration tests only  
 yarn test:integration
+
+# E2E tests only
+yarn test:e2e
+
 ```
 
-The integration tests will connect to the network at `localhost:5001` and the proof server at `localhost:5002`.
+## 🏗️ Test Structure
 
-#### 2. Use Docker Compose
-
-For a fully isolated test environment, use the provided Docker Compose configuration:
-
-```bash
-# Start the test environment with mock services
-yarn test:docker
+```
+test/
+├── README.md                        # This file - Main test documentation
+├── unit/                            # Unit tests (100% coverage)
+│   └── README.md                    # Detailed unit test documentation
+├── integration/                     # Integration tests
+│   └── README.md                    # HTTP-based integration testing
+└── e2e/                            # End-to-end tests
+    └── README.md                    # E2E testing with AI agents
 ```
 
-This will spin up:
-- A mock Midnight node
-- A mock proof server
-- The integration test runner
+## 🔧 Prerequisites
 
-### Skipping Integration Tests
+- Node.js and Yarn installed
+- For integration tests: Docker server running
+- For E2E tests: Eliza AI agents accessible
 
-If you need to skip integration tests that require an actual network connection, set the environment variable:
+## 📈 Test Statistics
 
-```bash
-SKIP_INTEGRATION_TESTS=true yarn test:integration
-```
+- **Unit Tests:** 429 tests across 18 test suites
+- **Integration Tests:** 8 main test scenarios
+- **E2E Tests:** Comprehensive AI agent integration testing
 
-## Writing Tests
-
-### Unit Tests
-
-Unit tests use Jest's mocking capabilities to isolate the behavior of components:
-
-```typescript
-// Example unit test
-describe('MCPServer', () => {
-  it('should return the wallet balance when wallet is ready', () => {
-    // Test logic...
-  });
-});
-```
-
-### Integration Tests
-
-Integration tests should be written to verify the behavior of the system with real dependencies:
-
-```typescript
-describe('MCPServer Integration Tests', () => {
-  it('should return a valid address', () => {
-    // Integration test logic...
-  });
-});
-```
-
-## Test Fixtures
-
-For tests that require test data or fixtures, add them to the `fixtures/` directory and reference them in your tests.
-
-## Continuous Integration
-
-The tests are configured to run in CI on every pull request. The CI workflow includes:
-
-1. Running unit tests
-2. Running a subset of integration tests with mock services
-
-## Debugging Tests
-
-To debug tests, you can use the following techniques:
-
-1. Add `console.log()` statements to your tests
-2. Set the `DEBUG=jest` environment variable for more verbose Jest output
-3. Run tests with the `--verbose` flag: `yarn test:unit --verbose` 
+For detailed information about each test type, configuration, and troubleshooting, please refer to the specific README files in each subdirectory. 

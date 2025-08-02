@@ -1,69 +1,73 @@
-FROM node:18-alpine AS builder
+# ────────────────────────
+# Builder stage
+# ────────────────────────
+FROM node:22.15.1-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apk add --no-cache python3 make g++ git
 
-# Install yarn
+# Set up Yarn 4
 RUN corepack enable && corepack prepare yarn@4.1.0 --activate
 
-# Copy package files
+# Copy required files
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY .yarn ./.yarn
 
-# Install dependencies using node-modules approach
+# Install full deps for build
 RUN yarn install
 
-# Copy source code
+# Copy sources and config
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 COPY scripts ./scripts
 
-# Build the application
-RUN yarn build:mcp
+# Build MCP server
+RUN yarn build
 
+# ────────────────────────
 # Production stage
-FROM node:18-alpine
+# ────────────────────────
+FROM node:22.15.1-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies for production
-RUN apk add --no-cache python3 make g++
+# Minimal system dependencies
+RUN apk add --no-cache wget
 
-# Install yarn
+# Yarn 4 setup
 RUN corepack enable && corepack prepare yarn@4.1.0 --activate
 
-# Create a non-root user
-RUN addgroup -S appuser && adduser -S -G appuser appuser
-
-# Create wallet backup directory and logs directory with proper permissions
-RUN mkdir -p /app/wallet-backups /app/logs && \
-    chown -R appuser:appuser /app
-
-# Copy package files
+# Copy minimal package info and Yarn plugins
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY .yarn ./.yarn
 
-# Install production dependencies only
-RUN yarn workspaces focus --production
+# Install production-only dependencies
+RUN yarn workspaces focus --production --all
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
-
-# Create a directory for the wallet configuration
-RUN mkdir -p /app/src/wallet/config && chown -R appuser:appuser /app/src
+# Create required runtime directories
+RUN mkdir -p /app/.storage /app/logs \
+ && chown -R node:node /app/.storage /app/logs \
+ && chmod -R 755 /app/.storage /app/logs
 
 # Switch to non-root user
-USER appuser
+USER node
+
+# Copy built server from builder stage
+COPY --from=builder /app/dist ./dist
 
 # Expose default port
 EXPOSE 3000
 
-# Set minimal environment defaults (will be overridden by .env file)
-ENV NODE_ENV=production
+# Runtime environment
+ENV NODE_ENV=production \
+    WALLET_SERVER_PORT=3000 \
+    WALLET_SERVER_HOST=wallet-server
 
-# Command to run the application
-CMD ["node", "--experimental-specifier-resolution=node", "dist/server.js"] 
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD wget --spider --quiet http://localhost:3000/health || exit 1
+
+# Launch the wallet server
+CMD ["node", "--experimental-specifier-resolution=node", "dist/server.js"]

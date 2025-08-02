@@ -4,7 +4,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Calculate root directory path for finding .env file
-// Use let for compatibility with testing environments
 let rootDir;
 
 try {
@@ -12,16 +11,13 @@ try {
   const __dirname = path.dirname(__filename);
   rootDir = path.resolve(__dirname, '..');
 } catch (err) {
-  // Fallback for test environments that might not support import.meta.url
   rootDir = process.cwd();
 }
 
 // Load environment variables from .env file if present
-// In production, these will be provided by Docker or the host environment
 dotenv.config({ path: path.join(rootDir, '.env') });
 
 interface Config {
-  seed: string;
   networkId: NetworkId;
   walletBackupFolder: string;
   walletFilename: string;
@@ -31,17 +27,15 @@ interface Config {
   indexer: string;
   indexerWS: string;
   node: string;
+  agentId: string;
+  walletServerHost: string;
+  walletServerPort: number;
 }
 
 /**
  * Load and validate configuration from environment variables
  */
 export function loadConfig(): Config {
-  // Required configurations
-  const seed = process.env.SEED;
-  if (!seed) {
-    throw new Error('SEED environment variable is required');
-  }
 
   // Optional configurations with defaults
   const configuredNetworkId = process.env.NETWORK_ID;
@@ -56,31 +50,47 @@ export function loadConfig(): Config {
   // Logging configuration
   const logLevel = process.env.LOG_LEVEL || 'info';
 
-  // Default wallet backup folder
-  const walletBackupFolder = process.env.WALLET_BACKUP_FOLDER || 'wallet-backups';
+  // Get agent ID from environment or generate a unique one
+  const agentId = process.env.AGENT_ID;
+  if (!agentId) {
+    throw new Error('AGENT_ID environment variable is required');
+  }
+
+  // Default wallet backup folder - now includes agent ID
+  const baseWalletBackupFolder = process.env.WALLET_BACKUP_FOLDER || '.storage/wallet-backups';
+  const walletBackupFolder = path.join(baseWalletBackupFolder, agentId);
 
   // External proof server configuration
   const useExternalProofServer = process.env.USE_EXTERNAL_PROOF_SERVER === 'true';
   const proofServer = process.env.PROOF_SERVER;
   const indexer = process.env.INDEXER;
   const indexerWS = process.env.INDEXER_WS;
-  const node = process.env.NODE;
+  const mnNode = process.env.MN_NODE;
 
-  if (!proofServer || !indexer || !indexerWS || !node) {
+  if (useExternalProofServer && (!proofServer || !indexer || !indexerWS || !mnNode)) {
     throw new Error('Proof server, indexer, indexerWS, and node are required when USE_EXTERNAL_PROOF_SERVER is true');
   }
 
+  // Server port configuration
+  const serverPort = parseInt(process.env.SERVER_PORT || '3000', 10);
+
+  // Wallet server configuration
+  const walletServerHost = process.env.WALLET_SERVER_HOST || 'localhost';
+  const walletServerPort = parseInt(process.env.WALLET_SERVER_PORT || '3000', 10);
+
   return {
-    seed,
     networkId,
     walletBackupFolder,
     walletFilename,
     logLevel,
     useExternalProofServer,
-    proofServer,
-    indexer,
-    indexerWS,
-    node
+    proofServer: proofServer || '',
+    indexer: indexer || '',
+    indexerWS: indexerWS || '',
+    node: mnNode || '',
+    agentId,
+    walletServerHost,
+    walletServerPort
   };
 }
 

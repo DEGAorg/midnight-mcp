@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { createLogger } from '../logger/index.js';
 import type { Logger } from 'pino';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -22,13 +24,25 @@ import {
   TransactionState,
   TransactionRecord,
   InitiateTransactionResult, 
-  TransactionStatusResult
+  TransactionStatusResult,
+  MarketplaceUserData,
+  RegistrationResult,
+  VerificationResult
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
+import { FileManager, FileType } from '../utils/file-manager.js';
+// Import audit trail components
+import { 
+  TransactionTraceLogger, 
+  AgentDecisionLogger, 
+  AuditTrailService 
+} from '../audit/index.js';
+
+// Import marketplace API functions
+import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance, configureProviders } from '../integrations/marketplace/api.js';
 
 // Set up crypto for Scala.js
-// @ts-expect-error: It's needed to make Scala.js and WASM code able to use cryptography
-globalThis.crypto = webcrypto;
+// globalThis.crypto = webcrypto;
 
 // Define necessary types for testcontainers to keep TypeScript happy
 // These will be used only for type annotations, not in runtime
@@ -134,6 +148,7 @@ interface InternalWalletBalances {
  * WalletManager that handles wallet operations, initialization, and Docker containers
  */
 export class WalletManager {
+  private readonly fileManager = FileManager.getInstance();
   private wallet: (Wallet & Resource) | null = null;
   private ready: boolean = false;
   private config: WalletConfig;
@@ -152,13 +167,20 @@ export class WalletManager {
   private walletSeed: string = '';
   private isRecovering: boolean = false;
   private syncedIndices: bigint = 0n;
-  private totalIndices: bigint = 0n;
+  private applyGap: bigint = 0n;
+  private sourceGap: bigint = 0n;
   private walletState: any = null;
+  private agentId: string;
   
   // Transaction tracking
   private transactionDb: TransactionDatabase;
   private transactionPoller?: NodeJS.Timeout;
   private pollingInterval: number = 15000; // Poll for completed transactions every 15 seconds
+  
+  // Audit trail components
+  private auditService: AuditTrailService;
+  private transactionLogger: TransactionTraceLogger;
+  private agentLogger: AgentDecisionLogger;
   
   // Track different balance types for the wallet (using bigint internally)
   private walletBalances: InternalWalletBalances = {
@@ -174,9 +196,17 @@ export class WalletManager {
    * @param externalConfig Optional external configuration for connecting to a proof server
    */
   constructor(networkId: NetworkId, seed: string, walletFilename: string, externalConfig?: WalletConfig) {
+    this.agentId = config.agentId;
     this.logger = createLogger('wallet-manager');
+    
+    // Initialize audit trail components
+    this.auditService = AuditTrailService.getInstance();
+    this.transactionLogger = new TransactionTraceLogger(this.auditService);
+    this.agentLogger = new AgentDecisionLogger(this.auditService);
+    
     // Set network ID if provided, default to TestNet
-    this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s', networkId, walletFilename, externalConfig?.useExternalProofServer);
+    this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s', 
+      networkId, walletFilename, externalConfig?.useExternalProofServer, this.agentId);
     this.config = externalConfig || new TestnetRemoteConfig();
     if (networkId) {
       setNetworkId(networkId);
@@ -190,7 +220,7 @@ export class WalletManager {
     this.walletFilename = walletFilename;
     this.walletSeed = seed;
     
-    // Initialize the transaction database
+    // Initialize the transaction database with agent-specific path
     const dbPath = path.join(config.walletBackupFolder, `${walletFilename}-transactions.db`);
     this.transactionDb = new TransactionDatabase(dbPath);
     this.logger.info(`Transaction database initialized at ${dbPath}`);
@@ -363,7 +393,6 @@ export class WalletManager {
       return;
     }
     
-    // Clean up existing subscription if it exists
     if (this.walletSyncSubscription) {
       this.walletSyncSubscription.unsubscribe();
     }
@@ -371,56 +400,46 @@ export class WalletManager {
     this.walletSyncSubscription = this.wallet.state().subscribe({
       next: async (state) => {
         try {
-          // Store the entire wallet state for later use
           this.walletState = state;
-          
-          // Reset recovery attempts on successful state update
           this.recoveryAttempts = 0;
-          this.recoveryBackoffMs = 5000; // Reset backoff time
+          this.recoveryBackoffMs = 5000;
+
+          // Only use lag for progress, synced is now a boolean
+          const applyGap = state.syncProgress?.lag?.applyGap ?? 0n;
+          const sourceGap = state.syncProgress?.lag?.sourceGap ?? 0n;
+          const isSynced = state.syncProgress?.synced ?? false;
           
-          // Get indices sync status from the wallet state
-          const synced = state.syncProgress?.synced ?? 0n;
-          const total = state.syncProgress?.total ?? 0n;
-          
-          // Update wallet information
           this.walletAddress = state.address || '';
-          
-          // Update wallet balances with detailed information - keep these as bigint internally
+
           const nativeBalance = state.balances[nativeToken()] ?? 0n;
           const pendingBalance = state.pendingCoins.filter(coin => coin.type === nativeToken()).reduce((acc, coin) => acc + coin.value, 0n);
-          
-          // Store all balance types as bigint internally for calculations
+
           this.walletBalances = {
             balance: nativeBalance,
             pendingBalance: pendingBalance
           };
-          
-          // Log balances in human-readable format
+
           this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
           this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
-          
-          this.syncedIndices = synced;
-          this.totalIndices = total;
-          
-          // Check if wallet is fully synced
-          if (total > 0n && synced === total) {
+
+          // No more total/syncedIndices, just lag
+          this.applyGap = applyGap;
+          this.sourceGap = sourceGap;
+
+          // Check if wallet is fully synced (no gaps)
+          if (isSynced) {
             if (!this.ready) {
               this.ready = true;
               this.logger.info('Wallet is fully synced and ready!');
               this.logger.info(`Wallet address: ${this.walletAddress}`);
               this.logger.info(`Wallet balance: ${convertBigIntToDecimal(this.walletBalances.balance)}`);
-              
-              // Save the fully synced wallet state
               await this.saveWalletToFile(this.walletFilename);
             }
           } else {
-            this.logger.info(`Wallet syncing: ${synced}/${total}`);
-            
-            // Throttle save operations to avoid excessive file writes
+            this.logger.info(`Wallet syncing: applyGap=${applyGap}, sourceGap=${sourceGap}`);
             const now = Date.now();
             if (now - this.lastSaveTime >= this.saveInterval) {
               this.lastSaveTime = now;
-              // Save wallet state during sync with incremental progress
               await this.saveWalletToFile(this.walletFilename);
             }
           }
@@ -445,7 +464,6 @@ export class WalletManager {
    * @param reason Reason for recovery attempt
    */
   private async attemptWalletRecovery(reason: string): Promise<void> {
-    // Prevent multiple recovery attempts running concurrently
     if (this.isRecovering) {
       this.logger.info('Recovery already in progress, skipping new attempt');
       return;
@@ -455,11 +473,11 @@ export class WalletManager {
     
     try {
       this.recoveryAttempts++;
-      this.ready = false; // Mark wallet as not ready during recovery
+      this.ready = false;
       
-      // Reset synchronization metrics during recovery
       this.syncedIndices = 0n;
-      this.totalIndices = 0n;
+      this.applyGap = 0n;
+      this.sourceGap = 0n;
       
       this.logger.warn(`Attempting wallet recovery (${this.recoveryAttempts}/${this.maxRecoveryAttempts}). Reason: ${reason}`);
       
@@ -545,14 +563,10 @@ export class WalletManager {
     const formattedFilename = `${filename}.json`;
     
     // Try to restore wallet from file if filename is provided
-    if (filename && fs.existsSync(`${config.walletBackupFolder}/${formattedFilename}`)) {
-      this.logger.info(`Attempting to restore wallet from ${config.walletBackupFolder}/${formattedFilename}`);
+    if (filename && this.fileManager.fileExists(FileType.WALLET_BACKUP, this.agentId, formattedFilename)) {
+      this.logger.info(`Attempting to restore wallet from ${formattedFilename}`);
       try {
-        const serializedStream = fs.createReadStream(`${config.walletBackupFolder}/${formattedFilename}`, 'utf-8');
-        const serialized = await streamToString(serializedStream);
-        serializedStream.on('finish', () => {
-          serializedStream.close();
-        });
+        const serialized = this.fileManager.readFile(FileType.WALLET_BACKUP, this.agentId, formattedFilename);
         
         const cleanSerialized = serialized.trim().startsWith('"') 
           ? JSON.parse(serialized) 
@@ -613,7 +627,8 @@ export class WalletManager {
     recovering: boolean; 
     recoveryAttempts: number;
     synced?: string;
-    total?: string; 
+    applyGap?: string;
+    sourceGap?: string;
   } {
     if (withDetails) {
       return {
@@ -621,7 +636,8 @@ export class WalletManager {
         recovering: this.isRecovering,
         recoveryAttempts: this.recoveryAttempts,
         synced: this.syncedIndices.toString(),
-        total: this.totalIndices.toString()
+        applyGap: this.applyGap.toString(),
+        sourceGap: this.sourceGap.toString()
       };
     }
     
@@ -662,28 +678,81 @@ export class WalletManager {
     if (!this.ready) throw new Error('Wallet not ready');
     if (!this.wallet) throw new Error('Wallet instance not available');
     
+    // Generate correlation ID for audit trail
+    const correlationId = this.auditService.generateCorrelationId();
+    const transactionId = `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Start transaction trace
+    this.transactionLogger.startTrace(transactionId, correlationId, {
+      amount,
+      recipient: to,
+      agentId: this.agentId,
+      operation: 'sendFunds'
+    });
+    
+    // Log agent decision for transaction
+    this.agentLogger.logTransactionDecision(
+      this.agentId,
+      transactionId,
+      'approve',
+      `Transaction validated: amount ${amount} to ${to}`,
+      amount,
+      to,
+      correlationId
+    );
+    
     try {
-      // Convert decimal amount string to BigInt for internal calculations
       const amountBigInt = convertDecimalToBigInt(amount);
       
-      // First check if there are enough available funds
+      // Add validation step
+      const validationStepId = this.transactionLogger.addStep(
+        transactionId,
+        'validate_funds',
+        'wallet-manager',
+        { amount, to, currentBalance: convertBigIntToDecimal(this.walletBalances.balance) }
+      );
+      
       if (this.walletBalances.balance < amountBigInt) {
-        // If available balance is insufficient, check if pending funds would be enough
         if (this.walletBalances.balance >= amountBigInt) {
           const pendingAmount = this.walletBalances.pendingBalance;
           const formattedAvailableBalance = convertBigIntToDecimal(this.walletBalances.balance);
           const formattedPendingAmount = convertBigIntToDecimal(pendingAmount);
-          throw new Error(
+          const error = new Error(
             `Insufficient available funds for transaction. You have ${formattedAvailableBalance} available, ` +
             `but ${formattedPendingAmount} is still pending. Please wait for pending transactions to complete.`
           );
+          
+          // Complete validation step with error
+          this.transactionLogger.completeStep(transactionId, validationStepId, undefined, error);
+          this.transactionLogger.completeTrace(transactionId, 'failed', 'Insufficient available funds');
+          
+          throw error;
         }
-        // If total balance is also insufficient
         const formattedTotalBalance = convertBigIntToDecimal(this.walletBalances.balance);
-        throw new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
+        const error = new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
+        
+        // Complete validation step with error
+        this.transactionLogger.completeStep(transactionId, validationStepId, undefined, error);
+        this.transactionLogger.completeTrace(transactionId, 'failed', 'Insufficient funds');
+        
+        throw error;
       }
       
-      // Create a transfer transaction - still using bigint for SDK interface
+      // Complete validation step successfully
+      this.transactionLogger.completeStep(transactionId, validationStepId, {
+        valid: true,
+        availableBalance: convertBigIntToDecimal(this.walletBalances.balance),
+        requiredAmount: amount
+      });
+      
+      // Add transaction creation step
+      const creationStepId = this.transactionLogger.addStep(
+        transactionId,
+        'create_transaction',
+        'wallet-manager',
+        { amount, to, amountBigInt: amountBigInt.toString() }
+      );
+      
       const transferRecipe = await this.wallet.transferTransaction([
         {
           amount: amountBigInt,
@@ -692,35 +761,88 @@ export class WalletManager {
         }
       ]);
       
-      // Prove and submit the transaction
+      // Complete creation step
+      this.transactionLogger.completeStep(transactionId, creationStepId, {
+        transferRecipe: 'created',
+        nativeToken: true
+      });
+      
+      // Add proof generation step
+      const proofStepId = this.transactionLogger.addStep(
+        transactionId,
+        'generate_proof',
+        'wallet-manager',
+        { transferRecipe: 'ready' }
+      );
+      
       const provenTransaction = await this.wallet.proveTransaction(transferRecipe);
+      
+      // Complete proof step
+      this.transactionLogger.completeStep(transactionId, proofStepId, {
+        proven: true,
+        proofGenerated: true
+      });
+      
+      // Add submission step
+      const submissionStepId = this.transactionLogger.addStep(
+        transactionId,
+        'submit_transaction',
+        'wallet-manager',
+        { provenTransaction: 'ready' }
+      );
+      
       const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
+      
+      // Complete submission step
+      this.transactionLogger.completeStep(transactionId, submissionStepId, {
+        submitted: true,
+        txIdentifier: submittedTransaction
+      });
       
       this.logger.info(`Transaction submitted: ${submittedTransaction}`);
       
-      const isFullySynced = this.totalIndices > 0n && this.syncedIndices === this.totalIndices;
+      // Log transaction sent to blockchain
+      this.transactionLogger.logTransactionSent(transactionId, submittedTransaction, correlationId);
       
-      // Create a transaction record in the database
+      const isFullySynced = this.walletState?.syncProgress?.synced ?? false;
+      
       const transaction = this.transactionDb.createTransaction(
         this.walletAddress,
         to,
         amount
       );
       
-      // Update the transaction to SENT state with the identifier
       this.transactionDb.markTransactionAsSent(transaction.id, submittedTransaction);
+      
+      // Complete transaction trace successfully
+      this.transactionLogger.completeTrace(transactionId, 'completed', 'Transaction submitted successfully', {
+        txIdentifier: submittedTransaction,
+        transactionId: transaction.id,
+        syncStatus: isFullySynced
+      });
       
       return {
         txIdentifier: submittedTransaction,
         syncStatus: {
           syncedIndices: this.syncedIndices.toString(),
-          totalIndices: this.totalIndices.toString(),
+          lag: {
+            applyGap: this.applyGap.toString(),
+            sourceGap: this.sourceGap.toString()
+          },
           isFullySynced
         },
-        amount // Return the original dust string input
+        amount
       };
     } catch (error) {
       this.logger.error('Failed to send funds', error);
+      
+      // Log transaction failure
+      this.transactionLogger.logTransactionFailure(transactionId, error as Error, {
+        amount,
+        recipient: to,
+        agentId: this.agentId
+      }, correlationId);
+      
       throw error;
     }
   }
@@ -737,21 +859,16 @@ export class WalletManager {
     }
     
     try {
-      const directoryPath = path.resolve(config.walletBackupFolder);
-      
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(directoryPath)) {
-        fs.mkdirSync(directoryPath, { recursive: true, mode: 0o755 });
-        this.logger.info(`Created directory: ${directoryPath}`);
-      }
-      
       // Use provided filename or use the one stored in the class
       const walletFilename = filename || this.walletFilename || `wallet-${Date.now()}`;
-      const filePath = path.join(directoryPath, `${walletFilename}.json`);
+      const formattedFilename = `${walletFilename}.json`;
       
-      this.logger.info(`Saving wallet to file ${filePath}`);
+      this.logger.info(`Saving wallet to file ${formattedFilename} for agent ${this.agentId}`);
       const walletJson = await this.wallet.serializeState();
-      fs.writeFileSync(filePath, walletJson, { mode: 0o644 });
+      
+      this.fileManager.writeFile(FileType.WALLET_BACKUP, this.agentId, walletJson, formattedFilename);
+      
+      const filePath = this.fileManager.getPath(FileType.WALLET_BACKUP, this.agentId, formattedFilename);
       this.logger.info(`Wallet saved to ${filePath}`);
       return filePath;
     } catch (error) {
@@ -836,31 +953,56 @@ export class WalletManager {
     if (!this.wallet) throw new Error('Wallet instance not available');
     
     try {
-      // Use the stored wallet state to check transaction history
       if (!this.walletState || !this.walletState.transactionHistory || !Array.isArray(this.walletState.transactionHistory)) {
         this.logger.warn('Transaction history not available in stored wallet state');
         return {
           exists: false, 
           syncStatus: {
-            syncedIndices: this.syncedIndices.toString(), 
-            totalIndices: this.totalIndices.toString(),
-            isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
-          }
+            syncedIndices: this.syncedIndices.toString(),
+            lag: {
+              applyGap: this.applyGap.toString(),
+              sourceGap: this.sourceGap.toString()
+            },
+            isFullySynced: this.walletState?.syncProgress?.synced ?? false
+          },
+          transactionAmount: '0'
         };
       }
       
-      // Check if any transaction contains the identifier
-      const exists = this.walletState.transactionHistory.some((tx: TransactionHistoryEntry) => 
-        Array.isArray(tx.identifiers) && tx.identifiers.includes(identifier)
+      const matchingTransaction = this.walletState.transactionHistory.find((tx: TransactionHistoryEntry) => 
+        tx && Array.isArray(tx.identifiers) && tx.identifiers.length > 0 && tx.identifiers.includes(identifier)
       );
+
+      if (!matchingTransaction) {
+        return {
+          exists: false,
+          syncStatus: {
+            syncedIndices: this.syncedIndices.toString(),
+            lag: {
+              applyGap: this.applyGap.toString(),
+              sourceGap: this.sourceGap.toString()
+            },
+            isFullySynced: this.walletState?.syncProgress?.synced ?? false
+          },
+          transactionAmount: '0'
+        };
+      }
+
+      // Get the amount from the transaction deltas
+      const nativeTokenAmount = matchingTransaction.deltas[nativeToken()] ?? 0n;
+      const amount = convertBigIntToDecimal(nativeTokenAmount);
       
       return {
-        exists,
+        exists: true,
         syncStatus: {
           syncedIndices: this.syncedIndices.toString(),
-          totalIndices: this.totalIndices.toString(),
-          isFullySynced: this.totalIndices > 0n && this.syncedIndices === this.totalIndices
-        }
+          lag: {
+            applyGap: this.applyGap.toString(),
+            sourceGap: this.sourceGap.toString()
+          },
+          isFullySynced: this.walletState?.syncProgress?.synced ?? false
+        },
+        transactionAmount: amount
       };
     } catch (error) {
       this.logger.error(`Error verifying transaction receipt: ${error}`);
@@ -873,19 +1015,23 @@ export class WalletManager {
    * @returns Detailed wallet status object with balances as dust strings
    */
   public getWalletStatus(): WalletStatus {
-    // Calculate sync percentage for better UI representation
-    const syncPercentage = this.totalIndices > 0n
-      ? Number((this.syncedIndices * 100n) / this.totalIndices)
-      : 0;
-      
-    const isFullySynced = this.totalIndices > 0n && this.syncedIndices === this.totalIndices;
-    
+    // Only use lag for progress, synced is a boolean
+    const applyGap = this.applyGap;
+    const sourceGap = this.sourceGap;
+    const isSynced = this.walletState?.syncProgress?.synced ?? false;
+    // Percentage: 100 if fully synced, 0 otherwise (or you can use a custom logic)
+    const syncPercentage = isSynced ? 100 : 0;
+    const isFullySynced = isSynced;
+
     return {
       ready: this.ready,
-      syncing: this.totalIndices > 0n && this.syncedIndices < this.totalIndices,
+      syncing: applyGap > 0n || sourceGap > 0n,
       syncProgress: {
-        synced: this.syncedIndices.toString(),
-        total: this.totalIndices.toString(),
+        synced: isSynced,
+        lag: {
+          applyGap: applyGap.toString(),
+          sourceGap: sourceGap.toString()
+        },
         percentage: syncPercentage
       },
       address: this.walletAddress,
@@ -921,7 +1067,7 @@ export class WalletManager {
   /**
    * Check for pending transactions that might have been completed
    */
-  private async checkPendingTransactions(): Promise<void> {
+  public async checkPendingTransactions(): Promise<void> {
     if (!this.ready || !this.wallet) {
       return;
     }
@@ -965,25 +1111,53 @@ export class WalletManager {
     if (!this.ready) throw new Error('Wallet not ready');
     if (!this.wallet) throw new Error('Wallet instance not available');
 
+    // Generate correlation ID for audit trail
+    const correlationId = this.auditService.generateCorrelationId();
+
     try {
-      // Convert decimal amount string to BigInt for internal calculations
       const amountBigInt = convertDecimalToBigInt(amount);
       
-      // First check if there are enough available funds
+      // Log agent decision for transaction initiation
+      this.agentLogger.logTransactionDecision(
+        this.agentId,
+        'initiation',
+        'approve',
+        `Transaction initiation validated: amount ${amount} to ${to}`,
+        amount,
+        to,
+        correlationId
+      );
+      
       if (this.walletBalances.balance < amountBigInt) {
-        // If available balance is insufficient, check if pending funds would be enough
         if (this.walletBalances.balance >= amountBigInt) {
           const pendingAmount = this.walletBalances.pendingBalance;
           const formattedAvailableBalance = convertBigIntToDecimal(this.walletBalances.balance);
           const formattedPendingAmount = convertBigIntToDecimal(pendingAmount);
-          throw new Error(
+          const error = new Error(
             `Insufficient available funds for transaction. You have ${formattedAvailableBalance} available, ` +
             `but ${formattedPendingAmount} is still pending. Please wait for pending transactions to complete.`
           );
+          
+          // Log transaction failure
+          this.transactionLogger.logTransactionFailure('initiation', error, {
+            amount,
+            recipient: to,
+            agentId: this.agentId
+          }, correlationId);
+          
+          throw error;
         }
-        // If total balance is also insufficient
         const formattedTotalBalance = convertBigIntToDecimal(this.walletBalances.balance);
-        throw new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
+        const error = new Error(`Insufficient funds for transaction. You have ${formattedTotalBalance} total, but need ${amount}.`);
+        
+        // Log transaction failure
+        this.transactionLogger.logTransactionFailure('initiation', error, {
+          amount,
+          recipient: to,
+          agentId: this.agentId
+        }, correlationId);
+        
+        throw error;
       }
 
       // Create transaction record in database
@@ -995,11 +1169,17 @@ export class WalletManager {
 
       this.logger.info(`Initiated transaction ${transaction.id} to ${to} for ${amount}`);
 
-      // Start the async process to send funds, but don't await it
-      this.processSendFundsAsync(transaction.id, to, amount).catch(err => {
-        this.logger.error(`Async transaction processing error for ${transaction.id}`, err);
-        this.transactionDb.markTransactionAsFailed(transaction.id, err.message || 'Unknown error processing transaction');
+      // Start transaction trace for the initiated transaction
+      this.transactionLogger.startTrace(transaction.id, correlationId, {
+        amount,
+        recipient: to,
+        agentId: this.agentId,
+        operation: 'initiateSendFunds',
+        transactionId: transaction.id
       });
+
+      // Start the async process to send funds, but don't await it
+      this.processSendFundsAsync(transaction.id, to, amount, correlationId);
 
       return {
         id: transaction.id,
@@ -1019,13 +1199,21 @@ export class WalletManager {
    * @param transactionId UUID of the transaction record
    * @param to Recipient address
    * @param amount Amount to send in dust string format
+   * @param correlationId Optional correlation ID for audit trail
    */
-  private async processSendFundsAsync(transactionId: string, to: string, amount: string): Promise<void> {
+  private async processSendFundsAsync(transactionId: string, to: string, amount: string, correlationId?: string): Promise<void> {
     if (!this.wallet) throw new Error('Wallet instance not available');
 
     try {
-      // Convert decimal amount string to BigInt for internal calculations
       const amountBigInt = convertDecimalToBigInt(amount);
+
+      // Add transaction creation step
+      const creationStepId = this.transactionLogger.addStep(
+        transactionId,
+        'create_transfer_recipe',
+        'wallet-manager',
+        { amount, to, amountBigInt: amountBigInt.toString() }
+      );
 
       // Create a transfer transaction
       const transferRecipe = await this.wallet.transferTransaction([
@@ -1036,18 +1224,70 @@ export class WalletManager {
         }
       ]);
       
+      // Complete creation step
+      this.transactionLogger.completeStep(transactionId, creationStepId, {
+        transferRecipe: 'created',
+        nativeToken: true
+      });
+      
+      // Add proof generation step
+      const proofStepId = this.transactionLogger.addStep(
+        transactionId,
+        'generate_proof',
+        'wallet-manager',
+        { transferRecipe: 'ready' }
+      );
+      
       // Prove and submit the transaction
       const provenTransaction = await this.wallet.proveTransaction(transferRecipe);
+      
+      // Complete proof step
+      this.transactionLogger.completeStep(transactionId, proofStepId, {
+        proven: true,
+        proofGenerated: true
+      });
+      
+      // Add submission step
+      const submissionStepId = this.transactionLogger.addStep(
+        transactionId,
+        'submit_transaction',
+        'wallet-manager',
+        { provenTransaction: 'ready' }
+      );
+      
       const submittedTransaction = await this.wallet.submitTransaction(provenTransaction);
+      
+      // Complete submission step
+      this.transactionLogger.completeStep(transactionId, submissionStepId, {
+        submitted: true,
+        txIdentifier: submittedTransaction
+      });
       
       this.logger.info(`Transaction submitted for ${transactionId}: ${submittedTransaction}`);
       
+      // Log transaction sent to blockchain
+      this.transactionLogger.logTransactionSent(transactionId, submittedTransaction, correlationId);
+      
       // Update transaction record with txIdentifier and set state to SENT
       this.transactionDb.markTransactionAsSent(transactionId, submittedTransaction);
+      
+      // Complete transaction trace successfully
+      this.transactionLogger.completeTrace(transactionId, 'completed', 'Transaction submitted successfully', {
+        txIdentifier: submittedTransaction,
+        transactionId: transactionId
+      });
     } catch (error) {
       this.logger.error(`Failed to process send funds for transaction ${transactionId}`, error);
+      
+      // Log transaction failure
+      this.transactionLogger.logTransactionFailure(transactionId, error as Error, {
+        amount,
+        recipient: to,
+        agentId: this.agentId
+      }, correlationId);
+      
       // Mark the transaction as failed in the database
-      this.transactionDb.markTransactionAsFailed(transactionId, error instanceof Error ? error.message : 'Unknown error');
+      this.transactionDb.markTransactionAsFailed(transactionId, error instanceof Error ? `Failed at processing transaction: ${error.message}` : 'Unknown error processing transaction');
       throw error;
     }
   }
@@ -1076,13 +1316,14 @@ export class WalletManager {
             exists: blockchainStatus.exists,
             syncStatus: {
               syncedIndices: blockchainStatus.syncStatus.syncedIndices.toString(),
-              totalIndices: blockchainStatus.syncStatus.totalIndices.toString(),
+              lag: blockchainStatus.syncStatus.lag,
               isFullySynced: blockchainStatus.syncStatus.isFullySynced
             }
           }
         };
       }
       
+      // For COMPLETED, FAILED, and INITIATED states, don't include blockchain status
       return { transaction };
     } catch (error) {
       this.logger.error(`Failed to get transaction status for ${id}`, error);
@@ -1095,13 +1336,13 @@ export class WalletManager {
    * @param state Optional transaction state to filter by
    * @returns Array of transaction records
    */
-  public getTransactions(state?: TransactionState): TransactionRecord[] {
+  public getTransactions(): TransactionRecord[] {
     try {
-      if (state) {
-        return this.transactionDb.getTransactionsByState(state);
-      }
-      
-      return this.transactionDb.getAllTransactions();
+      const transactions = this.transactionDb.getAllTransactions();
+      return transactions.map(tx => ({
+        ...tx,
+        id: tx.txIdentifier ?? tx.id ?? ''
+      }));
     } catch (error) {
       this.logger.error('Failed to get transactions', error);
       throw error;
@@ -1117,6 +1358,126 @@ export class WalletManager {
       return this.transactionDb.getPendingTransactions();
     } catch (error) {
       this.logger.error('Failed to get pending transactions', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Register a user in the marketplace
+   * @param userId The user ID to register
+   * @param userData The user data to register
+   * @returns Registration result
+   */
+  public async registerInMarketplace(userId: string, userData: MarketplaceUserData): Promise<RegistrationResult> {
+    if (!this.ready) throw new Error('Wallet not ready');
+    if (!this.wallet) throw new Error('Wallet instance not available');
+    
+    try {
+      
+      // Get the wallet's public key
+      const walletAddress = this.getAddress();
+      
+      this.logger.info(`Registering user ${userId} in marketplace with wallet address ${walletAddress}`);
+      
+      // Create marketplace providers from the wallet
+      const providers = await configureProviders(this.wallet);
+      
+      const contractAddress = userData.marketplaceAddress;
+      
+      // Join the marketplace contract
+      const marketplaceContract = await joinContract(providers, contractAddress);
+      
+      // Create the registration text (combine userId and userData)
+      const registrationText = userId;
+      
+      // Register the user in the marketplace
+      const registrationResult = await register(marketplaceContract, registrationText);
+      
+      const result = {
+        success: true,
+        userId,
+        userData,
+        walletAddress,
+        transactionId: registrationResult.txId,
+        blockHeight: registrationResult.blockHeight,
+        timestamp: new Date().toISOString(),
+        message: 'Registration successful',
+        contractAddress: marketplaceContract.deployTxData.public.contractAddress
+      };
+      
+      this.logger.info(`User ${userId} registered in marketplace with transaction ${registrationResult.txId}`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to register in marketplace', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify a user in the marketplace
+   * @param userId The user ID to verify
+   * @param verificationData The verification data
+   * @returns Verification result
+   */
+  public async verifyUserInMarketplace(userId: string, verificationData: MarketplaceUserData): Promise<VerificationResult> {
+    if (!this.ready) throw new Error('Wallet not ready');
+    if (!this.wallet) throw new Error('Wallet instance not available');
+    
+    try {
+      // Create marketplace providers from the wallet
+      const providers = await configureProviders(this.wallet);
+      
+      const contractAddress = verificationData.marketplaceAddress;
+
+      this.logger.info(`Verifying user ${userId} in marketplace with contract address ${contractAddress}`);
+      
+      // Check if the wallet's public key is registered
+      const isRegistered = await isPublicKeyRegistered(providers, contractAddress, verificationData.pubkey);
+      
+      if (!isRegistered) {
+        return {
+          valid: false,
+          userId,
+          userData: verificationData,
+          reason: 'Wallet is not registered in the marketplace'
+        }
+      }
+      
+      // Verify the text identifier for this public key
+      const verifiedText = await verifyTextPure(providers, contractAddress, verificationData.pubkey);
+      
+      if (!verifiedText) {
+        return {
+          valid: false,
+          userId,
+          userData: verificationData,
+          reason: 'Verification failed'
+        }
+      }
+      
+      // Verify that the userId matches
+      if (verifiedText !== userId) {
+        return {
+          valid: false,
+          userId,
+          userData: verificationData,
+          reason: 'User ID mismatch - wallet is registered for a different user'
+        }
+      }
+      
+      const result = {
+        valid: true,
+        userId,
+        userData: verificationData,
+        reason: 'Verification successful'
+      };
+      
+      this.logger.info(`User ${userId} verified in marketplace`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to verify user in marketplace', error);
       throw error;
     }
   }

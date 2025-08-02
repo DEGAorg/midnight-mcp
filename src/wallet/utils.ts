@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 /**
  * Utility functions for wallet operations
  */

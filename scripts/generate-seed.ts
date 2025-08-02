@@ -221,12 +221,12 @@ if (options.password) {
   console.log('\n' + chalk.yellow('Note: This seed was generated with a password. You will need this password to recreate the seed from the mnemonic.'));
 }
 
-console.log('\n' + chalk.green('=== API Authentication Setup ==='));
-console.log(chalk.yellow('Secure API Key (for .env file):'));
-console.log(chalk.white(apiKey));
-console.log('\n' + chalk.cyan('To use this API key:'));
-console.log(chalk.cyan('1. Add it to your .env file: API_KEY=' + apiKey));
-console.log(chalk.cyan('2. Include it in API requests with the x-api-key header'));
-console.log(chalk.cyan('3. Or pass it as a query parameter: ?api_key=' + apiKey));
+// console.log('\n' + chalk.green('=== API Authentication Setup ==='));
+// console.log(chalk.yellow('Secure API Key (for .env file):'));
+// console.log(chalk.white(apiKey));
+// console.log('\n' + chalk.cyan('To use this API key:'));
+// console.log(chalk.cyan('1. Add it to your .env file: API_KEY=' + apiKey));
+// console.log(chalk.cyan('2. Include it in API requests with the x-api-key header'));
+// console.log(chalk.cyan('3. Or pass it as a query parameter: ?api_key=' + apiKey));
 
 console.log(chalk.green('\n=== Keep this information secure! ===\n'));

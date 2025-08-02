@@ -1,6 +1,10 @@
 import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
+import { FileManager, FileType } from '../utils/file-manager.js';
+import { ILogger } from './types.js';
+import { PinoLogger } from './pino-logger.js';
+import { SentryLogger } from './sentry-logger.js';
 
 /**
  * Available log levels in ascending order of importance.
@@ -180,6 +184,11 @@ export interface LoggerOptions {
     version?: string;
     
     /**
+     * Agent ID for multi-agent setups
+     */
+    agentId?: string;
+    
+    /**
      * Custom fields to include with every log
      */
     custom?: Record<string, any>;
@@ -203,12 +212,12 @@ export const LoggerConfig = {
   /**
    * Enable file output by default
    */
-  enableFileOutput: false,
+  enableFileOutput: true,
   
   /**
    * Default log file location
    */
-  defaultLogFile: './logs/app.log',
+  defaultLogFile: 'wallet-app.log',
   
   /**
    * Cloud provider configuration
@@ -232,23 +241,15 @@ export const LoggerConfig = {
  * @param filePath Path to the log file
  */
 function ensureLogDirectoryExists(filePath: string): void {
-  const dirPath = path.dirname(filePath);
-  
-  if (!fs.existsSync(dirPath)) {
-    try {
-      fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`Created log directory: ${dirPath}`);
-    } catch (error) {
-      console.error(`Failed to create log directory ${dirPath}:`, error);
-      throw error;
-    }
-  }
+  const fileManager = FileManager.getInstance();
+  const dirPath = filePath.split('/').slice(0, -1).join('/');
+  fileManager.ensureDirectoryExists(dirPath);
 }
 
 /**
  * Create GCP-compatible log formatter
  */
-function createGCPFormatter(config: GCPLoggerConfig): pino.LoggerOptions {
+export function createGCPFormatter(config: GCPLoggerConfig): pino.LoggerOptions {
   return {
     base: {
       serviceContext: config.serviceContext || {
@@ -352,8 +353,11 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
     ...LoggerConfig.standardFields,
     ...options.standardFields,
   };
+
+  // Get agent ID from environment or standard fields
+  const agentId = process.env.AGENT_ID || standardFields.agentId || 'default';
   
-  // Base logger options
+  // Base logger options - ensure we don't override the level with custom levels
   let baseOptions: pino.LoggerOptions = {
     level,
     name,
@@ -363,8 +367,29 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
       version: standardFields.version,
       ...standardFields.custom,
     },
-    ...options.pinoOptions,
   };
+  
+  // Only merge pinoOptions if they don't contain custom levels that would conflict
+  if (options.pinoOptions) {
+    const { customLevels, ...safePinoOptions } = options.pinoOptions;
+    baseOptions = {
+      ...baseOptions,
+      ...safePinoOptions,
+    };
+    
+    // If custom levels are provided, ensure the default level is included
+    if (customLevels) {
+      // Get the numeric value for the current level
+      
+      /* istanbul ignore next */ 
+      const levelValue = pino.levels.values[level] || 30; // Default to info level value
+      
+      baseOptions.customLevels = {
+        ...customLevels,
+        [level]: levelValue,
+      };
+    }
+  }
   
   // Apply cloud-specific formatters if needed
   if (cloud.provider === CloudProvider.GCP) {
@@ -395,11 +420,14 @@ export function createLogger(name: string, options: LoggerOptions = {}): pino.Lo
   }
   
   // Add file transport if enabled and file path provided
-  const outputFile = options.outputFile || (LoggerConfig.enableFileOutput ? LoggerConfig.defaultLogFile : undefined);
+  const outputFile = options.outputFile || (LoggerConfig.enableFileOutput ? 
+    LoggerConfig.defaultLogFile.replace('.log', `-${agentId}.log`) : undefined);
+  
   if (outputFile) {
-    // Ensure the directory exists before creating the log file
-    ensureLogDirectoryExists(outputFile);
-    destinations.push(pino.destination(outputFile));
+    const fileManager = FileManager.getInstance();
+    const logPath = fileManager.getPath(FileType.LOG, agentId, outputFile);
+    ensureLogDirectoryExists(logPath);
+    destinations.push(pino.destination(logPath));
   }
   
   // Add cloud transport if configured
@@ -457,14 +485,21 @@ export function configureGlobalLogging(options: {
   }
 }
 
-/**
- * Default application logger
- */
-export const logger = createLogger('midnight-mcp');
-
-/**
- * Export the pino library for advanced usage
- */
 export { pino };
 
-export default createLogger; 
+export default createLogger;
+
+let logger: ILogger;
+
+export function configureLogger(type: 'pino' | 'sentry', options?: any) {
+  if (type === 'sentry') {
+    logger = new SentryLogger(/* pass options if needed */);
+  } else {
+    logger = new PinoLogger(/* pass options if needed */);
+  }
+}
+
+export function getLogger(): ILogger {
+  if (!logger) logger = new PinoLogger();
+  return logger;
+} 

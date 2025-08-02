@@ -1,0 +1,219 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      matrix:
+        node-version: [18.20.5, 20.x, 22.x]
+        test-suite: [stdio, eliza, jest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Build project
+      run: yarn build:mcp
+
+    - name: Setup test environment
+      run: |
+        mkdir -p .storage/seeds
+        mkdir -p test-results
+        chmod 755 .storage/seeds
+
+    - name: Create test agent
+      run: yarn setup-agent -a test-ci-agent-${{ matrix.test-suite }} -s "test-seed-for-ci-${{ matrix.test-suite }}"
+
+    - name: Run STDIO E2E Tests
+      if: matrix.test-suite == 'stdio'
+      run: yarn test:e2e:stdio
+      env:
+        AGENT_ID: test-ci-agent-stdio
+        NODE_ENV: test
+        CI: true
+
+
+
+    - name: Install ElizaOS CLI
+      if: matrix.test-suite == 'eliza'
+      run: npm install -g @elizaos/cli@beta
+
+    - name: Run ElizaOS E2E Tests
+      if: matrix.test-suite == 'eliza'
+      run: yarn test:e2e:eliza
+      env:
+        AGENT_ID: test-ci-agent-eliza
+        NODE_ENV: test
+        CI: true
+
+    - name: Run Jest E2E Tests
+      if: matrix.test-suite == 'jest'
+      run: yarn test:e2e --coverage
+      env:
+        AGENT_ID: test-ci-agent-jest
+        NODE_ENV: test
+        CI: true
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.node-version }}-${{ matrix.test-suite }}
+        path: |
+          test-results/
+          coverage/
+          logs/
+        retention-days: 7
+
+    - name: Upload coverage to Codecov
+      if: matrix.test-suite == 'jest' && matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/lcov.info
+        flags: e2e
+        name: e2e-coverage
+
+  full-e2e-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: e2e-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Build project
+      run: yarn build:mcp
+
+    - name: Install testing tools
+      run: |
+        npm install -g @elizaos/cli@beta
+
+    - name: Setup test environment
+      run: |
+        mkdir -p .storage/seeds
+        mkdir -p test-results
+        chmod 755 .storage/seeds
+
+    - name: Create test agent
+      run: yarn setup-agent -a test-ci-agent-full -s "test-seed-for-full-ci-testing"
+
+    - name: Run comprehensive E2E tests
+      run: yarn test:e2e:full
+      env:
+        AGENT_ID: test-ci-agent-full
+        NODE_ENV: test
+        CI: true
+
+    - name: Generate test report
+      if: always()
+      run: |
+        echo "## E2E Test Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f test-results/e2e-full-report.json ]; then
+          echo "### Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat test-results/e2e-full-report.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "Test report not generated" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload comprehensive test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: full-e2e-test-results
+        path: |
+          test-results/
+          coverage/
+          logs/
+          test-eliza-e2e-project/
+        retention-days: 30
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Build project
+      run: yarn build:mcp
+
+    - name: Setup test environment
+      run: |
+        mkdir -p .storage/seeds
+        mkdir -p test-results
+        chmod 755 .storage/seeds
+
+    - name: Create test agent
+      run: yarn setup-agent -a test-ci-agent-perf -s "test-seed-for-performance-testing"
+
+    - name: Run performance tests
+      run: |
+        echo "Running performance benchmarks..."
+        yarn test:e2e:stdio 2>&1 | tee performance-stdio.log
+      env:
+        AGENT_ID: test-ci-agent-perf
+        NODE_ENV: test
+        CI: true
+
+    - name: Extract performance metrics
+      run: |
+        echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### STDIO Tests" >> $GITHUB_STEP_SUMMARY
+        grep -E "(✅|❌).*\([0-9]+ms\)" performance-stdio.log | head -10 >> $GITHUB_STEP_SUMMARY || echo "No performance data found" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload performance results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-test-results
+        path: |
+          performance-*.log
+          test-results/
+        retention-days: 14 

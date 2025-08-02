@@ -67,4 +67,45 @@ export function getTestNetworkId(): NetworkId {
   }
   
   return NetworkId.Undeployed;
+}
+
+/**
+ * Converts an amount string from micro units (e.g., '1000000') to decimal units (e.g., '1')
+ * by dividing by 1,000,000. Both input and output are strings.
+ * 
+ * @param microAmount String representing amount in micro units (e.g., "1000000")
+ * @returns String representing amount in decimal units (e.g., "1")
+ */
+export function convertMicroToDecimal(microAmount: string): string {
+  if (!microAmount) {
+    throw new Error('Amount must be provided');
+  }
+
+  // Check if the string represents a valid integer
+  if (!/^\d+$/.test(microAmount)) {
+    throw new Error('Amount must be a valid integer string');
+  }
+
+  // Convert to BigInt for precise division
+  const amountBigInt = BigInt(microAmount);
+  const divisor = BigInt(1_000_000);
+  
+  // Perform division
+  const quotient = amountBigInt / divisor;
+  const remainder = amountBigInt % divisor;
+  
+  // Convert quotient to string
+  let result = quotient.toString();
+  
+  // If there's a remainder, add decimal part
+  if (remainder > 0) {
+    const remainderStr = remainder.toString().padStart(6, '0');
+    // Remove trailing zeros from remainder
+    const trimmedRemainder = remainderStr.replace(/0+$/, '');
+    if (trimmedRemainder) {
+      result += `.${trimmedRemainder}`;
+    }
+  }
+  
+  return result;
 } 
