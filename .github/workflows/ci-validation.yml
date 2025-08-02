@@ -2,9 +2,9 @@ name: CI Validation
 
 on:
   pull_request:
-    branches: [ feature/review-docs ]
+    branches: [ develop ]
   push:
-    branches: [ feature/review-docs ]
+    branches: [ develop ]
 
 jobs:
   validate:
