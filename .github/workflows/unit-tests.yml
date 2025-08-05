@@ -20,7 +20,7 @@ jobs:
 
     - name: Run linting
       run: |
-        docker run --rm -v $(pwd):/app -w /app midnight-mcp-test \
+        docker run --rm -v $(pwd):/app -e YARN_CACHE_FOLDER=/tmp/.yarn-cache midnight-mcp-test \
         sh -c "yarn install && yarn lint"
 
     - name: Run unit tests
