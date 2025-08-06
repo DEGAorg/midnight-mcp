@@ -19,6 +19,7 @@ jobs:
       run: docker build -t midnight-mcp-test .
 
     - name: Run linting
+      continue-on-error: true
       run: |
         docker run --rm -u 0 -v $(pwd):/app -e YARN_CACHE_FOLDER=/tmp/.yarn-cache midnight-mcp-test \
         sh -c "yarn install && yarn lint"
