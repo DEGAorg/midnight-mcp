@@ -330,8 +330,27 @@ describe('WalletManager', () => {
     });
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  afterEach(async () => {
+    // Clean up wallet manager to stop any running intervals
+    if (walletManager) {
+      try {
+        await walletManager.close();
+      } catch (error) {
+        // Ignore cleanup errors in tests
+      }
+    }
+    
+    // Clear any remaining intervals that might have been created
+    const activeIntervals = (global as any).__JEST_ACTIVE_INTERVALS__ || [];
+    activeIntervals.forEach((intervalId: NodeJS.Timeout) => {
+      clearInterval(intervalId);
+    });
+    (global as any).__JEST_ACTIVE_INTERVALS__ = [];
+    
+    // Clean up the subject
+    if (walletStateSubject) {
+      walletStateSubject.complete();
+    }
   });
 
   describe('Transaction Submission', () => {

@@ -6,6 +6,9 @@ export default {
   maxWorkers: 1,
   // Increase timeout for integration tests
   testTimeout: 300000, // 5 minutes
+  // Global setup and teardown for proper resource cleanup
+  globalSetup: '<rootDir>/test/unit/global-setup.ts',
+  globalTeardown: '<rootDir>/test/unit/global-teardown.ts',
   transform: {
    '^.+\\.tsx?$': [
       'ts-jest',

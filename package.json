@@ -9,7 +9,7 @@
     "lint": "eslint src/**/*.ts test/**/*.ts --ext .ts",
     "lint:fix": "eslint src/**/*.ts test/**/*.ts --ext .ts --fix",
     "test:unit": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts'",
-    "test:silent": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts' --silent",
+    "test:silent": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts' --silent --detectOpenHandles --forceExit",
     "test:integration": "jest --config=jest.config.js --testMatch='**/test/integration/**/*.spec.ts' --coverage=false",
     "test:coverage": "jest --config=jest.config.js --coverage",
     "test:e2e": "jest --config=jest.config.js --testMatch='**/test/e2e/**/*.spec.ts'",
