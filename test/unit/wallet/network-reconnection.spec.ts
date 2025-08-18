@@ -61,6 +61,22 @@ describe('Network Reconnection and Sync Status', () => {
     }
   });
 
+  afterEach(async () => {
+    // Clean up wallet manager to stop any running intervals
+    if (walletManager) {
+      try {
+        await walletManager.close();
+      } catch (error) {
+        // Ignore cleanup errors in tests
+      }
+    }
+    
+    // Clean up the subject
+    if (walletStateSubject) {
+      walletStateSubject.complete();
+    }
+  });
+
   describe('Network Reconnection Scenarios', () => {
     it('should handle wallet recovery after network disconnection', async () => {
       // Simulate network disconnection

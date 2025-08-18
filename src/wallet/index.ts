@@ -882,10 +882,14 @@ export class WalletManager {
    */
   public async close(): Promise<void> {
     try {
+      // Set ready to false early to prevent new operations
+      this.ready = false;
+      
       // Stop transaction poller
       if (this.transactionPoller) {
         clearInterval(this.transactionPoller);
         this.transactionPoller = undefined;
+        this.logger.info('Transaction poller stopped');
       }
       
       // Close transaction database
@@ -909,6 +913,7 @@ export class WalletManager {
       // Unsubscribe from wallet state updates
       if (this.walletSyncSubscription) {
         this.walletSyncSubscription.unsubscribe();
+        this.logger.info('Wallet sync subscription unsubscribed');
       }
       
       // Close wallet
@@ -1047,11 +1052,19 @@ export class WalletManager {
   }
 
   /**
-   * Start the transaction poller to check for completed transactions
+   * Start the transaction status poller
    */
   private startTransactionPoller(): void {
+    // Clear any existing poller first
     if (this.transactionPoller) {
       clearInterval(this.transactionPoller);
+      this.transactionPoller = undefined;
+    }
+
+    // Only start poller if wallet is ready
+    if (!this.ready || !this.wallet) {
+      this.logger.debug('Skipping transaction poller start - wallet not ready');
+      return;
     }
 
     this.logger.info(`Starting transaction poller with interval of ${this.pollingInterval}ms`);
@@ -1060,7 +1073,17 @@ export class WalletManager {
     this.checkPendingTransactions();
 
     this.transactionPoller = setInterval(() => {
-      this.checkPendingTransactions();
+      // Only run if wallet is still ready
+      if (this.ready && this.wallet && !this.isRecovering) {
+        this.checkPendingTransactions();
+      } else {
+        // Stop the poller if wallet is no longer ready
+        if (this.transactionPoller) {
+          clearInterval(this.transactionPoller);
+          this.transactionPoller = undefined;
+          this.logger.debug('Stopped transaction poller - wallet no longer ready');
+        }
+      }
     }, this.pollingInterval);
   }
 
@@ -1096,7 +1119,10 @@ export class WalletManager {
         }
       }
     } catch (error) {
-      this.logger.error('Error checking pending transactions', error);
+      // Only log errors if the wallet is still ready and we're not in the process of shutting down
+      if (this.ready && this.wallet && !this.isRecovering) {
+        this.logger.error('Error checking pending transactions', error);
+      }
     }
   }
 
