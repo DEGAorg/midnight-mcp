@@ -12,7 +12,8 @@ program
   .name('setup-agent')
   .description('Set up a new agent with a seed file')
   .requiredOption('-a, --agent-id <id>', 'Agent ID (e.g., agent-123)')
-  .option('-s, --seed <seed>', 'Wallet seed (if not provided, will be generated)')
+  .option('-s, --seed <seed>', 'Wallet seed in hex format (if not provided, will be generated)')
+  .option('-m, --mnemonic <words>', 'BIP39 mnemonic phrase (words separated by spaces)')
   .option('-f, --force', 'Overwrite existing seed file if it exists')
   .option('-w, --words <number>', 'number of words in mnemonic (12 or 24)', '24')
   .option('-p, --password <string>', 'optional password for additional security', '')
@@ -37,7 +38,7 @@ async function generateSeed(wordCount: number = 24, password: string = ''): Prom
   // Generate mnemonic from entropy
   const mnemonic = bip39.entropyToMnemonic(entropy);
 
-  // For Midnight, we use the entropy as the seed
+  // For Midnight, we use the entropy as the seed (hex format)
   const seed = entropy.toString('hex');
 
   // If password is provided, derive a seed from the mnemonic
@@ -55,12 +56,12 @@ async function generateSeed(wordCount: number = 24, password: string = ''): Prom
 }
 
 async function verifySeed(seed: string, password: string = ''): Promise<{ isValid: boolean; mnemonic: string; derivedSeed?: string }> {
-  // Validate seed length
+  // Validate seed length (32 bytes = 64 hex characters)
   if (seed.length !== 64) {
     throw new Error('Seed must be exactly 32 bytes (64 hex characters)');
   }
 
-  // Generate mnemonic from the seed (treating it as entropy)
+  // Generate mnemonic from the seed (treating the hex seed as entropy)
   const seedAsEntropy = Buffer.from(seed, 'hex');
   const mnemonic = bip39.entropyToMnemonic(seedAsEntropy);
 
@@ -74,6 +75,31 @@ async function verifySeed(seed: string, password: string = ''): Promise<{ isVali
   return {
     isValid: true, // If we got here, the seed is valid
     mnemonic,
+    derivedSeed
+  };
+}
+
+async function mnemonicToSeed(mnemonic: string, password: string = ''): Promise<{ seed: string; derivedSeed?: string }> {
+  // Validate mnemonic
+  if (!bip39.validateMnemonic(mnemonic)) {
+    throw new Error('Invalid BIP39 mnemonic phrase');
+  }
+
+  // Convert mnemonic back to entropy (this is the hex seed for Midnight)
+  const entropy = bip39.mnemonicToEntropy(mnemonic);
+  
+  // For Midnight, we use the entropy as the seed
+  const seed = entropy;
+
+  // If password is provided, derive a seed from the mnemonic
+  let derivedSeed: string | undefined;
+  if (password) {
+    const seedBuffer = bip39.mnemonicToSeedSync(mnemonic, password);
+    derivedSeed = seedBuffer.toString('hex');
+  }
+
+  return {
+    seed,
     derivedSeed
   };
 }
@@ -186,17 +212,26 @@ async function main() {
     let mnemonic: string | undefined;
     let derivedSeed: string | undefined;
 
-    if (!finalSeed) {
+    if (options.mnemonic) {
+      // Convert provided mnemonic to seed
+      const result = await mnemonicToSeed(options.mnemonic, password);
+      finalSeed = result.seed;
+      derivedSeed = result.derivedSeed;
+      mnemonic = options.mnemonic;
+      console.log(chalk.cyan('Converting provided mnemonic to hex seed'));
+    } else if (!finalSeed) {
       // Generate new seed
       const generated = await generateSeed(wordCount, password);
       finalSeed = generated.seed;
       mnemonic = generated.mnemonic;
       derivedSeed = generated.derivedSeed;
+      console.log(chalk.cyan('Generating new random seed'));
     } else {
       // Verify provided seed
       const verified = await verifySeed(finalSeed, password);
       mnemonic = verified.mnemonic;
       derivedSeed = verified.derivedSeed;
+      console.log(chalk.cyan('Using provided hex seed'));
     }
 
     // Initialize the seed
