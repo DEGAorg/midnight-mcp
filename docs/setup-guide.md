@@ -29,8 +29,11 @@ yarn setup-agent -a <agent-name>
 # Set up a new agent in a specific directory, example debugs with mcp-inspector
 yarn setup-agent -a <agent-name> -d /path/to/your/project
 
-# Or provide your own seed
-yarn setup-agent -a <agent-name> -s "your-seed-here"
+# Or provide your own hex seed (32-byte entropy in hex format)
+yarn setup-agent -a <agent-name> -s "your-hex-seed-here"
+
+# Or provide your own BIP39 mnemonic phrase (12 or 24 words)
+yarn setup-agent -a <agent-name> -m "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 
 # Force overwrite existing seed file
 yarn setup-agent -a <agent-name> -f
@@ -40,15 +43,28 @@ yarn setup-agent -a <agent-name> -f
 # -p, --password <string> Optional password for additional security
 ```
 
+### Understanding Seeds and Mnemonics
+
+The setup scripts work with two related but distinct concepts:
+
+- **Hex Seed**: A 32-byte (64 hex characters) entropy value that serves as the cryptographic foundation for your wallet
+- **BIP39 Mnemonic**: A human-readable phrase of 12 or 24 words that represents the same entropy in a more user-friendly format
+
+**Key Points:**
+- The hex seed is the actual entropy (random data) used by the Midnight wallet
+- The mnemonic is a BIP39-compliant phrase that can be converted to/from the hex seed
+- Both represent the same cryptographic material and provide access to the same wallet
+- The mnemonic can be imported into any BIP39-compatible wallet that supports Midnight
+
 The script will:
 1. Create the necessary directory structure
-2. Generate or verify the provided seed
+2. Generate or verify the provided seed/mnemonic
 3. Display the generated wallet information:
-   - Midnight Seed (hex)
-   - BIP39 Mnemonic
-   - Derived Seed (if password was provided)
+   - **Midnight Seed (hex)**: The 32-byte entropy in hexadecimal format
+   - **BIP39 Mnemonic**: The human-readable seed phrase
+   - **Derived Seed (if password provided)**: Additional entropy derived from the mnemonic + password
 
-**IMPORTANT:** Save these values securely. The seed and mnemonic provide access to your funds.
+**IMPORTANT:** Save these values securely. Both the hex seed and mnemonic provide access to your funds.
 
 **NOTE:** The BIP39 mnemonic can be imported into any GUI wallet that supports the Midnight blockchain, providing direct access to your funds.
 
@@ -109,7 +125,8 @@ yarn setup-docker -a <agent-name>
 yarn setup-docker -a <agent-name> -P 3001 -i http://custom-indexer:8080
 
 # Additional options:
-# -s, --seed <seed>           Wallet seed (if not provided, will be generated)
+# -s, --seed <seed>           Hex seed (32-byte entropy in hex format)
+# -m, --mnemonic <words>      BIP39 mnemonic phrase (12 or 24 words)
 # -f, --force                 Overwrite existing seed file if it exists
 # -w, --words <number>        Number of words in mnemonic (12 or 24, default: 24)
 # -p, --password <string>     Optional password for additional security
@@ -121,10 +138,15 @@ yarn setup-docker -a <agent-name> -P 3001 -i http://custom-indexer:8080
 
 This script will:
 1. Create a new directory structure in `agents/<agent-id>/`
-2. Generate a secure seed file
+2. Generate a secure seed file (from provided hex seed, mnemonic, or random generation)
 3. Create a `.env` file with the appropriate configuration
 4. Copy the `docker-compose.yml` file to the agent directory
 5. Set up data and logs directories with proper permissions
+
+**Seed/Mnemonic Priority:**
+- If `--mnemonic` is provided: Convert the mnemonic to hex seed and save it
+- If `--seed` is provided: Use the hex seed directly
+- If neither is provided: Generate a new random seed and display the corresponding mnemonic
 
 ### Deploy with Docker Compose
 
