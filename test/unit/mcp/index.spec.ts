@@ -38,7 +38,23 @@ describe('WalletServiceMCP', () => {
   });
   
   afterEach(async () => {
-     jest.clearAllMocks();
+    // Clean up MCP server to stop any running intervals
+    if (mcpServer) {
+      try {
+        await mcpServer.close();
+      } catch (error) {
+        // Ignore cleanup errors in tests
+      }
+    }
+    
+    // Clear any remaining intervals that might have been created
+    const activeIntervals = (global as any).__JEST_ACTIVE_INTERVALS__ || [];
+    activeIntervals.forEach((intervalId: NodeJS.Timeout) => {
+      clearInterval(intervalId);
+    });
+    (global as any).__JEST_ACTIVE_INTERVALS__ = [];
+    
+    jest.clearAllMocks();
   });
   
   describe('isReady', () => {

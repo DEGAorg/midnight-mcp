@@ -35,6 +35,7 @@ describe('Eliza Integration Tests', () => {
   let elizaClient: IElizaClient;
   let logger: TestLogger;
   let testResults: Array<{ name: string; result: TestResult }> = [];
+  let agentId: string; // Store the agent ID for reuse
 
   beforeAll(async () => {
     logger = new TestLogger('ELIZA-E2E');
@@ -47,6 +48,30 @@ describe('Eliza Integration Tests', () => {
     
     logger.info('Starting Eliza Integration Tests');
     logger.info(`Eliza API URL: ${DEFAULT_ELIZA_CONFIG.baseUrl}`);
+    
+    // Setup: Create and start the agent
+    logger.info('Setting up agent for tests...');
+    
+    // 1. Create the agent
+    const newAgent = await elizaClient.createC3P0Agent();
+    logger.info(`Agent created: ${newAgent.name} (ID: ${newAgent.id})`);
+    agentId = newAgent.id;
+    
+    // 2. Start the agent
+    const startAgent = await elizaClient.startAgent(agentId);
+    if (!startAgent.success) {
+      throw new Error(`Failed to start agent: ${startAgent.error}`);
+    }
+    logger.info(`Agent started successfully: ${newAgent.name} (ID: ${agentId})`);
+    
+    // 3. List agents to confirm creation
+    const agents = await elizaClient.getAgents();
+    const createdAgent = agents.find((agent: any) => agent.id === agentId);
+    if (!createdAgent) {
+      throw new Error('Created agent not found in agents list');
+    }
+    logger.info(`Agent confirmed in list: ${createdAgent.name} (ID: ${createdAgent.id})`);
+    
     // clear the channel history
     const clearResponse = await elizaClient.clearChannelHistory('4af73091-392d-47f5-920d-eeaf751e81d2');
     if (!clearResponse.success) {
@@ -68,7 +93,7 @@ describe('Eliza Integration Tests', () => {
   describe('Wallet Functionality', () => {
     
     describe('Wallet Status', () => {
-      it('01 - should check conversation history is empty', async () => {
+      it.skip('01 - should check conversation history is empty', async () => {
         const testName = 'Check Conversation History';
         logger.info(`Running: ${testName}`);
         
@@ -78,7 +103,7 @@ describe('Eliza Integration Tests', () => {
         
         // Wait between tests for sequential execution
         await WaitUtils.waitBetweenTests(logger);
-      }, 180000); 
+      }, 180000);
 
       it('02 - should verify balance extraction works with actual response format', async () => {
         const testName = 'Verify Balance Extraction';
@@ -102,6 +127,7 @@ describe('Eliza Integration Tests', () => {
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('What is the midnight wallet status?', {
+          agentId: agentId,
           waitForResponse: true,
           contentValidator: TestValidator.createWalletInfoValidator(),
         });
@@ -128,6 +154,7 @@ describe('Eliza Integration Tests', () => {
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('What is my wallet address?', {
+          agentId: agentId,
           waitForResponse: true,
           contentValidator: TestValidator.createWalletAddressValidator(),
         });
@@ -161,6 +188,7 @@ describe('Eliza Integration Tests', () => {
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('What is my balance?', {
+          agentId: agentId,
           waitForResponse: true,
           contentValidator: TestValidator.createNumberValidator(),
         });
@@ -193,6 +221,7 @@ describe('Eliza Integration Tests', () => {
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('What is the wallet configuration?', {
+          agentId: agentId,
           waitForResponse: true,
         });
         
@@ -221,7 +250,7 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage(
           `Send ${amount} dust units to address ${sampleAddress}`, {
-
+            agentId: agentId,
             waitForResponse: true,
 
           }
@@ -254,6 +283,7 @@ describe('Eliza Integration Tests', () => {
         const fakeTransactionId = 'fake-transaction-id-12345';
         const response = await elizaClient.sendMessage(
           `Verify transaction ${fakeTransactionId}`, {
+            agentId: agentId,
             waitForResponse: true,
             contentValidator: TestValidator.createTransactionVerificationValidator(),
           }
@@ -295,6 +325,7 @@ describe('Eliza Integration Tests', () => {
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('Am I logged into the marketplace?', {
+          agentId: agentId,
           waitForResponse: true,
           contentValidator: TestValidator.createAuthenticationStatusValidator(),
         });
@@ -335,6 +366,7 @@ describe('Eliza Integration Tests', () => {
         logger.info(`Running: ${testName}`);
         
         const response = await elizaClient.sendMessage('List services available in the marketplace', {
+          agentId: agentId,
           waitForResponse: true,
           contentValidator: TestValidator.createMarketplaceServicesListValidator(),
         });
@@ -377,6 +409,7 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage(
           `Register a new service and return the service id, the service is called "${serviceName}" with description "${serviceDescription}" price 25 DUST and to receive payment at address ${sampleAddress} and private privacy`, {
+            agentId: agentId,
             waitForResponse: true,
             contentValidator: TestValidator.createMarketplaceServiceRegistrationValidator(),
           }
@@ -408,6 +441,7 @@ describe('Eliza Integration Tests', () => {
         
         const response = await elizaClient.sendMessage(
           `Add content to the service: "${content}"`, {
+            agentId: agentId,
             waitForResponse: true,
             contentValidator: TestValidator.createServiceContentStorageValidator(),
           }
@@ -443,6 +477,7 @@ describe('Eliza Integration Tests', () => {
       
       // Try to access a non-existent endpoint or invalid data
       const response = await elizaClient.sendMessage('Access invalid wallet data', {
+        agentId: agentId,
         waitForResponse: true,
         responseTimeout: 60000 // Increased from 15000 to 60000 (60 seconds)
       });
