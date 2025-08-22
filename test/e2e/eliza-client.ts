@@ -2,7 +2,8 @@
 const fetch = globalThis.fetch;
 
 // Import the API client
-import { ElizaClient as ApiClient } from '@elizaos/api-client';
+import { AgentCreateParams, DmChannelParams, MessageChannel, ElizaClient as ApiClient } from '@elizaos/api-client';
+import agentConfig from './agent.json';
 
 /**
  * Configuration for Eliza client
@@ -18,6 +19,7 @@ export interface ElizaClientConfig {
  * Options for sending messages
  */
 export interface SendMessageOptions {
+  agentId: string;
   clearHistory?: boolean;
   waitForResponse?: boolean;
   responseTimeout?: number; // Default: 60000ms (60 seconds) - increased from 15000
@@ -95,8 +97,11 @@ export interface IElizaClient {
   // Agent management
   getAgents(): Promise<Agent[]>;
   getC3POAgent(): Promise<Agent>;
+  createC3P0Agent(): Promise<Agent>;
+  startAgent(agentId: string): Promise<{ success: boolean, error?: string }>;
   
   // Channel management
+  getOrCreateDmChannel(params: DmChannelParams): Promise<MessageChannel>;
   getAgentChannelId(): Promise<string>;
   clearChannelHistory(channelId: string): Promise<{ success: boolean, error?: string }>;
   
@@ -128,6 +133,8 @@ export class ElizaClient implements IElizaClient {
     this.retries = config.retries || 3;
     this.logger = config.logger || console;
   }
+
+
 
   /**
    * Get all available agents
@@ -162,6 +169,75 @@ export class ElizaClient implements IElizaClient {
       this.logger.error(`Error finding C3PO agent: ${error}`);
       throw error;
     }
+  }
+
+  // Create a new agent
+  async createC3P0Agent(): Promise<Agent> {
+    const agentData: AgentCreateParams = {
+      characterJson: agentConfig
+    };
+    
+    const response = await fetch(`${this.baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(agentData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const newAgent = await response.json();
+    return newAgent.data.character;
+  }
+
+  /**
+   * Start an existing agent
+   */
+  async startAgent(agentId: string): Promise<{ success: boolean, error?: string }> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  // /**
+  //  * Find or create a DM channel
+  //  */
+  async getOrCreateDmChannel(params: DmChannelParams): Promise<MessageChannel> {
+    const url = new URL(`${this.baseUrl}/api/messaging/dm-channel`);
+    
+    // Handle participantIds array properly - add each UUID as a separate query parameter
+    if (params.participantIds && Array.isArray(params.participantIds)) {
+      params.participantIds.forEach((participantId: string) => {
+        url.searchParams.append('participantIds', participantId);
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
   }
 
   /**
@@ -228,11 +304,14 @@ export class ElizaClient implements IElizaClient {
   /**
    * Send a message using the query.ts logic
    */
-  async sendMessage(message: string, options: SendMessageOptions = {}): Promise<SendMessageResponse> {
+  async sendMessage(message: string, options: SendMessageOptions): Promise<SendMessageResponse> {
     try {
       // validate message
       if (!message) {
         throw new Error('Message is required');
+      }
+      if (!options.agentId) {
+        throw new Error('Agent ID is required');
       }
 
       if (message.length > 1000) {
@@ -266,7 +345,7 @@ export class ElizaClient implements IElizaClient {
           metadata: {
             channelType: "DM",
             isDm: true,
-            targetUserId: "22d22d5f-e650-03f9-8a74-1f0aa3107035"
+            targetUserId: options.agentId
           }
         }),
       });
@@ -448,7 +527,7 @@ export class ElizaClient implements IElizaClient {
    */
   async sendMessageWithRetry(
     message: string, 
-    options: SendMessageOptions = {}
+    options: SendMessageOptions
   ): Promise<SendMessageResponse> {
     let lastError: string | undefined;
 
