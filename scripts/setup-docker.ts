@@ -11,7 +11,8 @@ program
   .name('setup-docker')
   .description('Set up a new agent for Docker deployment')
   .requiredOption('-a, --agent-id <id>', 'Agent ID (e.g., agent-123)')
-  .option('-s, --seed <seed>', 'Wallet seed (if not provided, will be generated)')
+  .option('-s, --seed <seed>', 'Wallet seed in hex format (if not provided, will be generated)')
+  .option('-m, --mnemonic <words>', 'BIP39 mnemonic phrase (words separated by spaces)')
   .option('-f, --force', 'Overwrite existing seed file if it exists')
   .option('-w, --words <number>', 'number of words in mnemonic (12 or 24)', '24')
   .option('-p, --password <string>', 'optional password for additional security', '')
@@ -39,7 +40,7 @@ async function generateSeed(wordCount: number = 24, password: string = ''): Prom
   // Generate mnemonic from entropy
   const mnemonic = bip39.entropyToMnemonic(entropy);
 
-  // For Midnight, we use the entropy as the seed
+  // For Midnight, we use the entropy as the seed (hex format)
   const seed = entropy.toString('hex');
 
   // If password is provided, derive a seed from the mnemonic
@@ -52,6 +53,31 @@ async function generateSeed(wordCount: number = 24, password: string = ''): Prom
   return {
     seed,
     mnemonic,
+    derivedSeed
+  };
+}
+
+async function mnemonicToSeed(mnemonic: string, password: string = ''): Promise<{ seed: string; derivedSeed?: string }> {
+  // Validate mnemonic
+  if (!bip39.validateMnemonic(mnemonic)) {
+    throw new Error('Invalid BIP39 mnemonic phrase');
+  }
+
+  // Convert mnemonic back to entropy (this is the hex seed for Midnight)
+  const entropy = bip39.mnemonicToEntropy(mnemonic);
+  
+  // For Midnight, we use the entropy as the seed
+  const seed = entropy;
+
+  // If password is provided, derive a seed from the mnemonic
+  let derivedSeed: string | undefined;
+  if (password) {
+    const seedBuffer = bip39.mnemonicToSeedSync(mnemonic, password);
+    derivedSeed = seedBuffer.toString('hex');
+  }
+
+  return {
+    seed,
     derivedSeed
   };
 }
@@ -95,10 +121,51 @@ async function main() {
 
     // Generate seed file
     const seedPath = path.join(seedsDir, 'seed');
-    if (!fs.existsSync(seedPath)) {
-      const seed = execSync('openssl rand -hex 32').toString().trim();
+    if (!fs.existsSync(seedPath) || options.force) {
+      let seed: string;
+      let mnemonic: string | undefined;
+      let derivedSeed: string | undefined;
+
+      if (options.seed) {
+        // Use provided hex seed
+        if (!/^[0-9a-fA-F]{64}$/.test(options.seed)) {
+          throw new Error('Seed must be exactly 32 bytes (64 hex characters)');
+        }
+        seed = options.seed;
+        console.log(chalk.cyan('Using provided hex seed'));
+      } else if (options.mnemonic) {
+        // Convert mnemonic to seed
+        const result = await mnemonicToSeed(options.mnemonic, options.password);
+        seed = result.seed;
+        derivedSeed = result.derivedSeed;
+        mnemonic = options.mnemonic;
+        console.log(chalk.cyan('Converting provided mnemonic to hex seed'));
+      } else {
+        // Generate new seed
+        const result = await generateSeed(parseInt(options.words), options.password);
+        seed = result.seed;
+        mnemonic = result.mnemonic;
+        derivedSeed = result.derivedSeed;
+        console.log(chalk.cyan('Generating new random seed'));
+      }
+
       fs.writeFileSync(seedPath, seed);
       fs.chmodSync(seedPath, 0o600); // Set read/write for owner only
+
+      // Display seed information
+      console.log('\n=== Generated Wallet Information ===');
+      console.log(chalk.yellow('Midnight Seed (hex):'));
+      console.log(chalk.white(seed));
+      
+      if (mnemonic) {
+        console.log('\n' + chalk.yellow('BIP39 Mnemonic:'));
+        console.log(chalk.white(mnemonic));
+      }
+      
+      if (derivedSeed) {
+        console.log('\n' + chalk.yellow('Derived Seed (with password):'));
+        console.log(chalk.white(derivedSeed));
+      }
     }
 
     // Create .env file
@@ -129,11 +196,6 @@ MN_NODE=${options.node}
       console.log(chalk.cyan('Copying docker-compose.yml...'));
       fs.copyFileSync(path.join(process.cwd(), 'docker-compose.yml'), dockerComposePath);
     }
-
-    // Display seed information
-    console.log('\n=== Generated Wallet Information ===');
-    console.log(chalk.yellow('Midnight Seed (hex):'));
-    console.log(chalk.white(seedPath));
 
     console.log('\n=== Docker Setup Instructions ===');
     console.log(chalk.cyan('1. Change to the agent directory:'));
