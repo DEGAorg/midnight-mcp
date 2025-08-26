@@ -13,6 +13,7 @@ export interface ElizaClientConfig {
   timeout?: number;
   retries?: number;
   logger?: any;
+  authorId?: string; // Add authorId to configuration
 }
 
 /**
@@ -126,12 +127,14 @@ export class ElizaClient implements IElizaClient {
   private timeout: number;
   private retries: number;
   private logger: any;
+  private authorId: string; // Add authorId to class
 
   constructor(config: ElizaClientConfig = {}) {
     this.baseUrl = config.baseUrl || process.env.ELIZA_API_URL || 'http://localhost:3001';
     this.timeout = config.timeout || 60000; // Increased from 15000 to 60000 (60 seconds)
     this.retries = config.retries || 3;
     this.logger = config.logger || console;
+    this.authorId = config.authorId || "5c9f5d45-8015-4b76-8a87-cf2efabcaccd"; // Set default authorId
   }
 
 
@@ -338,7 +341,7 @@ export class ElizaClient implements IElizaClient {
         body: JSON.stringify({
           channel_id: channelId,
           server_id: "00000000-0000-0000-0000-000000000000",
-          author_id: "5c9f5d45-8015-4b76-8a87-cf2efabcaccd",
+          author_id: this.authorId, // Use the authorId from the config
           content: message,
           source_type: "client_chat",
           raw_message: {},
