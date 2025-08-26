@@ -20,6 +20,7 @@ program
   .option('-i, --indexer <url>', 'Indexer URL', 'http://indexer:8080')
   .option('-w, --indexer-ws <url>', 'Indexer WebSocket URL', 'ws://indexer:8080')
   .option('-n, --node <url>', 'Midnight node URL', 'http://midnight-node:8080')
+  .option('--secure', 'Log seed information for secure copying')
   .parse(process.argv);
 
 const options = program.opts();
@@ -152,19 +153,23 @@ async function main() {
       fs.writeFileSync(seedPath, seed);
       fs.chmodSync(seedPath, 0o600); // Set read/write for owner only
 
-      // Display seed information
-      console.log('\n=== Generated Wallet Information ===');
-      console.log(chalk.yellow('Midnight Seed (hex):'));
-      console.log(chalk.white(seed));
-      
-      if (mnemonic) {
-        console.log('\n' + chalk.yellow('BIP39 Mnemonic:'));
-        console.log(chalk.white(mnemonic));
-      }
-      
-      if (derivedSeed) {
-        console.log('\n' + chalk.yellow('Derived Seed (with password):'));
-        console.log(chalk.white(derivedSeed));
+      // Display seed information only if secure flag is provided
+      if (options.secure) {
+        console.log('\n=== Generated Wallet Information ===');
+        console.log(chalk.yellow('Midnight Seed (hex):'));
+        console.log(chalk.white(seed));
+        
+        if (mnemonic) {
+          console.log('\n' + chalk.yellow('BIP39 Mnemonic:'));
+          console.log(chalk.white(mnemonic));
+        }
+        
+        if (derivedSeed) {
+          console.log('\n' + chalk.yellow('Derived Seed (with password):'));
+          console.log(chalk.white(derivedSeed));
+        }
+      } else {
+        console.log(chalk.cyan('✓ Seed file created (use --secure flag to view seed information)'));
       }
     }
 

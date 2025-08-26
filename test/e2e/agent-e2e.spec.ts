@@ -36,14 +36,30 @@ describe('Eliza Integration Tests', () => {
   let logger: TestLogger;
   let testResults: Array<{ name: string; result: TestResult }> = [];
   let agentId: string; // Store the agent ID for reuse
+  let authorId: string; // Single UUID generated per test run
+
+  // Generate a UUID for the entire test run
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
 
   beforeAll(async () => {
     logger = new TestLogger('ELIZA-E2E');
+    
+    // Generate a single UUID for the entire test run
+    authorId = generateUUID();
+    logger.info(`Generated Author ID for this test run: ${authorId}`);
+    
     elizaClient = createElizaClient({
       baseUrl: DEFAULT_ELIZA_CONFIG.baseUrl,
       timeout: 60000, // Increased from 15000 to 60000 (60 seconds)
       retries: DEFAULT_ELIZA_CONFIG.retries,
-      logger: logger
+      logger: logger,
+      authorId: authorId // Pass the generated author ID
     });
     
     logger.info('Starting Eliza Integration Tests');
@@ -71,12 +87,6 @@ describe('Eliza Integration Tests', () => {
       throw new Error('Created agent not found in agents list');
     }
     logger.info(`Agent confirmed in list: ${createdAgent.name} (ID: ${createdAgent.id})`);
-    
-    // clear the channel history
-    const clearResponse = await elizaClient.clearChannelHistory('4af73091-392d-47f5-920d-eeaf751e81d2');
-    if (!clearResponse.success) {
-      throw new Error(`Failed to clear channel history: ${clearResponse.error}`);
-    }
     
     // Wait for services to be ready
     await WaitUtils.wait(2000);
