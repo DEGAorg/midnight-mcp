@@ -585,7 +585,7 @@ export class ElizaClient implements IElizaClient {
           }
 
           // Continue waiting as long as we're within the timeout
-          this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for response...`);
+          // this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for response...`);
         }
 
         // Wait before next check
@@ -624,10 +624,10 @@ export class ElizaClient implements IElizaClient {
           );
 
           // Debug: Log all messages to see what we're working with
-          this.logger.info(`Debug: Found ${messages.messages.length} total messages, ${responseMessages.length} responses`);
-          messages.messages.forEach((msg: any, index: number) => {
-            this.logger.info(`Debug: Message ${index}: content="${msg.content?.substring(0, 100)}...", inReplyToRootMessageId="${msg.inReplyToRootMessageId}", authorId="${msg.authorId}"`);
-          });
+          // this.logger.info(`Debug: Found ${messages.messages.length} total messages, ${responseMessages.length} responses`);
+          // messages.messages.forEach((msg: any, index: number) => {
+          //   this.logger.info(`Debug: Message ${index}: content="${msg.content?.substring(0, 100)}...", inReplyToRootMessageId="${msg.inReplyToRootMessageId}", authorId="${msg.authorId}"`);
+          // });
 
           // Check only response messages for the expected content
           for (const message of responseMessages) {
@@ -638,7 +638,7 @@ export class ElizaClient implements IElizaClient {
           }
 
           // Continue waiting as long as we're within the timeout
-          this.logger.info(`Found ${messages.messages.length} total messages, ${responseMessages.length} responses, continuing to wait for expected content...`);
+          // this.logger.info(`Found ${messages.messages.length} total messages, ${responseMessages.length} responses, continuing to wait for expected content...`);
         }
 
         // Wait before next check
