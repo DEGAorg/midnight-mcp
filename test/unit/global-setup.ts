@@ -4,6 +4,11 @@
  */
 
 export default async function globalSetup(): Promise<void> {
+  // Prevent EventEmitter memory leak warnings
+  if (process && process.setMaxListeners) {
+    process.setMaxListeners(20); // Increase limit to prevent warnings
+  }
+  
   // Initialize global tracking arrays
   (global as any).__JEST_ACTIVE_INTERVALS__ = [];
   (global as any).__JEST_ACTIVE_TIMEOUTS__ = [];

@@ -80,5 +80,7 @@ export default {
     '!src/**/*.d.ts',
     '!src/integrations/**/*'
   ],
-  coverageReporters: ['text', 'lcov', 'html']
+  coverageReporters: ['text', 'lcov', 'html'],
+  // Keep the forceExit that you liked
+  forceExit: true
 }; 

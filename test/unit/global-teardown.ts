@@ -27,11 +27,23 @@ export default async function globalTeardown(): Promise<void> {
   (global as any).__JEST_ACTIVE_TIMEOUTS__ = [];
   (global as any).__JEST_ACTIVE_IMMEDIATES__ = [];
   
+  // Handle EventEmitter memory leaks
+  if (process && process.setMaxListeners) {
+    process.setMaxListeners(0);
+  }
+  
+  // Remove all listeners from process to prevent memory leaks
+  if (process && process.removeAllListeners) {
+    process.removeAllListeners('exit');
+    process.removeAllListeners('uncaughtException');
+    process.removeAllListeners('unhandledRejection');
+  }
+  
   // Force garbage collection if available
   if (global.gc) {
     global.gc();
   }
   
   // Wait a bit to ensure all async operations complete
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 50));
 }
