@@ -97,6 +97,7 @@ export interface Message {
 export interface IElizaClient {
   // Agent management
   getAgents(): Promise<Agent[]>;
+  getAgent(agentId: string): Promise<Agent>;
   getC3POAgent(): Promise<Agent>;
   createC3P0Agent(): Promise<Agent>;
   createAgent(agentConfig: any): Promise<Agent>;
@@ -175,6 +176,40 @@ export class ElizaClient implements IElizaClient {
       return c3poAgent;
     } catch (error) {
       this.logger.error(`Error finding C3PO agent: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific agent by ID
+   */
+  async getAgent(agentId: string): Promise<Agent> {
+    const url = `${this.baseUrl}/api/agents/${agentId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`Failed to get agent ${agentId}. Status: ${response.status}, Response: ${errorText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      this.logger.info(`Agent ${agentId} retrieved successfully:`, JSON.stringify(result, null, 2));
+      
+      // Return the agent data with the correct structure
+      return {
+        ...result.data.character,
+        id: result.data.id // Use the actual agent ID, not the character ID
+      };
+    } catch (error) {
+      this.logger.error(`Error getting agent ${agentId}: ${error}`);
       throw error;
     }
   }
