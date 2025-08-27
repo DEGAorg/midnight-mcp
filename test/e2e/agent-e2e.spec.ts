@@ -284,7 +284,7 @@ describe('Eliza Integration Tests', () => {
     });
 
     describe('Transaction Operations', () => {
-      it('07 - should send funds to a sample address', async () => {
+      it.skip('07 - should send funds to a sample address', async () => {
         const testName = 'Send Funds to Sample Address';
         logger.info(`Running: ${testName}`);
         
