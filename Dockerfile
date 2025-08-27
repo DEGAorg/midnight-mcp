@@ -46,10 +46,10 @@ COPY .yarn ./.yarn
 # Install production-only dependencies
 RUN yarn workspaces focus --production --all
 
-# Create required runtime directories
-RUN mkdir -p /app/.storage /app/logs \
+# Create required runtime directories with proper ownership and permissions
+RUN mkdir -p /app/.storage/logs /app/.storage/seeds /app/.storage/wallet-backups /app/.storage/transaction-db /app/logs \
  && chown -R node:node /app/.storage /app/logs \
- && chmod -R 755 /app/.storage /app/logs
+ && chmod -R 775 /app/.storage /app/logs
 
 # Switch to non-root user
 USER node

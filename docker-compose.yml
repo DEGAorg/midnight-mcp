@@ -21,6 +21,7 @@ services:
     volumes:
       - ./data:/app/.storage
       - ./logs:/app/logs
+    user: "1000:1000"  # Ensure consistent user ID for volume permissions
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --spider --quiet http://localhost:3000/health || exit 1"]
