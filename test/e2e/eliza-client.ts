@@ -99,11 +99,15 @@ export interface IElizaClient {
   getAgents(): Promise<Agent[]>;
   getC3POAgent(): Promise<Agent>;
   createC3P0Agent(): Promise<Agent>;
+  createAgent(agentConfig: any): Promise<Agent>;
   startAgent(agentId: string): Promise<{ success: boolean, error?: string }>;
+  getAgentPanels(agentId: string): Promise<{ panels: Array<{ id: string; name: string; url: string; type: string; metadata?: Record<string, any> }> }>;
+  getAgentLogs(agentId: string, options?: { level?: 'debug' | 'info' | 'warn' | 'error'; limit?: number }): Promise<Array<{ id: string; agentId: string; level: 'debug' | 'info' | 'warn' | 'error'; message: string; timestamp: Date; metadata?: Record<string, any> }>>;
   
   // Channel management
   getOrCreateDmChannel(params: DmChannelParams): Promise<MessageChannel>;
-  getAgentChannelId(): Promise<string>;
+  getAgentChannelId(agentId: string): Promise<string>;
+  getDmChannel(agentId: string): Promise<MessageChannel>;
   clearChannelHistory(channelId: string): Promise<{ success: boolean, error?: string }>;
   
   // Message operations
@@ -181,6 +185,9 @@ export class ElizaClient implements IElizaClient {
       characterJson: agentConfig
     };
     
+    // Debug: Log the request data
+    this.logger.info('Creating C3PO agent with config:', JSON.stringify(agentData, null, 2));
+    
     const response = await fetch(`${this.baseUrl}/api/agents`, {
       method: 'POST',
       headers: {
@@ -190,11 +197,50 @@ export class ElizaClient implements IElizaClient {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      this.logger.error(`Failed to create C3PO agent. Status: ${response.status}, Response: ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
     const newAgent = await response.json();
-    return newAgent.data.character;
+    this.logger.info('C3PO agent created successfully:', JSON.stringify(newAgent, null, 2));
+    // Return the agent data with the correct ID from data.id, not character.id
+    return {
+      ...newAgent.data.character,
+      id: newAgent.data.id // Use the actual agent ID, not the character ID
+    };
+  }
+
+  // Create a new agent with custom config
+  async createAgent(agentConfig: any): Promise<Agent> {
+    const agentData: AgentCreateParams = {
+      characterJson: agentConfig
+    };
+    
+    // Debug: Log the request data
+    this.logger.info('Creating agent with config:', JSON.stringify(agentData, null, 2));
+    
+    const response = await fetch(`${this.baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(agentData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Failed to create agent. Status: ${response.status}, Response: ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+
+    const newAgent = await response.json();
+    this.logger.info('Agent created successfully:', JSON.stringify(newAgent, null, 2));
+    // Return the agent data with the correct ID from data.id, not character.id
+    return {
+      ...newAgent.data.character,
+      id: newAgent.data.id // Use the actual agent ID, not the character ID
+    };
   }
 
   /**
@@ -203,6 +249,53 @@ export class ElizaClient implements IElizaClient {
   async startAgent(agentId: string): Promise<{ success: boolean, error?: string }> {
     const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/start`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  /**
+   * Get agent panels
+   */
+  async getAgentPanels(agentId: string): Promise<{ panels: Array<{ id: string; name: string; url: string; type: string; metadata?: Record<string, any> }> }> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/panels`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  /**
+   * Get agent logs
+   */
+  async getAgentLogs(agentId: string, options: { level?: 'debug' | 'info' | 'warn' | 'error'; limit?: number } = {}): Promise<Array<{ id: string; agentId: string; level: 'debug' | 'info' | 'warn' | 'error'; message: string; timestamp: Date; metadata?: Record<string, any> }>> {
+    const url = new URL(`${this.baseUrl}/api/agents/${agentId}/logs`);
+    
+    if (options.level) {
+      url.searchParams.append('level', options.level);
+    }
+    if (options.limit) {
+      url.searchParams.append('limit', options.limit.toString());
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -247,15 +340,12 @@ export class ElizaClient implements IElizaClient {
   /**
    * Get or create a DM channel with the C3PO agent
    */
-  async getAgentChannelId(): Promise<string> {
-    const agent = await this.getC3POAgent();
-    if (!agent || !agent.id) {
-      throw new Error('C3PO agent not found');
-    }
+  async getAgentChannelId(agentId: string): Promise<string> {
+    
     
     // Direct fetch call to get or create DM channel
     const response = await fetch(
-      `${this.baseUrl}/api/messaging/dm-channel?currentUserId=${this.authorId}&targetUserId=${agent.id}&dmServerId=00000000-0000-0000-0000-000000000000`,
+      `${this.baseUrl}/api/messaging/dm-channel?currentUserId=${this.authorId}&targetUserId=${agentId}&dmServerId=00000000-0000-0000-0000-000000000000`,
       {
         method: 'GET',
         headers: {
@@ -280,6 +370,34 @@ export class ElizaClient implements IElizaClient {
     }
     
     return result.data.id;
+  }
+
+  /**
+   * Get or create a DM channel with a specific agent
+   */
+  async getDmChannel(agentId: string): Promise<MessageChannel> {
+    // Direct fetch call to get or create DM channel
+    const response = await fetch(
+      `${this.baseUrl}/api/messaging/dm-channel?currentUserId=${this.authorId}&targetUserId=${agentId}&dmServerId=00000000-0000-0000-0000-000000000000`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success || !result.data?.id) {
+      throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
+    }
+    
+    return result.data;
   }
 
   /**
@@ -323,7 +441,7 @@ export class ElizaClient implements IElizaClient {
         throw new Error('Message is too long');
       }
       // Get the channel
-      const channelId = await this.getAgentChannelId();
+      const channelId = await this.getAgentChannelId(options.agentId);
       
       if (!channelId) {
         throw new Error('Could not obtain channel ID');

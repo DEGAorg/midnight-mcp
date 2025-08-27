@@ -15,6 +15,7 @@
     "test:e2e": "jest --config=jest.config.js --testMatch='**/test/e2e/**/*.spec.ts'",
     "test:e2e:basic": "jest --config=jest.config.js --testMatch='**/test/e2e/basic-messaging.spec.ts'",
     "test:e2e:debug": "jest --config=jest.config.js --testMatch='**/test/e2e/debug-messaging.spec.ts'",
+    "test:e2e:simple": "jest --config=jest.config.js --testMatch='**/test/e2e/simple-agent-test.spec.ts'",
     "setup-agent": "tsx scripts/setup-agent.ts",
     "setup-docker": "tsx scripts/setup-docker.ts"
   },
