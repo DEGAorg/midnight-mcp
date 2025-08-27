@@ -252,32 +252,28 @@ export class ElizaClient implements IElizaClient {
       throw new Error('C3PO agent not found');
     }
     
-    // Get channels from the central server
-    const url = `${this.baseUrl}/api/messaging/central-servers/00000000-0000-0000-0000-000000000000/channels`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
+    // Direct fetch call to get or create DM channel
+    const response = await fetch(
+      `${this.baseUrl}/api/messaging/dm-channel?currentUserId=${this.authorId}&targetUserId=${agent.id}&dmServerId=00000000-0000-0000-0000-000000000000`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+
+    const result = await response.json();
     
-    const channels = await response.json();
-    
-    // Find the DM channel with the C3PO agent
-    const dmChannel = channels.data?.channels?.find((channel: any) => 
-      channel.type === 'DM' && 
-      channel.metadata?.forAgent === agent.id
-    );
-    
-    if (!dmChannel) {
-      throw new Error(`No DM channel found for C3PO agent (${agent.id}). Available channels:`, channels.data?.channels);
+    if (!result.success || !result.data?.id) {
+      throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
     }
     
-    return dmChannel.id;
+    return result.data.id;
   }
 
   /**
