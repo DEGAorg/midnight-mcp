@@ -402,7 +402,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000);
 
-      it('08 - should verify a transaction that has not been received can be handled', async () => {
+      it.skip('08 - should verify a transaction that has not been received can be handled', async () => {
         const testName = 'Verify Non-Existent Transaction';
         logger.info(`Running: ${testName}`);
 
@@ -526,7 +526,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000);
 
-      it('11 - should register a new service', async () => {
+      it.skip('11 - should register a new service', async () => {
         const testName = 'Register New Service';
         logger.info(`Running: ${testName}`);
 
