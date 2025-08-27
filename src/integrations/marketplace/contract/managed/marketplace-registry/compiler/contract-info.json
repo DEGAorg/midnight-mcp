@@ -1,0 +1,49 @@
+{
+  "circuits": [
+    {
+      "name": "register",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "text",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "verify_text",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "pk",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Opaque",
+        "tsType": "string"
+      }
+    },
+    {
+      "name": "read_own_public_key",
+      "pure": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    }
+  ]
+}

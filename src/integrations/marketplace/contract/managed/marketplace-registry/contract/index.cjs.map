@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.cjs",
+  "sourceRoot": "../../../",
+  "sources": ["marketplace-registry.compact", "compiler/standard-library.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAeA;;;;;;;;MAQA,AAAA,QAYC;;;;cAZuB,MAAsB;;;;;;;;;;yCAAtB,MAAsB;;;;;;;sEAAtB,MAAsB;;;OAY7C;MAGD,AAAA,WAQC;;;;cAR0B,IAAa;;;;;;;;;;;;;;;;yCAAb,IAAa;;;;;;;yEAAb,IAAa;;;OAQvC;MAGD,AAAA,mBAEC;;;;;;;;;;;;;;;;;;;;OAAA;;;;;;;GAAC;EApCF;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAKA;;;;;;;;;;uDAAyD;;;;;;;GA+BvD;ECsDF,AAAA;;;;;;;;EDlFA,AAAA,YAYC,4BAZuB,MAAsB;UAE1C,SAAuC;UACvC,IAA6B,GAAT,SAAO;qDAGnB;;;;;;;;;;;0JAAgB,IAAE;;;;wGAAV;;UAIhB,eAAqC,GAAN,MAAI;IACnC;;;;;;;;;;yGAAgB,IAAE;;;yGAAE,eAAa;;;sDAAzB;;GACX;EAGD,AAAA,eAQC,4BAR0B,IAAa;UAEpC,aAAiC,GAAJ,IAAE;oDACxB;;;;;;;;;;;yJAAgB,aAAW;;;;uGAAnB;;mCAIR;;;;;;;;;;;;;;4GAAgB,aAAW;;;sFAAnB;GAClB;EAGD,AAAA,uBAEC;;GAAA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IA/BD;;;;uCAAA;;;;;;;;;;;;;;;;0FAAyD;;;;;uCAAzD;;;;;;;;;;;;0FAAyD;;;;;;;;;;;;uCAAzD;;;;;;;;;;;;;;;0FAAyD;;;;;;;;;;;;uCAAzD;;;;;;;;;;;;;;;;;0FAAyD;;;;;;;;KAAA;;;;;;;;;;;;;;"
+}
