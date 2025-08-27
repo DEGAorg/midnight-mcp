@@ -15,8 +15,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Build Docker image
-      run: docker build -t midnight-mcp-test .
+    - name: Setup environment file
+      run: cp env.example .env
 
     - name: Run linting
       continue-on-error: true
@@ -24,21 +24,14 @@ jobs:
         docker run --rm -u 0 -v $(pwd):/app -e YARN_CACHE_FOLDER=/tmp/.yarn-cache midnight-mcp-test \
         sh -c "yarn install && yarn lint"
 
-    - name: Run unit tests
-      run: |
-        docker run --rm -u 0 -v $(pwd):/app -w /app midnight-mcp-test \
-        sh -c "yarn install && yarn test:unit"
-      env:
-        NODE_ENV: test
-        CI: true
-
     - name: Generate coverage report
       run: |
         docker run --rm -u 0 -v $(pwd):/app -w /app midnight-mcp-test \
-        sh -c "yarn install && yarn test:coverage"
+        sh -c "yarn install && yarn test:unit:coverage --forceExit"
       env:
         NODE_ENV: test
         CI: true
+        AGENT_ID=test-agent
 
     - name: Upload test results
       if: always()
