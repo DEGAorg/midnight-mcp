@@ -1,10 +1,10 @@
 name: Unit Tests
 
 on:
-  # pull_request:
-  #   branches: [ develop ]
+  pull_request:
+    branches: [ main, uat, develop ]
   push:
-    branches: [ develop ]
+    branches: [ main, uat, develop ]
 
 jobs:
   unit-tests:
