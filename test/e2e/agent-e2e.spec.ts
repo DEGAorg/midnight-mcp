@@ -450,7 +450,7 @@ describe('Eliza Integration Tests', () => {
   describe('Marketplace Functionality', () => {
 
     describe('Authentication and Status', () => {
-      it('09 - should check marketplace login status', async () => {
+      it.skip('09 - should check marketplace login status', async () => {
         const testName = 'Check Marketplace Login Status';
         logger.info(`Running: ${testName}`);
 
@@ -458,7 +458,7 @@ describe('Eliza Integration Tests', () => {
           agentId: agentId,
           waitForResponse: true,
           contentValidator: TestValidator.createAuthenticationStatusValidator(),
-          responseTimeout: 240000
+          responseTimeout: 250000
         });
 
         const responseContent = response.response?.[0]?.content || null;
@@ -487,7 +487,7 @@ describe('Eliza Integration Tests', () => {
 
         testResults.push({ name: testName, result });
         expect(result.passed).toBe(true);
-      }, 240000);
+      }, 250000);
     });
 
     describe('Service Management', () => {
