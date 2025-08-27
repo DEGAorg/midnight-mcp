@@ -1,16 +1,4 @@
 services:
-  proof-server:
-    image: midnightnetwork/proof-server:4.0.0
-    container_name: midnight-proof-server
-    environment:
-      - RUST_LOG=info
-    ports:
-      - "6300:6300"
-    command: "'midnight-proof-server --network testnet'"
-    healthcheck:
-      test: ["CMD", "/bin/bash", "-c", ":> /dev/tcp/127.0.0.1/6300 || exit 1"]
-    restart: unless-stopped
-
   wallet-server:
     build:
       context: ../..  # Adjust this path to your Dockerfile location
