@@ -92,7 +92,27 @@ describe('Eliza Integration Tests', () => {
       logger.info(`C3P0 agent created: ${newAgent.name} (ID: ${newAgent.id})`);
       agentId = newAgent.id;
       
-      // 2. Start the agent
+      // 2. Get agent details to check configuration
+      logger.info('Getting agent details to check configuration...');
+      try {
+        const agentDetails = await elizaClient.getAgent(agentId);
+        logger.info(`Agent details retrieved successfully:`, JSON.stringify(agentDetails, null, 2));
+        
+        // Check for MCP configuration
+        if (agentDetails.characterJson?.mcpServers) {
+          logger.info(`Agent has ${agentDetails.characterJson.mcpServers.length} MCP servers configured`);
+          agentDetails.characterJson.mcpServers.forEach((server: any, index: number) => {
+            logger.info(`MCP Server ${index + 1}: ${server.name} (${server.command})`);
+          });
+        } else {
+          logger.warn('Agent has no MCP servers configured');
+        }
+      } catch (error) {
+        logger.error('Failed to get agent details:', error);
+        // Continue with the test even if we can't get details
+      }
+      
+      // 3. Start the agent
       logger.info('Starting C3P0 agent...');
       const startAgent = await elizaClient.startAgent(agentId);
       if (!startAgent.success) {
@@ -100,7 +120,7 @@ describe('Eliza Integration Tests', () => {
       }
       logger.info(`C3P0 agent started successfully: ${newAgent.name} (ID: ${agentId})`);
       
-      // 3. List agents to confirm creation
+      // 4. List agents to confirm creation
       logger.info('Confirming C3P0 agent creation...');
       const agents = await elizaClient.getAgents();
       const createdAgent = agents.find((agent: any) => agent.id === agentId);
@@ -144,28 +164,85 @@ describe('Eliza Integration Tests', () => {
         expect(response.success).toBe(true);
         expect(response.messages.length).toBe(0);
         
-        // Wait between tests for sequential execution
-        await WaitUtils.waitBetweenTests(logger);
-      }, 180000);
+              // Wait between tests for sequential execution
+      await WaitUtils.waitBetweenTests(logger);
+    }, 180000);
 
-      it('02 - should verify balance extraction works with actual response format', async () => {
-        const testName = 'Verify Balance Extraction';
-        logger.info(`Running: ${testName}`);
+    it('02 - should check agent configuration and MCP status', async () => {
+      const testName = 'Check Agent Configuration and MCP Status';
+      logger.info(`Running: ${testName}`);
+      
+      try {
+        // Get agent details
+        logger.info('Getting agent details...');
+        const agentDetails = await elizaClient.getAgent(agentId);
+        logger.info(`Agent details:`, JSON.stringify(agentDetails, null, 2));
         
-        // Test with the actual response format
-        const testResponse = "Your current wallet balance is **51.535228**. There are no pending transactions at the moment, so that's the amount available for you to use. If you have any other questions or need assistance with anything else, feel free to ask!";
+        // Check for MCP configuration
+        const hasMcpServers = agentDetails.characterJson?.mcpServers && agentDetails.characterJson.mcpServers.length > 0;
+        const mcpServerCount = hasMcpServers ? agentDetails.characterJson.mcpServers.length : 0;
         
-        const balance = TestValidator.extractBalance(testResponse);
-        const hasNumbers = TestValidator.createNumberValidator()(testResponse);
+        // Check for wallet-related configuration
+        const hasWalletConfig = agentDetails.characterJson?.instructions?.includes('wallet') || 
+                               agentDetails.characterJson?.instructions?.includes('balance') ||
+                               agentDetails.characterJson?.instructions?.includes('transaction');
         
-        expect(balance).toBe('51.535228');
-        expect(hasNumbers).toBe(true);
+        const result: TestResult = {
+          passed: true, // This test is informational, not pass/fail
+          message: `Agent configuration checked. MCP servers: ${mcpServerCount}, Has wallet config: ${hasWalletConfig}`,
+          data: { 
+            agentDetails,
+            hasMcpServers,
+            mcpServerCount,
+            hasWalletConfig,
+            agentId
+          },
+          error: undefined
+        };
         
-        // Wait between tests for sequential execution
-        await WaitUtils.waitBetweenTests(logger);
-      }, 180000);
+        testResults.push({ name: testName, result });
+        logger.info(`Agent configuration: MCP servers=${mcpServerCount}, Wallet config=${hasWalletConfig}`);
+        
+        // Log MCP server details if available
+        if (hasMcpServers) {
+          agentDetails.characterJson.mcpServers.forEach((server: any, index: number) => {
+            logger.info(`MCP Server ${index + 1}: ${server.name} (${server.command})`);
+          });
+        }
+        
+      } catch (error) {
+        logger.error(`Error checking agent configuration: ${error}`);
+        const result: TestResult = {
+          passed: false,
+          message: `Failed to check agent configuration: ${error}`,
+          data: { agentId },
+          error: error
+        };
+        testResults.push({ name: testName, result });
+      }
+      
+      // Wait between tests for sequential execution
+      await WaitUtils.waitBetweenTests(logger);
+    }, 180000);
 
-      it('03 - should check wallet status', async () => {
+        it('03 - should verify balance extraction works with actual response format', async () => {
+      const testName = 'Verify Balance Extraction';
+      logger.info(`Running: ${testName}`);
+      
+      // Test with the actual response format
+      const testResponse = "Your current wallet balance is **51.535228**. There are no pending transactions at the moment, so that's the amount available for you to use. If you have any other questions or need assistance with anything else, feel free to ask!";
+      
+      const balance = TestValidator.extractBalance(testResponse);
+      const hasNumbers = TestValidator.createNumberValidator()(testResponse);
+      
+      expect(balance).toBe('51.535228');
+      expect(hasNumbers).toBe(true);
+      
+      // Wait between tests for sequential execution
+      await WaitUtils.waitBetweenTests(logger);
+    }, 180000);
+
+    it('04 - should check wallet status', async () => {
         const testName = 'Check Wallet Status';
         logger.info(`Running: ${testName}`);
         
@@ -192,7 +269,7 @@ describe('Eliza Integration Tests', () => {
         await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('04 - should get wallet address', async () => {
+      it('05 - should get wallet address', async () => {
         const testName = 'Get Wallet Address';
         logger.info(`Running: ${testName}`);
         
@@ -226,7 +303,7 @@ describe('Eliza Integration Tests', () => {
         await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('05 - should get wallet balance', async () => {
+      it('06 - should get wallet balance', async () => {
         const testName = 'Get Wallet Balance';
         logger.info(`Running: ${testName}`);
         
@@ -259,7 +336,7 @@ describe('Eliza Integration Tests', () => {
         await WaitUtils.waitBetweenTests(logger);
       }, 180000); 
 
-      it('06 - should get wallet configuration', async () => {
+      it('07 - should get wallet configuration', async () => {
         const testName = 'Get Wallet Configuration';
         logger.info(`Running: ${testName}`);
         
@@ -284,7 +361,7 @@ describe('Eliza Integration Tests', () => {
     });
 
     describe('Transaction Operations', () => {
-      it.skip('07 - should send funds to a sample address', async () => {
+      it.skip('08 - should send funds to a sample address', async () => {
         const testName = 'Send Funds to Sample Address';
         logger.info(`Running: ${testName}`);
         
@@ -319,7 +396,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000); 
 
-      it('08 - should verify a transaction that has not been received can be handled', async () => {
+      it('09 - should verify a transaction that has not been received can be handled', async () => {
         const testName = 'Verify Non-Existent Transaction';
         logger.info(`Running: ${testName}`);
         
@@ -363,7 +440,7 @@ describe('Eliza Integration Tests', () => {
   describe('Marketplace Functionality', () => {
     
     describe('Authentication and Status', () => {
-      it('09 - should check marketplace login status', async () => {
+      it('10 - should check marketplace login status', async () => {
         const testName = 'Check Marketplace Login Status';
         logger.info(`Running: ${testName}`);
         
@@ -404,7 +481,7 @@ describe('Eliza Integration Tests', () => {
     });
 
     describe('Service Management', () => {
-      it('10 - should list available services', async () => {
+      it('11 - should list available services', async () => {
         const testName = 'List Available Services';
         logger.info(`Running: ${testName}`);
         
@@ -442,7 +519,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 130000);
 
-      it('11 - should register a new service', async () => {
+      it('12 - should register a new service', async () => {
         const testName = 'Register New Service';
         logger.info(`Running: ${testName}`);
         
@@ -476,7 +553,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000); 
 
-      it('12 - should add content to a registered service', async () => {
+      it('13 - should add content to a registered service', async () => {
         const testName = 'Add Content to Service';
         logger.info(`Running: ${testName}`);
         
@@ -514,7 +591,7 @@ describe('Eliza Integration Tests', () => {
    */
   describe('Extra Tests', () => {
 
-    it('13 - should handle non sense messages gracefully', async () => {
+    it('14 - should handle non sense messages gracefully', async () => {
       const testName = 'Non Sense Message Handling Test';
       logger.info(`Running: ${testName}`);
       

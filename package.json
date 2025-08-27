@@ -12,7 +12,7 @@
     "test:silent": "jest --config=jest.config.js --testMatch='**/test/unit/**/*.spec.ts' --silent --detectOpenHandles --forceExit",
     "test:integration": "jest --config=jest.config.js --testMatch='**/test/integration/**/*.spec.ts' --coverage=false",
     "test:coverage": "jest --config=jest.config.js --coverage",
-    "test:e2e": "jest --config=jest.config.js --testMatch='**/test/e2e/**/*.spec.ts'",
+    "test:e2e:main": "jest --config=jest.config.js --testMatch='**/test/e2e/agent-e2e.spec.ts'",
     "test:e2e:basic": "jest --config=jest.config.js --testMatch='**/test/e2e/basic-messaging.spec.ts'",
     "test:e2e:debug": "jest --config=jest.config.js --testMatch='**/test/e2e/debug-messaging.spec.ts'",
     "test:e2e:simple": "jest --config=jest.config.js --testMatch='**/test/e2e/simple-agent-test.spec.ts'",
