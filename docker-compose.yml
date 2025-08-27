@@ -21,8 +21,6 @@ services:
     volumes:
       - ./data:/app/.storage
       - ./logs:/app/logs
-    depends_on:
-      - proof-server
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --spider --quiet http://localhost:3000/health || exit 1"]
