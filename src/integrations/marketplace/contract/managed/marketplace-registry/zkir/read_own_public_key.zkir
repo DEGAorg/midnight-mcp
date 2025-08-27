@@ -1,0 +1,14 @@
+{
+  "version": { "major": 2, "minor": 0 },
+  "do_communications_commitment": true,
+  "num_inputs": 0,
+  "instructions": [
+    { "op": "load_imm", "imm": "01" },
+    { "op": "private_input", "guard": null },
+    { "op": "constrain_bits", "var": 1, "bits": 8 },
+    { "op": "private_input", "guard": null },
+    { "op": "constrain_bits", "var": 2, "bits": 248 },
+    { "op": "output", "var": 1 },
+    { "op": "output", "var": 2 }
+  ]
+}
