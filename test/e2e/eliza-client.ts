@@ -128,6 +128,7 @@ export class ElizaClient implements IElizaClient {
   private retries: number;
   private logger: any;
   private authorId: string; // Add authorId to class
+  private isFirstRun: boolean = true;
 
   constructor(config: ElizaClientConfig = {}) {
     this.baseUrl = config.baseUrl || process.env.ELIZA_API_URL || 'http://localhost:3001';
@@ -271,6 +272,11 @@ export class ElizaClient implements IElizaClient {
     
     if (!result.success || !result.data?.id) {
       throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
+    }
+
+    if (this.isFirstRun) {
+      console.log('Channel ID Response ===================>', JSON.stringify(result.data, null, 2));
+      this.isFirstRun = false;
     }
     
     return result.data.id;
