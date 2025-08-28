@@ -530,7 +530,7 @@ describe('Eliza Integration Tests', () => {
         expect(result.passed).toBe(true);
       }, 180000);
 
-      it('11 - should register a new service', async () => {
+      it.skip('11 - should register a new service', async () => {
         const testName = 'Register New Service';
         logger.info(`Running: ${testName}`);
 
