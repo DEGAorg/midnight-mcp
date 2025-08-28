@@ -1,101 +1,126 @@
 # GitHub Actions & CI/CD Configuration
 
-Esta carpeta contiene toda la configuración de CI/CD para el proyecto Midnight MCP Server.
+This folder contains all CI/CD configuration for the Midnight MCP Server project.
 
-## 📋 Workflows Disponibles
+## 📋 Available Workflows
 
 ### 1. Unit Tests (`unit-tests.yml`)
-**Propósito**: Ejecutar pruebas unitarias para validar cambios en la rama `feature/review-docs`
+**Purpose**: Execute unit tests to validate changes across multiple branches
 
 **Triggers**:
-- Pull requests a `feature/review-docs`
-- Push directo a `feature/review-docs`
+- Pull requests to: `main`, `uat`, `develop`, `feature/docker`
+- Direct push to: `main`, `uat`, `develop`, `feature/docker`
 
-**Características**:
-- ✅ Ejecuta linting con ESLint
-- ✅ Ejecuta pruebas unitarias con Jest
-- ✅ Genera reportes de cobertura
-- ✅ Reportes disponibles como artifacts
-- ✅ Timeout: 20 minutos
-- ✅ Node.js 22.15.1 (Docker-based)
+**Features**:
+- ✅ Runs linting with ESLint (continue-on-error: true)
+- ✅ Executes unit tests with Jest (`yarn test:unit:coverage`)
+- ✅ Generates comprehensive coverage reports
+- ✅ Reports available as artifacts (retention: 7 days)
+- ✅ Timeout: 20 minutes
+- ✅ Node.js 22.15.1 (Ubuntu Latest)
+- ✅ Yarn package manager with cache enabled
+- ✅ Environment variables: `NODE_ENV=test`, `CI=true`, `AGENT_ID=test-agent`
+- ✅ Generates test summary with coverage metrics
+- ✅ Artifacts: `coverage/` and `logs/`
+
+**Workflow Steps**:
+1. **Checkout**: Clone the repository
+2. **Setup Node.js**: Install Node.js 22.15.1 with Yarn cache
+3. **Environment**: Copy `env.example` to `.env`
+4. **Dependencies**: Run `yarn install`
+5. **Linting**: Execute `yarn lint` (doesn't block on errors)
+6. **Tests**: Execute `yarn test:unit:coverage` with test variables
+7. **Artifacts**: Upload coverage reports and logs
+8. **Summary**: Generate summary with detailed coverage metrics
 
 ### 2. CI Validation (`ci-validation.yml`)
-**Propósito**: Validación completa del código incluyendo pruebas unitarias e integración
+**Purpose**: Complete code validation including unit and integration tests
 
 **Triggers**:
-- Pull requests a `feature/review-docs`
-- Push directo a `feature/review-docs`
+- Pull requests to `feature/review-docs`
+- Direct push to `feature/review-docs`
 
-**Características**:
-- ✅ Ejecuta linting con ESLint
-- ✅ Pruebas unitarias + integración
-- ✅ Reportes de cobertura completos
-- ✅ Reportes disponibles como artifacts
-- ✅ Timeout: 30 minutos
+**Features**:
+- ✅ Runs linting with ESLint
+- ✅ Unit tests + integration
+- ✅ Complete coverage reports
+- ✅ Reports available as artifacts
+- ✅ Timeout: 30 minutes
 - ✅ Node.js 22.15.1 (Docker-based)
 
 ### 3. E2E Tests (`e2e-tests.yml`)
-**Propósito**: Pruebas end-to-end para validar la integración completa del sistema
+**Purpose**: End-to-end tests to validate complete system integration
 
 **Triggers**:
-- Pull requests a `main` y `develop`
-- Push a `main` y `develop`
-- Programado diariamente a las 2 AM UTC
+- Pull requests to `main` and `develop`
+- Push to `main` and `develop`
+- Scheduled daily at 2 AM UTC
 
-**Características**:
-- ✅ Múltiples versiones de Node.js (18.20.5, 20.x, 22.x)
-- ✅ Diferentes suites de pruebas (stdio, eliza, jest)
-- ✅ Tests de rendimiento
-- ✅ Timeout: 45-60 minutos
+**Features**:
+- ✅ Multiple Node.js versions (18.20.5, 20.x, 22.x)
+- ✅ Different test suites (stdio, eliza, jest)
+- ✅ Performance tests
+- ✅ Timeout: 45-60 minutes
 
-## 🔧 Configuración de Branch Protection
+## 🔧 Branch Protection Configuration
 
-### Rama Protegida: `feature/review-docs`
+### Protected Branch: `feature/review-docs`
 
-Para asegurar la calidad del código, la rama `feature/review-docs` tiene las siguientes protecciones:
+To ensure code quality, the `feature/review-docs` branch has the following protections:
 
-#### Status Checks Requeridos
+#### Required Status Checks
 - `Unit Tests / unit-tests`
 - `CI Validation / validate`
 
-#### Reglas de Protección
-- ✅ Requerir que los status checks pasen antes del merge
-- ✅ Requerir que la rama esté actualizada
-- ✅ Requerir resolución de conversaciones
-- ✅ Requerir pull request antes del merge
-- ✅ Requerir al menos 1 aprobación
-- ✅ Descartar aprobaciones obsoletas
+#### Protection Rules
+- ✅ Require status checks to pass before merge
+- ✅ Require branch to be up to date
+- ✅ Require conversation resolution
+- ✅ Require pull request before merge
+- ✅ Require at least 1 approval
+- ✅ Dismiss stale approvals
 
-## 📊 Métricas y Reportes
+## 📊 Metrics and Reports
 
-### Cobertura de Código
-- **Herramienta**: Jest Coverage
-- **Archivo**: `coverage/lcov.info`
-- **Formato**: HTML, JSON, LCOV
-- **Retención**: 7 días para artifacts
+### Code Coverage
+- **Tool**: Jest Coverage
+- **Files**: `coverage/lcov.info`, `coverage/coverage-summary.json`
+- **Formats**: HTML, JSON, LCOV
+- **Retention**: 7 days for artifacts
+- **Generated Metrics**:
+  - Lines coverage percentage
+  - Statements coverage percentage
+  - Functions coverage percentage
+  - Branches coverage percentage
 
 ### Linting
-- **Herramienta**: ESLint
-- **Configuración**: `.eslintrc.cjs`
+- **Tool**: ESLint
+- **Configuration**: `.eslintrc.cjs`
 - **Scripts**: `yarn lint`, `yarn lint:fix`
-- **Reglas**: TypeScript + Prettier compatible
+- **Rules**: TypeScript + Prettier compatible
 
-### Artifacts Generados
-- Reportes de cobertura HTML
-- Logs de ejecución
-- Resultados de pruebas
-- Métricas de rendimiento
+### Generated Artifacts
+- **Unit Tests**:
+  - HTML and JSON coverage reports
+  - Detailed execution logs
+  - Test summary with coverage metrics
+  - Artifact name: `unit-test-results`
+- **CI Validation**:
+  - Complete coverage reports
+  - Execution logs
+  - Test results
+  - Performance metrics
 
-## 🚀 Flujo de Trabajo Recomendado
+## 🚀 Recommended Workflow
 
-### Para Desarrolladores
+### For Developers
 
-1. **Crear Feature Branch**
+1. **Create Feature Branch**
    ```bash
-   git checkout -b feature/nueva-funcionalidad
+   git checkout -b feature/new-functionality
    ```
 
-2. **Desarrollo Local**
+2. **Local Development**
    ```bash
    yarn install
    yarn build
@@ -103,102 +128,111 @@ Para asegurar la calidad del código, la rama `feature/review-docs` tiene las si
    yarn test:integration
    ```
 
-3. **Crear Pull Request**
+3. **Create Pull Request**
    - Target: `feature/review-docs`
-   - Los workflows se ejecutarán automáticamente
+   - Workflows will run automatically
 
-4. **Revisar Status Checks**
-   - Esperar a que pasen todos los tests
-   - Revisar reportes de cobertura
-   - Corregir cualquier fallo
+4. **Review Status Checks**
+   - Wait for all tests to pass
+   - Review coverage reports
+   - Fix any failures
 
 5. **Merge**
-   - Solo disponible cuando todos los checks pasen
-   - Requiere aprobación de reviewer
+   - Only available when all checks pass
+   - Requires reviewer approval
 
-### Para Administradores
+### For Administrators
 
-1. **Configurar Branch Protection**
-   - Seguir la guía en `branch-protection.md`
-   - Configurar status checks requeridos
+1. **Configure Branch Protection**
+   - Follow the guide in `branch-protection.md`
+   - Configure required status checks
 
-2. **Monitorear Workflows**
-   - Revisar logs de GitHub Actions
-   - Verificar reportes de cobertura
-   - Ajustar timeouts si es necesario
+2. **Monitor Workflows**
+   - Review GitHub Actions logs
+   - Verify coverage reports
+   - Adjust timeouts if necessary
 
-3. **Mantener Configuración**
-   - Actualizar versiones de Node.js
-   - Revisar dependencias de seguridad
-   - Optimizar tiempos de ejecución
+3. **Monitor Unit Tests Workflow**
+   - Navigate to the **Actions** tab in GitHub
+   - Select the **Unit Tests** workflow
+   - Review the generated summary with coverage metrics
+   - Download artifacts for detailed analysis
+   - Verify that `coverage/lcov.info` is generated correctly
+
+4. **Maintain Configuration**
+   - Update Node.js versions
+   - Review security dependencies
+   - Optimize execution times
 
 ## 🛠️ Troubleshooting
 
-### Problemas Comunes
+### Common Issues
 
-#### Workflows No Se Ejecutan
-- Verificar triggers en el archivo YAML
-- Confirmar que la rama esté en la lista de triggers
-- Revisar permisos del repositorio
+#### Workflows Don't Run
+- Verify triggers in the YAML file
+- Confirm that the branch is in the triggers list
+- Review repository permissions
 
-#### Tests Fallan
-- Revisar logs detallados en GitHub Actions
-- Verificar configuración de Jest
-- Confirmar que las dependencias estén actualizadas
+#### Tests Fail
+- Review detailed logs in GitHub Actions
+- Verify Jest configuration
+- Confirm that dependencies are up to date
 
-#### Coverage No Se Genera
-- Verificar que `coverage/lcov.info` se genere
-- Confirmar configuración de Jest
-- Revisar logs de ejecución de tests
+#### Coverage Not Generated
+- Verify that `coverage/lcov.info` is generated
+- Confirm Jest configuration
+- Review test execution logs
+- Verify that `coverage/coverage-summary.json` exists
+- Review the test summary generated by the workflow
 
-#### Linting Falla
-- Verificar configuración de ESLint en `.eslintrc.cjs`
-- Confirmar que las dependencias de ESLint estén instaladas
-- Revisar reglas específicas que causan errores
+#### Linting Fails
+- Verify ESLint configuration in `.eslintrc.cjs`
+- Confirm that ESLint dependencies are installed
+- Review specific rules that cause errors
 
 #### Timeouts
-- Aumentar `timeout-minutes` en el workflow
-- Optimizar configuración de Jest
-- Considerar paralelización de tests
+- Increase `timeout-minutes` in the workflow
+- Optimize Jest configuration
+- Consider test parallelization
 
-### Comandos de Debug
+### Debug Commands
 
 ```bash
-# Verificar configuración local
+# Verify local configuration
 yarn lint
 yarn test:unit --verbose
 yarn test:coverage --verbose
 
-# Limpiar cache
+# Clean cache
 yarn cache clean
 rm -rf node_modules
 yarn install
 
-# Verificar versión de Node.js
+# Verify Node.js version
 node --version
 yarn --version
 
-# Ejecutar en Docker (como en CI)
+# Run in Docker (as in CI)
 docker build -t midnight-mcp-test .
 docker run --rm -v $(pwd):/app -w /app midnight-mcp-test sh -c "yarn install && yarn lint && yarn test:unit"
 ```
 
-## 📈 Mejoras Futuras
+## 📈 Future Improvements
 
-### Optimizaciones Planificadas
-- [ ] Paralelización de tests unitarios
-- [ ] Cache de dependencias optimizado
-- [ ] Tests de seguridad automatizados
-- [ ] Análisis de código estático
-- [ ] Notificaciones de Slack/Discord
+### Planned Optimizations
+- [ ] Unit test parallelization
+- [ ] Optimized dependency cache
+- [ ] Automated security tests
+- [ ] Static code analysis
+- [ ] Slack/Discord notifications
 
-### Monitoreo
-- [ ] Dashboard de métricas de CI/CD
-- [ ] Alertas de fallos de tests
-- [ ] Reportes de rendimiento
-- [ ] Análisis de tendencias de cobertura
+### Monitoring
+- [ ] CI/CD metrics dashboard
+- [ ] Test failure alerts
+- [ ] Performance reports
+- [ ] Coverage trend analysis
 
-## 📚 Recursos Adicionales
+## 📚 Additional Resources
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Jest Testing Framework](https://jestjs.io/)
@@ -208,4 +242,4 @@ docker run --rm -v $(pwd):/app -w /app midnight-mcp-test sh -c "yarn install && 
 
 ---
 
-*Esta configuración asegura que solo código de alta calidad y bien probado sea integrado a la rama `feature/review-docs`.* 
+*This configuration ensures that only high-quality, well-tested code is integrated into the `feature/review-docs` branch.* 

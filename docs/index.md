@@ -14,7 +14,6 @@ Welcome to the Midnight MCP documentation. This index provides navigation to all
 ### 🧪 Testing Documentation
 - **[Test Scenarios](tests/test-scenarios.md)** - Overview of test scenarios and validation approaches
 - **[Test Sequence Diagrams](tests/test-sequence-diagrams.md)** - Detailed test flow diagrams and sequences
-- **[GitHub Workflow](tests/github-workflow.md)** - Unit tests CI/CD workflow documentation
 - **[Test Cases](tests/)** - Individual test case documentation:
   - [Identity Match Test](tests/test-1-identity-match.md)
   - [Agent Registration Test](tests/test-2-agent-not-registered.md)
@@ -87,7 +86,6 @@ docs/
     ├── README.md                      # Test documentation overview
     ├── test-scenarios.md              # Test scenario descriptions
     ├── test-sequence-diagrams.md      # Test sequence diagrams
-    ├── github-workflow.md             # GitHub CI/CD workflow documentation
     ├── test-1-identity-match.md       # Identity validation test
     ├── test-2-agent-not-registered.md # Agent registration test
     ├── test-3-sender-mismatch.md      # Sender validation test
