@@ -563,18 +563,19 @@ export class ElizaClient implements IElizaClient {
   async waitForResponse(
     channelId: string, 
     messageId: string, 
-    timeout: number = 60000 // Increased from 30000 to 60000 (60 seconds)
+    timeout: number = 60000 // 60 seconds
   ): Promise<Message[]> {
     const startTime = Date.now();
     const interval = 1000; // Check every second
+    let lastMessageCount = 0;
 
     while (Date.now() - startTime < timeout) {
       try {
-        // Get more messages to handle multiple responses
-        const messages = await this.getChannelMessages(channelId, {limit: 10});
+        // Get messages
+        const messages = await this.getChannelMessages(channelId, {limit: 15});
 
         if (messages.messages && messages.messages.length > 0) {
-          // Filter messages to find responses to our specific message
+          // First try to find direct replies
           const responseMessages = messages.messages.filter((message: any) => 
             message.inReplyToRootMessageId === messageId
           );
@@ -584,8 +585,22 @@ export class ElizaClient implements IElizaClient {
             return responseMessages;
           }
 
-          // Continue waiting as long as we're within the timeout
-          // this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for response...`);
+          // If no direct replies, check for any new messages from the agent
+          if (messages.messages.length > lastMessageCount) {
+            const recentMessages = messages.messages.slice(0, 5); // Check recent messages
+            const agentMessages = recentMessages.filter((message: any) => 
+              message.authorId !== this.authorId && // Not from us
+              message.content && 
+              message.content.trim().length > 0
+            );
+
+            if (agentMessages.length > 0) {
+              this.logger.info(`Found ${agentMessages.length} recent agent messages, assuming response to messageId: ${messageId}`);
+              return agentMessages;
+            }
+            
+            lastMessageCount = messages.messages.length;
+          }
         }
 
         // Wait before next check
@@ -611,25 +626,20 @@ export class ElizaClient implements IElizaClient {
   ): Promise<Message[]> {
     const startTime = Date.now();
     const interval = 1000; // Check every second
+    let lastMessageCount = 0;
 
     while (Date.now() - startTime < timeout) {
       try {
-        // Get more messages to handle multiple responses
+        // Get messages
         const messages = await this.getChannelMessages(channelId, {limit: 15});
 
         if (messages.messages && messages.messages.length > 0) {
-          // Filter messages to find responses to our specific message
+          // First try to find direct replies
           const responseMessages = messages.messages.filter((message: any) => 
             message.inReplyToRootMessageId === messageId
           );
 
-          // Debug: Log all messages to see what we're working with
-          // this.logger.info(`Debug: Found ${messages.messages.length} total messages, ${responseMessages.length} responses`);
-          // messages.messages.forEach((msg: any, index: number) => {
-          //   this.logger.info(`Debug: Message ${index}: content="${msg.content?.substring(0, 100)}...", inReplyToRootMessageId="${msg.inReplyToRootMessageId}", authorId="${msg.authorId}"`);
-          // });
-
-          // Check only response messages for the expected content
+          // Check response messages for expected content
           for (const message of responseMessages) {
             if (message.content && contentValidator(message.content)) {
               this.logger.info(`Found message with expected content for messageId: ${messageId}`);
@@ -637,8 +647,25 @@ export class ElizaClient implements IElizaClient {
             }
           }
 
-          // Continue waiting as long as we're within the timeout
-          // this.logger.info(`Found ${messages.messages.length} total messages, ${responseMessages.length} responses, continuing to wait for expected content...`);
+          // If no direct replies with expected content, check for any new messages from the agent
+          if (messages.messages.length > lastMessageCount) {
+            const recentMessages = messages.messages.slice(0, 5); // Check recent messages
+            const agentMessages = recentMessages.filter((message: any) => 
+              message.authorId !== this.authorId && // Not from us
+              message.content && 
+              message.content.trim().length > 0
+            );
+
+            // Check agent messages for expected content
+            for (const message of agentMessages) {
+              if (message.content && contentValidator(message.content)) {
+                this.logger.info(`Found agent message with expected content for messageId: ${messageId}`);
+                return [message];
+              }
+            }
+            
+            lastMessageCount = messages.messages.length;
+          }
         }
 
         // Wait before next check
