@@ -143,3 +143,46 @@ export type VerificationResult = {
   userData: MarketplaceUserData;
   reason: string;
 }
+
+/**
+ * Token information structure
+ */
+export interface TokenInfo {
+  name: string;           // Human-readable name (e.g., "DAO_VOTING", "FUNDING")
+  symbol: string;         // Short symbol (e.g., "DVT", "FUND")
+  contractAddress: string; // Contract address for operations
+  domainSeparator: string; // Domain separator for token type generation (e.g., "dega_dao_vote")
+  tokenTypeHex?: string;  // Generated token type (computed from domain + contract)
+  description?: string;   // Optional description
+}
+
+/**
+ * Token balance information
+ */
+export interface TokenBalance {
+  tokenName: string;
+  symbol: string;
+  balance: string;
+  contractAddress: string;
+  description?: string;
+}
+
+/**
+ * Token operation result
+ */
+export interface TokenOperationResult {
+  success: boolean;
+  tokenName: string;
+  amount?: string;
+  transactionId?: string;
+  error?: string;
+}
+
+/**
+ * Coin information for transactions
+ */
+export interface CoinInfo {
+  nonce: Uint8Array;
+  color: Uint8Array;
+  value: bigint;
+}

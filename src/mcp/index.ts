@@ -421,6 +421,104 @@ export class WalletServiceMCP {
       throw new WalletServiceError(WalletServiceErrorType.IDENTIFIER_VERIFICATION_FAILED, 'Failed to verify user in marketplace');
     }
   }
+
+  // ==================== TOKEN OPERATIONS ====================
+
+  /**
+   * Register a token with a human-readable name
+   * @param name Human-readable token name
+   * @param symbol Token symbol
+   * @param contractAddress Contract address for the token
+   * @param domainSeparator Domain separator for token type generation
+   * @param description Optional description
+   * @returns Token operation result
+   */
+  public registerToken(
+    name: string, 
+    symbol: string, 
+    contractAddress: string,
+    domainSeparator: string = 'custom_token',
+    description?: string
+  ) {
+    return this.wallet.registerToken(name, symbol, contractAddress, domainSeparator, description);
+  }
+
+  /**
+   * Get token balance by name
+   * @param tokenName Token name
+   * @returns Token balance as string
+   */
+  public getTokenBalance(tokenName: string): string {
+    return this.wallet.getTokenBalance(tokenName);
+  }
+
+  /**
+   * Send tokens to another address
+   * @param tokenName Token name
+   * @param toAddress Recipient address
+   * @param amount Amount to send
+   * @returns Transaction result
+   */
+  public async sendToken(tokenName: string, toAddress: string, amount: string) {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.sendToken(tokenName, toAddress, amount);
+    } catch (error) {
+      this.logger.error('Error sending token:', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to send token');
+    }
+  }
+
+  /**
+   * List all registered tokens with their balances
+   * @returns Array of token balances
+   */
+  public listWalletTokens() {
+    return this.wallet.listWalletTokens();
+  }
+
+  /**
+   * Register multiple tokens in batch
+   * @param tokenConfigs Array of token configurations
+   * @returns Batch registration result
+   */
+  public registerTokensBatch(tokenConfigs: Array<{
+    name: string;
+    symbol: string;
+    contractAddress: string;
+    domainSeparator?: string;
+    description?: string;
+  }>) {
+    return this.wallet.registerTokensBatch(tokenConfigs);
+  }
+
+  /**
+   * Register tokens from environment variable string
+   * @param envValue Environment variable value with token configurations
+   * @returns Batch registration result
+   */
+  public registerTokensFromEnvString(envValue: string) {
+    return this.wallet.registerTokensFromEnvString(envValue);
+  }
+
+  /**
+   * Get token configuration template for environment variables
+   * @returns Example configuration string
+   */
+  public getTokenEnvConfigTemplate(): string {
+    return this.wallet.getTokenEnvConfigTemplate();
+  }
+
+  /**
+   * Get token registry statistics
+   * @returns Registry statistics
+   */
+  public getTokenRegistryStats() {
+    return this.wallet.getTokenRegistryStats();
+  }
 }
 
 // Export default instance

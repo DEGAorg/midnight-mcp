@@ -27,7 +27,11 @@ import {
   TransactionStatusResult,
   MarketplaceUserData,
   RegistrationResult,
-  VerificationResult
+  VerificationResult,
+  TokenInfo,
+  TokenBalance,
+  TokenOperationResult,
+  CoinInfo
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
 import { FileManager, FileType } from '../utils/file-manager.js';
@@ -40,6 +44,9 @@ import {
 
 // Import marketplace API functions
 import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance, configureProviders } from '../integrations/marketplace/api.js';
+
+// Import shielded token manager
+import { ShieldedTokenManager } from './shielded-tokens.js';
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;
@@ -182,6 +189,9 @@ export class WalletManager {
   private transactionLogger: TransactionTraceLogger;
   private agentLogger: AgentDecisionLogger;
   
+  // Shielded token manager
+  private shieldedTokenManager: ShieldedTokenManager;
+  
   // Track different balance types for the wallet (using bigint internally)
   private walletBalances: InternalWalletBalances = {
     balance: 0n,
@@ -203,6 +213,9 @@ export class WalletManager {
     this.auditService = AuditTrailService.getInstance();
     this.transactionLogger = new TransactionTraceLogger(this.auditService);
     this.agentLogger = new AgentDecisionLogger(this.auditService);
+    
+    // Initialize shielded token manager
+    this.shieldedTokenManager = new ShieldedTokenManager(this);
     
     // Set network ID if provided, default to TestNet
     this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s', 
@@ -1506,6 +1519,164 @@ export class WalletManager {
       this.logger.error('Failed to verify user in marketplace', error);
       throw error;
     }
+  }
+
+  // ==================== SHIELDED TOKEN OPERATIONS ====================
+
+  /**
+   * Register a token with a human-readable name
+   * @param name Human-readable token name
+   * @param symbol Token symbol
+   * @param contractAddress Contract address for the token
+   * @param domainSeparator Domain separator for token type generation
+   * @param description Optional description
+   * @returns Token operation result
+   */
+  public registerToken(
+    name: string, 
+    symbol: string, 
+    contractAddress: string,
+    domainSeparator: string = 'custom_token',
+    description?: string
+  ): TokenOperationResult {
+    return this.shieldedTokenManager.registerToken(name, symbol, contractAddress, domainSeparator, description);
+  }
+
+  /**
+   * Get token information by name
+   * @param tokenName Token name
+   * @returns Token information or null if not found
+   */
+  public getTokenInfo(tokenName: string): TokenInfo | null {
+    return this.shieldedTokenManager.getTokenInfo(tokenName);
+  }
+
+  /**
+   * Get token balance by name
+   * @param tokenName Token name
+   * @returns Token balance as string or "0" if not found
+   */
+  public getTokenBalance(tokenName: string): string {
+    return this.shieldedTokenManager.getTokenBalance(tokenName);
+  }
+
+  /**
+   * Send tokens to another address
+   * @param tokenName Token name
+   * @param toAddress Recipient address
+   * @param amount Amount to send
+   * @returns Transaction result
+   */
+  public async sendToken(
+    tokenName: string, 
+    toAddress: string, 
+    amount: string
+  ): Promise<SendFundsResult> {
+    return this.shieldedTokenManager.sendToken(tokenName, toAddress, amount);
+  }
+
+  /**
+   * List all registered tokens with their balances
+   * @returns Array of token balances
+   */
+  public listWalletTokens(): TokenBalance[] {
+    return this.shieldedTokenManager.listWalletTokens();
+  }
+
+  /**
+   * Create a coin for DAO voting (requires 500 tokens)
+   * @param tokenName Token name to create coin for
+   * @param amount Amount for the coin (default 500 for DAO voting)
+   * @returns Coin info for transactions
+   */
+  public createCoinForVoting(tokenName: string, amount: bigint = 500n): CoinInfo {
+    return this.shieldedTokenManager.createCoinForVoting(tokenName, amount);
+  }
+
+  /**
+   * Create a coin for treasury funding (default 100 tokens)
+   * @param tokenName Token name to create coin for
+   * @param amount Amount for the coin (default 100 for treasury funding)
+   * @returns Coin info for transactions
+   */
+  public createCoinForFunding(tokenName: string, amount: bigint = 100n): CoinInfo {
+    return this.shieldedTokenManager.createCoinForFunding(tokenName, amount);
+  }
+
+  /**
+   * Get all registered token names
+   * @returns Array of registered token names
+   */
+  public getRegisteredTokenNames(): string[] {
+    return this.shieldedTokenManager.getRegisteredTokenNames();
+  }
+
+  /**
+   * Check if a token is registered
+   * @param tokenName Token name
+   * @returns True if token is registered
+   */
+  public isTokenRegistered(tokenName: string): boolean {
+    return this.shieldedTokenManager.isTokenRegistered(tokenName);
+  }
+
+  /**
+   * Remove a token from registry
+   * @param tokenName Token name
+   * @returns True if token was removed
+   */
+  public unregisterToken(tokenName: string): boolean {
+    return this.shieldedTokenManager.unregisterToken(tokenName);
+  }
+
+  /**
+   * Get token registry statistics
+   * @returns Registry statistics
+   */
+  public getTokenRegistryStats(): { totalTokens: number; tokensBySymbol: Record<string, number> } {
+    return this.shieldedTokenManager.getRegistryStats();
+  }
+
+  /**
+   * Register multiple tokens in batch
+   * @param tokenConfigs Array of token configurations
+   * @returns Batch registration result
+   */
+  public registerTokensBatch(tokenConfigs: Array<{
+    name: string;
+    symbol: string;
+    contractAddress: string;
+    domainSeparator?: string;
+    description?: string;
+  }>): {
+    success: boolean;
+    registeredCount: number;
+    errors: Array<{ token: string; error: string }>;
+    registeredTokens: string[];
+  } {
+    return this.shieldedTokenManager.registerTokensBatch(tokenConfigs);
+  }
+
+  /**
+   * Register tokens from environment variable string
+   * @param envValue Environment variable value with token configurations
+   * @returns Batch registration result
+   */
+  public registerTokensFromEnvString(envValue: string): {
+    success: boolean;
+    registeredCount: number;
+    errors: Array<{ token: string; error: string }>;
+    registeredTokens: string[];
+  } {
+    return this.shieldedTokenManager.registerTokensFromEnvString(envValue);
+  }
+
+  /**
+   * Get token configuration template for environment variables
+   * @returns Example configuration string
+   */
+  public getTokenEnvConfigTemplate(): string {
+    return this.shieldedTokenManager.getEnvConfigTemplate();
   }
 }
 
