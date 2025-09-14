@@ -33,13 +33,14 @@ export const ALL_TOOLS = [
     },
   },
   {
-    name: "sendFunds",
-    description: "Send funds to another wallet address",
+    name: "send",
+    description: "Send funds or tokens to another wallet address. Can send native tokens (tDUST) or shielded tokens by name/symbol",
     inputSchema: {
       type: "object",
       properties: {
         destinationAddress: { type: "string" },
-        amount: { type: "string" }
+        amount: { type: "string" },
+        token: { type: "string", description: "Token name, symbol, or 'native'/'tDUST' for native tokens. If not specified, defaults to native tokens." }
       },
       required: ["destinationAddress", "amount"]
     }
@@ -83,6 +84,18 @@ export const ALL_TOOLS = [
       properties: {},
       required: []
     },
+  },
+  // Token balance tool
+  {
+    name: "getTokenBalance",
+    description: "Get the balance of a specific token by name or symbol. Use 'native' or 'tDUST' for native tokens",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tokenName: { type: "string" }
+      },
+      required: ["tokenName"]
+    }
   },
   // Marketplace tools
   {
@@ -152,24 +165,50 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
           ]
         };
         
-      case "sendFunds":
-        const { destinationAddress, amount } = toolArgs;
+      case "send":
+        const { destinationAddress, amount, token } = toolArgs;
         if (!destinationAddress || !amount) {
           throw new McpError(
             ErrorCode.InvalidParams,
             "Missing required parameters: destinationAddress and amount"
           );
         }
-        const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount });
-        return {
-          "content": [
-            {
-              "type": "text",
-              "text": JSON.stringify(sendResult, null, 2),
-              "mimeType": "application/json"
-            }
-          ]
-        };
+        
+        // Determine if this is a native token or shielded token
+        const isNativeToken = !token || 
+          token.toLowerCase() === 'native' || 
+          token.toLowerCase() === 'tdust' || 
+          token.toLowerCase() === 'dust';
+        
+        if (isNativeToken) {
+          // Send native tokens
+          const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount });
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(sendResult, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        } else {
+          // Send shielded tokens
+          const sendTokenResult = await httpClient.post('/wallet/tokens/send', { 
+            tokenName: token, 
+            toAddress: destinationAddress, 
+            amount 
+          });
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(sendTokenResult, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        }
         
       case "verifyTransaction":
         const { identifier } = toolArgs;
@@ -244,6 +283,47 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
             }
           ]
         };
+        
+      // Token balance tool handler
+      case "getTokenBalance":
+        const { tokenName: balanceTokenName } = toolArgs;
+        if (!balanceTokenName) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameter: tokenName"
+          );
+        }
+        
+        // Check if this is a native token request
+        const isNativeTokenBalance = balanceTokenName.toLowerCase() === 'native' || 
+          balanceTokenName.toLowerCase() === 'tdust' || 
+          balanceTokenName.toLowerCase() === 'dust';
+        
+        if (isNativeTokenBalance) {
+          // Get native token balance
+          const nativeBalance = await httpClient.get('/wallet/balance');
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(nativeBalance, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        } else {
+          // Get shielded token balance
+          const tokenBalance = await httpClient.get(`/wallet/tokens/balance/${balanceTokenName}`);
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(tokenBalance, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        }
       
       // Marketplace tool handlers
       case "registerInMarketplace":

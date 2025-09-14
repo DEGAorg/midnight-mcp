@@ -189,6 +189,38 @@ export class WalletController {
     }
   }
 
+  async send(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { destinationAddress, amount, token } = req.body;
+      if (!destinationAddress || !amount) {
+        res.status(400).json({
+          error: 'Missing required parameters: destinationAddress and amount'
+        });
+        return;
+      }
+
+      // Determine if this is a native token or shielded token
+      const isNativeToken = !token || 
+        token.toLowerCase() === 'native' || 
+        token.toLowerCase() === 'tdust' || 
+        token.toLowerCase() === 'dust';
+
+      let result;
+      if (isNativeToken) {
+        // Send native tokens
+        result = await this.walletService.sendFunds(destinationAddress, amount);
+      } else {
+        // Send shielded tokens
+        result = await this.walletService.sendToken(token, destinationAddress, amount);
+      }
+
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error sending funds/tokens:', error);
+      next(error);
+    }
+  }
+
   async verifyTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { identifier } = req.body;
