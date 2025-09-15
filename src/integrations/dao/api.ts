@@ -6,7 +6,7 @@ import {
   DaoVotingState,
   VoteType,
   ElectionStatus
-} from "./common-types";
+} from "./common-types.js";
 
 // Re-export VoteType for external use
 export { VoteType };
