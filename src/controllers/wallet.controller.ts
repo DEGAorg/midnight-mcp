@@ -323,4 +323,107 @@ export class WalletController {
       next(error);
     }
   }
+
+  // ==================== DAO OPERATIONS ====================
+
+  async openDaoElection(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { electionId } = req.body;
+      if (!electionId) {
+        res.status(400).json({
+          error: 'Missing required parameter: electionId'
+        });
+        return;
+      }
+      const result = await this.walletService.openDaoElection(electionId);
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error opening DAO election:', error);
+      next(error);
+    }
+  }
+
+  async closeDaoElection(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await this.walletService.closeDaoElection();
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error closing DAO election:', error);
+      next(error);
+    }
+  }
+
+  async castDaoVote(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { voteType } = req.body;
+      if (!voteType) {
+        res.status(400).json({
+          error: 'Missing required parameter: voteType (YES, NO, or ABSENT)'
+        });
+        return;
+      }
+      const result = await this.walletService.castDaoVote(voteType);
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error casting DAO vote:', error);
+      next(error);
+    }
+  }
+
+  async fundDaoTreasury(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { amount } = req.body;
+      if (!amount) {
+        res.status(400).json({
+          error: 'Missing required parameter: amount'
+        });
+        return;
+      }
+      const result = await this.walletService.fundDaoTreasury(amount);
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error funding DAO treasury:', error);
+      next(error);
+    }
+  }
+
+  async payoutDaoProposal(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await this.walletService.payoutDaoProposal();
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error paying out DAO proposal:', error);
+      next(error);
+    }
+  }
+
+  async getDaoElectionStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await this.walletService.getDaoElectionStatus();
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error getting DAO election status:', error);
+      next(error);
+    }
+  }
+
+  async getDaoState(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await this.walletService.getDaoState();
+      res.json(result);
+    } catch (error) {
+      this.logger.error('Error getting DAO state:', error);
+      next(error);
+    }
+  }
+
+  async getDaoConfigTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const template = this.walletService.getDaoConfigTemplate();
+      res.json({ template });
+    } catch (error) {
+      this.logger.error('Error getting DAO config template:', error);
+      next(error);
+    }
+  }
 } 

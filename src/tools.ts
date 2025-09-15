@@ -125,87 +125,71 @@ export const ALL_TOOLS = [
   // DAO tools
   {
     name: "openDaoElection",
-    description: "Open a new election in the DAO voting contract",
+    description: "Open a new election in the DAO voting contract. DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
       properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" },
         electionId: { type: "string", description: "Unique identifier for the election" }
       },
-      required: ["contractAddress", "electionId"]
+      required: ["electionId"]
     }
   },
   {
     name: "closeDaoElection",
-    description: "Close the current election in the DAO voting contract",
+    description: "Close the current election in the DAO voting contract. DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
-      properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" }
-      },
-      required: ["contractAddress"]
+      properties: {},
+      required: []
     }
   },
   {
     name: "castDaoVote",
-    description: "Cast a vote in the DAO election (YES, NO, or ABSENT)",
+    description: "Cast a vote in the DAO election (YES, NO, or ABSENT). DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
       properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" },
-        voteType: { type: "string", enum: ["YES", "NO", "ABSENT"], description: "Type of vote to cast" },
-        voteCoinNonce: { type: "string", description: "Nonce of the vote coin (hex string)" },
-        voteCoinColor: { type: "string", description: "Color of the vote coin (hex string)" },
-        voteCoinValue: { type: "string", description: "Value of the vote coin" }
+        voteType: { type: "string", enum: ["YES", "NO", "ABSENT"], description: "Type of vote to cast" }
       },
-      required: ["contractAddress", "voteType", "voteCoinNonce", "voteCoinColor", "voteCoinValue"]
+      required: ["voteType"]
     }
   },
   {
     name: "fundDaoTreasury",
-    description: "Fund the DAO treasury with tokens",
+    description: "Fund the DAO treasury with tokens. DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
       properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" },
-        fundCoinNonce: { type: "string", description: "Nonce of the fund coin (hex string)" },
-        fundCoinColor: { type: "string", description: "Color of the fund coin (hex string)" },
-        fundCoinValue: { type: "string", description: "Value of the fund coin" }
+        amount: { type: "string", description: "Amount to fund the treasury" }
       },
-      required: ["contractAddress", "fundCoinNonce", "fundCoinColor", "fundCoinValue"]
+      required: ["amount"]
     }
   },
   {
     name: "payoutDaoProposal",
-    description: "Payout an approved proposal from the DAO treasury",
+    description: "Payout an approved proposal from the DAO treasury. DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
-      properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" }
-      },
-      required: ["contractAddress"]
+      properties: {},
+      required: []
     }
   },
   {
     name: "getDaoElectionStatus",
-    description: "Get the current status of the DAO election",
+    description: "Get the current status of the DAO election. DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
-      properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" }
-      },
-      required: ["contractAddress"]
+      properties: {},
+      required: []
     }
   },
   {
     name: "getDaoState",
-    description: "Get the full state of the DAO voting contract",
+    description: "Get the full state of the DAO voting contract. DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
-      properties: {
-        contractAddress: { type: "string", description: "DAO voting contract address" }
-      },
-      required: ["contractAddress"]
+      properties: {},
+      required: []
     }
   }
 ];
@@ -252,8 +236,8 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
         
       case "send":
-        const { destinationAddress, amount, token } = toolArgs;
-        if (!destinationAddress || !amount) {
+        const { destinationAddress, amount: sendAmount, token } = toolArgs;
+        if (!destinationAddress || !sendAmount) {
           throw new McpError(
             ErrorCode.InvalidParams,
             "Missing required parameters: destinationAddress and amount"
@@ -268,7 +252,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         
         if (isNativeToken) {
           // Send native tokens
-          const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount });
+          const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount: sendAmount });
           return {
             "content": [
               {
@@ -283,7 +267,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
           const sendTokenResult = await httpClient.post('/wallet/tokens/send', { 
             tokenName: token, 
             toAddress: destinationAddress, 
-            amount 
+            amount: sendAmount 
           });
           return {
             "content": [
@@ -452,14 +436,14 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
       
       // DAO tool handlers
       case "openDaoElection":
-        const { contractAddress: openContractAddress, electionId } = toolArgs;
-        if (!openContractAddress || !electionId) {
+        const { electionId } = toolArgs;
+        if (!electionId) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            "Missing required parameters: contractAddress and electionId"
+            "Missing required parameter: electionId"
           );
         }
-        const openElectionResult = await httpClient.post('/dao/open-election', { contractAddress: openContractAddress, electionId });
+        const openElectionResult = await httpClient.post('/dao/open-election', { electionId });
         return {
           "content": [
             {
@@ -471,14 +455,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
       
       case "closeDaoElection":
-        const { contractAddress: closeContractAddress } = toolArgs;
-        if (!closeContractAddress) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "Missing required parameter: contractAddress"
-          );
-        }
-        const closeElectionResult = await httpClient.post('/dao/close-election', { contractAddress: closeContractAddress });
+        const closeElectionResult = await httpClient.post('/dao/close-election', {});
         return {
           "content": [
             {
@@ -490,28 +467,14 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
       
       case "castDaoVote":
-        const { 
-          contractAddress: voteContractAddress, 
-          voteType, 
-          voteCoinNonce, 
-          voteCoinColor, 
-          voteCoinValue 
-        } = toolArgs;
-        if (!voteContractAddress || !voteType || !voteCoinNonce || !voteCoinColor || !voteCoinValue) {
+        const { voteType } = toolArgs;
+        if (!voteType) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            "Missing required parameters: contractAddress, voteType, voteCoinNonce, voteCoinColor, voteCoinValue"
+            "Missing required parameter: voteType"
           );
         }
-        const castVoteResult = await httpClient.post('/dao/cast-vote', {
-          contractAddress: voteContractAddress,
-          voteType,
-          voteCoin: {
-            nonce: voteCoinNonce,
-            color: voteCoinColor,
-            value: voteCoinValue
-          }
-        });
+        const castVoteResult = await httpClient.post('/dao/cast-vote', { voteType });
         return {
           "content": [
             {
@@ -523,26 +486,14 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
       
       case "fundDaoTreasury":
-        const { 
-          contractAddress: fundContractAddress, 
-          fundCoinNonce, 
-          fundCoinColor, 
-          fundCoinValue 
-        } = toolArgs;
-        if (!fundContractAddress || !fundCoinNonce || !fundCoinColor || !fundCoinValue) {
+        const { amount: fundAmount } = toolArgs;
+        if (!fundAmount) {
           throw new McpError(
             ErrorCode.InvalidParams,
-            "Missing required parameters: contractAddress, fundCoinNonce, fundCoinColor, fundCoinValue"
+            "Missing required parameter: amount"
           );
         }
-        const fundTreasuryResult = await httpClient.post('/dao/fund-treasury', {
-          contractAddress: fundContractAddress,
-          fundCoin: {
-            nonce: fundCoinNonce,
-            color: fundCoinColor,
-            value: fundCoinValue
-          }
-        });
+        const fundTreasuryResult = await httpClient.post('/dao/fund-treasury', { amount: fundAmount });
         return {
           "content": [
             {
@@ -554,14 +505,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
       
       case "payoutDaoProposal":
-        const { contractAddress: payoutContractAddress } = toolArgs;
-        if (!payoutContractAddress) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "Missing required parameter: contractAddress"
-          );
-        }
-        const payoutResult = await httpClient.post('/dao/payout-proposal', { contractAddress: payoutContractAddress });
+        const payoutResult = await httpClient.post('/dao/payout-proposal', {});
         return {
           "content": [
             {
@@ -573,14 +517,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
       
       case "getDaoElectionStatus":
-        const { contractAddress: statusContractAddress } = toolArgs;
-        if (!statusContractAddress) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "Missing required parameter: contractAddress"
-          );
-        }
-        const electionStatusResult = await httpClient.get(`/dao/election-status/${statusContractAddress}`);
+        const electionStatusResult = await httpClient.get('/dao/election-status');
         return {
           "content": [
             {
@@ -592,14 +529,7 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
         };
       
       case "getDaoState":
-        const { contractAddress: stateContractAddress } = toolArgs;
-        if (!stateContractAddress) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "Missing required parameter: contractAddress"
-          );
-        }
-        const daoStateResult = await httpClient.get(`/dao/state/${stateContractAddress}`);
+        const daoStateResult = await httpClient.get('/dao/state');
         return {
           "content": [
             {

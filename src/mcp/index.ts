@@ -520,6 +520,138 @@ export class WalletServiceMCP {
   public getTokenRegistryStats() {
     return this.wallet.getTokenRegistryStats();
   }
+
+  // ==================== DAO OPERATIONS ====================
+
+  /**
+   * Open a new election in the DAO voting contract
+   * @param electionId Unique identifier for the election
+   * @returns Transaction result
+   */
+  public async openDaoElection(electionId: string) {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.openDaoElection(electionId);
+    } catch (error) {
+      this.logger.error('Error opening DAO election:', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to open DAO election');
+    }
+  }
+
+  /**
+   * Close the current election in the DAO voting contract
+   * @returns Transaction result
+   */
+  public async closeDaoElection() {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.closeDaoElection();
+    } catch (error) {
+      this.logger.error('Error closing DAO election:', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to close DAO election');
+    }
+  }
+
+  /**
+   * Cast a vote in the DAO election
+   * @param voteType Type of vote (YES, NO, ABSENT)
+   * @returns Transaction result
+   */
+  public async castDaoVote(voteType: string) {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.castDaoVote(voteType);
+    } catch (error) {
+      this.logger.error('Error casting DAO vote:', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to cast DAO vote');
+    }
+  }
+
+  /**
+   * Fund the DAO treasury with tokens
+   * @param amount Amount to fund the treasury
+   * @returns Transaction result
+   */
+  public async fundDaoTreasury(amount: string) {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.fundDaoTreasury(amount);
+    } catch (error) {
+      this.logger.error('Error funding DAO treasury:', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to fund DAO treasury');
+    }
+  }
+
+  /**
+   * Payout an approved proposal from the DAO treasury
+   * @returns Transaction result
+   */
+  public async payoutDaoProposal() {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.payoutDaoProposal();
+    } catch (error) {
+      this.logger.error('Error paying out DAO proposal:', error);
+      throw new WalletServiceError(WalletServiceErrorType.TX_SUBMISSION_FAILED, 'Failed to payout DAO proposal');
+    }
+  }
+
+  /**
+   * Get the current status of the DAO election
+   * @returns Election status
+   */
+  public async getDaoElectionStatus() {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.getDaoElectionStatus();
+    } catch (error) {
+      this.logger.error('Error getting DAO election status:', error);
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Failed to get DAO election status');
+    }
+  }
+
+  /**
+   * Get the full state of the DAO voting contract
+   * @returns DAO state
+   */
+  public async getDaoState() {
+    if (!this.isReady()) {
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Wallet is not ready');
+    }
+    
+    try {
+      return await this.wallet.getDaoState();
+    } catch (error) {
+      this.logger.error('Error getting DAO state:', error);
+      throw new WalletServiceError(WalletServiceErrorType.WALLET_NOT_READY, 'Failed to get DAO state');
+    }
+  }
+
+  /**
+   * Get DAO configuration template
+   * @returns DAO configuration template
+   */
+  public getDaoConfigTemplate(): string {
+    return this.wallet.getDaoConfigTemplate();
+  }
 }
 
 // Export default instance
