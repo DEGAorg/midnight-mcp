@@ -7,6 +7,9 @@ import {
   VoteType,
   ElectionStatus
 } from "./common-types";
+
+// Re-export VoteType for external use
+export { VoteType };
 import { assertIsContractAddress } from "@midnight-ntwrk/midnight-js-utils";
 import { DaoVoting, witnesses } from "./contract/index.js";
 import { findDeployedContract, deployContract, FinalizedCallTxData } from "@midnight-ntwrk/midnight-js-contracts";

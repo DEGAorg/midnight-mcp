@@ -60,6 +60,7 @@ export class TokenRegistryDatabase {
           domainSeparator TEXT NOT NULL,
           tokenTypeHex TEXT,
           description TEXT,
+          decimals INTEGER DEFAULT 6,
           createdAt INTEGER NOT NULL,
           updatedAt INTEGER NOT NULL
         )
@@ -69,6 +70,9 @@ export class TokenRegistryDatabase {
       
       // Create index on name for faster lookups
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_tokens_name ON tokens(name)');
+      
+      // Create index on symbol for faster lookups
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_tokens_symbol ON tokens(symbol)');
       
       // Create index on contractAddress for faster lookups
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_tokens_contractAddress ON tokens(contractAddress)');
@@ -103,8 +107,8 @@ export class TokenRegistryDatabase {
       
       const stmt = this.db.prepare(`
         INSERT INTO tokens (
-          id, name, symbol, contractAddress, domainSeparator, tokenTypeHex, description, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, name, symbol, contractAddress, domainSeparator, tokenTypeHex, description, decimals, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       stmt.run(
@@ -115,6 +119,7 @@ export class TokenRegistryDatabase {
         token.domainSeparator,
         token.tokenTypeHex,
         token.description,
+        token.decimals || 6,
         token.createdAt,
         token.updatedAt
       );
@@ -153,6 +158,29 @@ export class TokenRegistryDatabase {
     }
   }
   
+  /**
+   * Get a token by its symbol
+   * @param symbol Token symbol
+   * @returns Token information or null if not found
+   */
+  public getTokenBySymbol(symbol: string): TokenInfo | null {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM tokens WHERE symbol = ?');
+      const row = stmt.get(symbol) as (TokenInfo & { id: string; createdAt: number; updatedAt: number }) | undefined;
+      
+      if (!row) {
+        return null;
+      }
+      
+      // Return only the TokenInfo fields, excluding database-specific fields
+      const { id, createdAt, updatedAt, ...tokenInfo } = row;
+      return tokenInfo;
+    } catch (error) {
+      this.logger.error(`Failed to get token with symbol: ${symbol}`, error);
+      throw error;
+    }
+  }
+
   /**
    * Get a token by its contract address
    * @param contractAddress Contract address
@@ -265,6 +293,10 @@ export class TokenRegistryDatabase {
       if (updates.description !== undefined) {
         updateFields.push('description = ?');
         values.push(updates.description);
+      }
+      if (updates.decimals !== undefined) {
+        updateFields.push('decimals = ?');
+        values.push(updates.decimals);
       }
       
       if (updateFields.length === 0) {

@@ -33,7 +33,7 @@ export class WalletController {
 
   async registerToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { name, symbol, contractAddress, domainSeparator, description } = req.body;
+      const { name, symbol, contractAddress, domainSeparator, description, decimals } = req.body;
       if (!name || !symbol || !contractAddress) {
         res.status(400).json({
           error: 'Missing required parameters: name, symbol, and contractAddress'
@@ -46,7 +46,8 @@ export class WalletController {
         symbol, 
         contractAddress, 
         domainSeparator || 'custom_token', 
-        description
+        description,
+        decimals
       );
 
       if (result.success) {

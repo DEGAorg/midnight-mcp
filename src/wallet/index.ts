@@ -1530,6 +1530,7 @@ export class WalletManager {
    * @param contractAddress Contract address for the token
    * @param domainSeparator Domain separator for token type generation
    * @param description Optional description
+   * @param decimals Number of decimal places (default: 6)
    * @returns Token operation result
    */
   public registerToken(
@@ -1537,9 +1538,10 @@ export class WalletManager {
     symbol: string, 
     contractAddress: string,
     domainSeparator: string = 'custom_token',
-    description?: string
+    description?: string,
+    decimals?: number
   ): TokenOperationResult {
-    return this.shieldedTokenManager.registerToken(name, symbol, contractAddress, domainSeparator, description);
+    return this.shieldedTokenManager.registerToken(name, symbol, contractAddress, domainSeparator, description, decimals);
   }
 
   /**

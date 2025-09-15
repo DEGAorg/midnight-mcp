@@ -438,9 +438,10 @@ export class WalletServiceMCP {
     symbol: string, 
     contractAddress: string,
     domainSeparator: string = 'custom_token',
-    description?: string
+    description?: string,
+    decimals?: number
   ) {
-    return this.wallet.registerToken(name, symbol, contractAddress, domainSeparator, description);
+    return this.wallet.registerToken(name, symbol, contractAddress, domainSeparator, description, decimals);
   }
 
   /**

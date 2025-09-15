@@ -53,6 +53,15 @@ const routes = [
   { method: 'get', path: '/wallet/pending-transactions', handler: walletController.getPendingTransactions },
   { method: 'get', path: '/wallet/config', handler: walletController.getWalletConfig },
   { method: 'get', path: '/health', handler: walletController.healthCheck },
+  // Token routes
+  { method: 'get', path: '/wallet/tokens/balance/:tokenName', handler: walletController.getTokenBalance },
+  { method: 'post', path: '/wallet/tokens/send', handler: walletController.sendToken },
+  { method: 'get', path: '/wallet/tokens/list', handler: walletController.listTokens },
+  { method: 'post', path: '/wallet/tokens/register', handler: walletController.registerToken },
+  { method: 'post', path: '/wallet/tokens/batch', handler: walletController.registerTokensBatch },
+  { method: 'post', path: '/wallet/tokens/register-from-env', handler: walletController.registerTokensFromEnv },
+  { method: 'get', path: '/wallet/tokens/config-template', handler: walletController.getTokenEnvConfigTemplate },
+  { method: 'get', path: '/wallet/tokens/stats', handler: walletController.getTokenRegistryStats },
   // Marketplace routes
   { method: 'post', path: '/marketplace/register', handler: walletController.registerInMarketplace },
   { method: 'post', path: '/marketplace/verify', handler: walletController.verifyUserInMarketplace }

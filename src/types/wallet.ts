@@ -154,6 +154,7 @@ export interface TokenInfo {
   domainSeparator: string; // Domain separator for token type generation (e.g., "dega_dao_vote")
   tokenTypeHex?: string;  // Generated token type (computed from domain + contract)
   description?: string;   // Optional description
+  decimals?: number;      // Number of decimal places (default: 6)
 }
 
 /**
@@ -165,6 +166,7 @@ export interface TokenBalance {
   balance: string;
   contractAddress: string;
   description?: string;
+  decimals?: number;
 }
 
 /**

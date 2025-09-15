@@ -76,13 +76,15 @@ export class ShieldedTokenManager {
    * @param contractAddress Contract address for the token
    * @param domainSeparator Domain separator for token type generation
    * @param description Optional description
+   * @param decimals Number of decimal places (default: 6)
    */
   public registerToken(
     name: string, 
     symbol: string, 
     contractAddress: string,
     domainSeparator: string = 'custom_token',
-    description?: string
+    description?: string,
+    decimals?: number
   ): TokenOperationResult {
     try {
       // Validate inputs
@@ -100,7 +102,8 @@ export class ShieldedTokenManager {
         contractAddress,
         domainSeparator,
         tokenTypeHex,
-        description
+        description,
+        decimals: decimals || 6
       };
       
       // Register the token in database
@@ -125,12 +128,20 @@ export class ShieldedTokenManager {
   }
   
   /**
-   * Get token information by name
-   * @param tokenName Token name
+   * Get token information by name or symbol
+   * @param tokenIdentifier Token name or symbol
    * @returns Token information or null if not found
    */
-  public getTokenInfo(tokenName: string): TokenInfo | null {
-    return this.tokenRegistryDb.getTokenByName(tokenName.toLowerCase());
+  public getTokenInfo(tokenIdentifier: string): TokenInfo | null {
+    // First try to find by name (case insensitive)
+    let tokenInfo = this.tokenRegistryDb.getTokenByName(tokenIdentifier.toLowerCase());
+    
+    // If not found by name, try to find by symbol (case insensitive)
+    if (!tokenInfo) {
+      tokenInfo = this.tokenRegistryDb.getTokenBySymbol(tokenIdentifier.toUpperCase());
+    }
+    
+    return tokenInfo;
   }
   
   /**
@@ -157,10 +168,14 @@ export class ShieldedTokenManager {
       const tokenTypeHex = tokenInfo.tokenTypeHex || this.generateTokenType(tokenInfo.domainSeparator, tokenInfo.contractAddress);
       const tokenBalance = walletState.balances[tokenTypeHex] ?? 0n;
       
-      this.logger.debug(`Token '${tokenName}' balance: ${convertBigIntToDecimal(tokenBalance)}`);
+      // Use token-specific decimals or default to 6
+      const decimals = tokenInfo.decimals || 6;
+      const balanceString = convertBigIntToDecimal(tokenBalance, decimals);
+      
+      this.logger.debug(`Token '${tokenName}' balance: ${balanceString} (${decimals} decimals)`);
       this.logger.debug(`Token type used: ${tokenTypeHex}`);
       
-      return convertBigIntToDecimal(tokenBalance);
+      return balanceString;
     } catch (error) {
       this.logger.error(`Failed to get balance for token '${tokenName}':`, error);
       return '0';
@@ -185,8 +200,9 @@ export class ShieldedTokenManager {
         throw new Error(`Token '${tokenName}' not found in registry`);
       }
       
-      // Validate amount
-      const amountBigInt = convertDecimalToBigInt(amount);
+      // Validate amount using token-specific decimals
+      const decimals = tokenInfo.decimals || 6;
+      const amountBigInt = convertDecimalToBigInt(amount, decimals);
       if (amountBigInt <= 0n) {
         throw new Error('Amount must be greater than 0');
       }
@@ -269,12 +285,17 @@ export class ShieldedTokenManager {
         const tokenTypeHex = tokenInfo.tokenTypeHex || this.generateTokenType(tokenInfo.domainSeparator, tokenInfo.contractAddress);
         const balance = walletState.balances[tokenTypeHex] ?? 0n;
         
+        // Use token-specific decimals or default to 6
+        const decimals = tokenInfo.decimals || 6;
+        const balanceString = convertBigIntToDecimal(balance, decimals);
+        
         tokenBalances.push({
           tokenName: tokenInfo.name,
           symbol: tokenInfo.symbol,
-          balance: convertBigIntToDecimal(balance),
+          balance: balanceString,
           contractAddress: tokenInfo.contractAddress,
-          description: tokenInfo.description
+          description: tokenInfo.description,
+          decimals: tokenInfo.decimals || 6
         });
       }
       
@@ -283,9 +304,10 @@ export class ShieldedTokenManager {
       tokenBalances.push({
         tokenName: 'NATIVE',
         symbol: 'MN',
-        balance: convertBigIntToDecimal(nativeBalance),
+        balance: convertBigIntToDecimal(nativeBalance, 6),
         contractAddress: nativeToken(),
-        description: 'Native Midnight token'
+        description: 'Native Midnight token',
+        decimals: 6
       });
       
       this.logger.debug(`Listed ${tokenBalances.length} tokens`);
