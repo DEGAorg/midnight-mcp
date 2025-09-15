@@ -206,9 +206,10 @@ describe('ShieldedTokenManager', () => {
     it('should get registry statistics', () => {
       const stats = tokenManager.getRegistryStats();
       expect(stats.totalTokens).toBe(2);
-      expect(stats.tokenNames).toHaveLength(2);
-      expect(stats.tokenNames).toContain('dao_voting');
-      expect(stats.tokenNames).toContain('funding');
+      expect(stats.tokensBySymbol).toHaveProperty('dao_voting');
+      expect(stats.tokensBySymbol).toHaveProperty('funding');
+      expect(stats.tokensBySymbol['dao_voting']).toBeGreaterThan(0);
+      expect(stats.tokensBySymbol['funding']).toBeGreaterThan(0);
     });
   });
 

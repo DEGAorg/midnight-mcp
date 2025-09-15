@@ -15,6 +15,7 @@ export interface TokenConfig {
   contractAddress: string;
   domainSeparator?: string;
   description?: string;
+  decimals?: number;
 }
 
 export interface BatchTokenRegistrationResult {
@@ -26,25 +27,26 @@ export interface BatchTokenRegistrationResult {
 
 /**
  * Parse token configuration from environment variable
- * Expected format: TOKEN_NAME:SYMBOL:CONTRACT_ADDRESS:DOMAIN_SEPARATOR:DESCRIPTION
- * Example: DAO_VOTING:DVT:0x1234567890abcdef:dega_dao_vote:DAO voting token
+ * Expected format: TOKEN_NAME:SYMBOL:CONTRACT_ADDRESS:DOMAIN_SEPARATOR:DESCRIPTION:DECIMALS
+ * Example: DAO_VOTING:DVT:0x1234567890abcdef:dega_dao_vote:DAO voting token:8
  */
 export function parseTokenConfigFromEnv(envValue: string): TokenConfig | null {
   try {
     const parts = envValue.split(':');
     
     if (parts.length < 3) {
-      throw new Error('Invalid token configuration format. Expected: NAME:SYMBOL:CONTRACT_ADDRESS[:DOMAIN_SEPARATOR][:DESCRIPTION]');
+      throw new Error('Invalid token configuration format. Expected: NAME:SYMBOL:CONTRACT_ADDRESS[:DOMAIN_SEPARATOR][:DESCRIPTION][:DECIMALS]');
     }
     
-    const [name, symbol, contractAddress, domainSeparator, ...descriptionParts] = parts;
+    const [name, symbol, contractAddress, domainSeparator, description, decimalsStr] = parts;
     
     return {
       name: name.trim(),
       symbol: symbol.trim(),
       contractAddress: contractAddress.trim(),
       domainSeparator: domainSeparator?.trim() || 'custom_token',
-      description: descriptionParts.length > 0 ? descriptionParts.join(':').trim() : undefined
+      description: description?.trim() || undefined,
+      decimals: decimalsStr ? parseInt(decimalsStr.trim(), 10) : undefined
     };
   } catch (error) {
     return null;
@@ -132,11 +134,6 @@ export function validateTokenConfig(config: TokenConfig): { valid: boolean; erro
     errors.push('Contract address is required');
   }
   
-  // Basic validation for contract address format
-  if (config.contractAddress && !config.contractAddress.match(/^0x[a-fA-F0-9]+$/)) {
-    errors.push('Contract address must be a valid hexadecimal address starting with 0x');
-  }
-  
   if (!config.domainSeparator || config.domainSeparator.trim() === '') {
     errors.push('Domain separator is required');
   }
@@ -156,6 +153,7 @@ export function configToTokenInfo(config: TokenConfig): TokenInfo {
     symbol: config.symbol.toUpperCase(),
     contractAddress: config.contractAddress,
     domainSeparator: config.domainSeparator || 'custom_token',
-    description: config.description
+    description: config.description,
+    decimals: config.decimals || 6
   };
 }
