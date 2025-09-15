@@ -62,6 +62,15 @@ const routes = [
   { method: 'post', path: '/wallet/tokens/register-from-env', handler: walletController.registerTokensFromEnv },
   { method: 'get', path: '/wallet/tokens/config-template', handler: walletController.getTokenEnvConfigTemplate },
   { method: 'get', path: '/wallet/tokens/stats', handler: walletController.getTokenRegistryStats },
+  // DAO routes
+  { method: 'post', path: '/dao/open-election', handler: walletController.openDaoElection },
+  { method: 'post', path: '/dao/close-election', handler: walletController.closeDaoElection },
+  { method: 'post', path: '/dao/cast-vote', handler: walletController.castDaoVote },
+  { method: 'post', path: '/dao/fund-treasury', handler: walletController.fundDaoTreasury },
+  { method: 'post', path: '/dao/payout-proposal', handler: walletController.payoutDaoProposal },
+  { method: 'get', path: '/dao/election-status', handler: walletController.getDaoElectionStatus },
+  { method: 'get', path: '/dao/state', handler: walletController.getDaoState },
+  { method: 'get', path: '/dao/config-template', handler: walletController.getDaoConfigTemplate },
   // Marketplace routes
   { method: 'post', path: '/marketplace/register', handler: walletController.registerInMarketplace },
   { method: 'post', path: '/marketplace/verify', handler: walletController.verifyUserInMarketplace }

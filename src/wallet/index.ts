@@ -48,6 +48,9 @@ import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketpl
 // Import shielded token manager
 import { ShieldedTokenManager } from './shielded-tokens.js';
 
+// Import DAO service
+import { DaoService } from './dao.js';
+
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;
 
@@ -192,6 +195,9 @@ export class WalletManager {
   // Shielded token manager
   private shieldedTokenManager: ShieldedTokenManager;
   
+  // DAO service
+  private daoService: DaoService;
+  
   // Track different balance types for the wallet (using bigint internally)
   private walletBalances: InternalWalletBalances = {
     balance: 0n,
@@ -216,6 +222,9 @@ export class WalletManager {
     
     // Initialize shielded token manager
     this.shieldedTokenManager = new ShieldedTokenManager(this);
+    
+    // DAO service will be initialized after wallet is ready
+    this.daoService = null as any;
     
     // Set network ID if provided, default to TestNet
     this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s', 
@@ -382,6 +391,9 @@ export class WalletManager {
         this.wallet = await this.buildWalletFromSeed(seed, finalFilename);
         
         if (this.wallet) {
+          // Initialize DAO service now that wallet is ready
+          this.daoService = new DaoService(this.wallet);
+          
           // Subscribe to wallet state changes with error recovery
           this.setupWalletSubscription();
           
@@ -537,6 +549,8 @@ export class WalletManager {
         this.wallet = await this.buildWalletFromSeed(this.walletSeed, this.walletFilename);
         
         if (this.wallet) {
+          // Re-initialize DAO service after wallet recovery
+          this.daoService = new DaoService(this.wallet);
           this.setupWalletSubscription();
           this.logger.info('Wallet recovered successfully');
         } else {
@@ -1679,6 +1693,97 @@ export class WalletManager {
    */
   public getTokenEnvConfigTemplate(): string {
     return this.shieldedTokenManager.getEnvConfigTemplate();
+  }
+
+  // ==================== DAO OPERATIONS ====================
+
+  /**
+   * Open a new election in the DAO voting contract
+   * @param electionId Unique identifier for the election
+   * @returns Transaction result
+   */
+  public async openDaoElection(electionId: string) {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.openDaoElection(electionId);
+  }
+
+  /**
+   * Close the current election in the DAO voting contract
+   * @returns Transaction result
+   */
+  public async closeDaoElection() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.closeDaoElection();
+  }
+
+  /**
+   * Cast a vote in the DAO election
+   * @param voteType Type of vote (YES, NO, ABSENT)
+   * @returns Transaction result
+   */
+  public async castDaoVote(voteType: string) {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.castDaoVote(voteType);
+  }
+
+  /**
+   * Fund the DAO treasury with tokens
+   * @param amount Amount to fund the treasury
+   * @returns Transaction result
+   */
+  public async fundDaoTreasury(amount: string) {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.fundDaoTreasury(amount);
+  }
+
+  /**
+   * Payout an approved proposal from the DAO treasury
+   * @returns Transaction result
+   */
+  public async payoutDaoProposal() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.payoutDaoProposal();
+  }
+
+  /**
+   * Get the current status of the DAO election
+   * @returns Election status
+   */
+  public async getDaoElectionStatus() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.getDaoElectionStatus();
+  }
+
+  /**
+   * Get the full state of the DAO voting contract
+   * @returns DAO state
+   */
+  public async getDaoState() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.getDaoState();
+  }
+
+  /**
+   * Get DAO configuration template
+   * @returns DAO configuration template
+   */
+  public getDaoConfigTemplate(): string {
+    const { getDaoEnvConfigTemplate } = require('./dao-config.js');
+    return getDaoEnvConfigTemplate();
   }
 }
 
