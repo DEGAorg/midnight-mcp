@@ -145,11 +145,15 @@ export const ALL_TOOLS = [
   },
   {
     name: "castDaoVote",
-    description: "Cast a vote in the DAO election (YES, NO, or ABSENT). DAO configuration is set via environment variables.",
+    description: "Cast a vote in the DAO election. Accepts natural language vote strings: 'yes', 'no', or 'absence' (case-insensitive). DAO configuration is set via environment variables.",
     inputSchema: {
       type: "object",
       properties: {
-        voteType: { type: "string", enum: ["YES", "NO", "ABSENT"], description: "Type of vote to cast" }
+        voteType: { 
+          type: "string", 
+          enum: ["yes", "no", "absence"], 
+          description: "Type of vote to cast. Must be one of: 'yes' (vote for), 'no' (vote against), or 'absence' (abstain/absent). Case-insensitive." 
+        }
       },
       required: ["voteType"]
     }
