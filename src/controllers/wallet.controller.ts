@@ -358,7 +358,7 @@ export class WalletController {
       const { voteType } = req.body;
       if (!voteType) {
         res.status(400).json({
-          error: 'Missing required parameter: voteType (YES, NO, or ABSENT)'
+          error: 'Missing required parameter: voteType (yes, no, or absence)'
         });
         return;
       }

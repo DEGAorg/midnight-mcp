@@ -34,7 +34,7 @@ const currentDir = path.resolve(process.cwd());
 
 export const contractConfig = {
   privateStateStoreName: 'dao-voting-private-state',
-  zkConfigPath: path.resolve(currentDir, 'src/integrations/dao/contract/managed/dao-voting/dao-voting'),
+  zkConfigPath: path.resolve(currentDir, 'src/integrations/dao/contract/managed/dao-voting'),
 };
 
 /**

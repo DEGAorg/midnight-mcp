@@ -19,6 +19,7 @@ import {
 import { getDaoConfigFromEnv, type DaoConfig } from './dao-config.js';
 import { tokenType } from '@midnight-ntwrk/compact-runtime';
 import { randomBytes } from 'crypto';
+import { CoinInfo } from '../types/wallet.js';
 
 const logger = createLogger('dao-service');
 
@@ -56,11 +57,12 @@ export interface DaoOperationResult {
   error?: string;
 }
 
-export interface VoteCoinInfo {
-  nonce: string;
-  color: string;
-  value: string;
-}
+// Use the standard CoinInfo interface from types/wallet.ts
+// export interface VoteCoinInfo {
+//   nonce: string;
+//   color: string;
+//   value: string;
+// }
 
 /**
  * Helper function to pad string to specified length (required for token type generation)
@@ -138,6 +140,13 @@ export class DaoService {
   }
 
   /**
+   * Get DAO providers (initialize if needed)
+   */
+  private async getDaoProviders(): Promise<DaoVotingProviders> {
+    return await this.initializeProviders();
+  }
+
+  /**
    * Get DAO voting contract instance
    */
   private async getDaoVotingContract(): Promise<DeployedDaoVotingContract> {
@@ -205,6 +214,25 @@ export class DaoService {
   }
 
   /**
+   * Convert natural language vote string to VoteType enum
+   */
+  private convertVoteStringToType(voteString: string): VoteType {
+    const normalizedVote = voteString.toLowerCase().trim();
+    
+    switch (normalizedVote) {
+      case 'yes':
+        return VoteType.YES; // 0
+      case 'no':
+        return VoteType.NO; // 1
+      case 'absence':
+      case 'absent':
+        return VoteType.ABSENT; // 2
+      default:
+        throw new Error(`Invalid vote type: ${voteString}. Must be 'yes', 'no', or 'absence'`);
+    }
+  }
+
+  /**
    * Cast a vote in the DAO election
    */
   public async castDaoVote(voteType: string): Promise<DaoOperationResult> {
@@ -212,20 +240,29 @@ export class DaoService {
       const config = this.getDaoConfig();
       logger.info(`Casting DAO vote: ${voteType} for contract: ${config.contractAddress}`);
       
-      // Generate vote coin color dynamically using the same logic as working DAO code
-      const voteCoinColor = generateVoteCoinColor(config.voteTokenContractAddress);
+      // Convert natural language vote string to VoteType enum
+      const convertedVoteType = this.convertVoteStringToType(voteType);
       
-      // Create vote coin from configuration with dynamic color generation
-      const voteCoin: VoteCoinInfo = {
-        nonce: randomBytes(32).toString('hex'), // Generate random nonce for uniqueness
-        color: voteCoinColor,
-        value: config.voteCoinValue
+      // Get the DAO contract state to retrieve the correct vote coin color
+      const daoVotingContract = await this.getDaoVotingContract();
+      const providers = await this.getDaoProviders();
+      const { state } = await displayDaoVotingState(providers, daoVotingContract);
+      
+      if (!state) {
+        throw new Error('Failed to retrieve DAO contract state');
+      }
+      
+      // Use the actual vote coin color from the contract state
+      const voteCoinColor = state.dao_vote_coin_color;
+      logger.info(`Using DAO vote coin color from contract: ${Buffer.from(voteCoinColor).toString('hex')}`);
+      
+      const voteCoin: CoinInfo = {
+        nonce: randomBytes(32), // Generate random nonce for uniqueness (Uint8Array)
+        color: voteCoinColor, // Use the exact color from contract state (already Uint8Array)
+        value: BigInt(config.voteCoinValue) // Convert string to bigint
       };
       
-      logger.info(`Generated vote coin color: ${voteCoinColor}`);
-      
-      const daoVotingContract = await this.getDaoVotingContract();
-      const result = await castVote(daoVotingContract, voteType as unknown as VoteType, voteCoin);
+      const result = await castVote(daoVotingContract, convertedVoteType, voteCoin);
       
       // Serialize BigInt values for JSON response
       const serializedResult = serializeBigInts(result);
@@ -253,19 +290,25 @@ export class DaoService {
       const config = this.getDaoConfig();
       logger.info(`Funding DAO treasury for contract: ${config.contractAddress} with amount: ${amount}`);
       
-      // Generate fund coin color dynamically using the same logic as working DAO code
-      const fundCoinColor = generateFundCoinColor(config.fundTokenContractAddress);
+      // Get the DAO contract state to retrieve the correct treasury coin color
+      const daoVotingContract = await this.getDaoVotingContract();
+      const providers = await this.getDaoProviders();
+      const { state } = await displayDaoVotingState(providers, daoVotingContract);
       
-      // Create fund coin from configuration with dynamic color generation
-      const fundCoin: VoteCoinInfo = {
-        nonce: randomBytes(32).toString('hex'), // Generate random nonce for uniqueness
-        color: fundCoinColor,
-        value: amount
+      if (!state) {
+        throw new Error('Failed to retrieve DAO contract state');
+      }
+      
+      // Use the actual treasury coin color from the contract state
+      const treasuryCoinColor = state.treasury.color;
+      logger.info(`Using DAO treasury coin color from contract: ${Buffer.from(treasuryCoinColor).toString('hex')}`);
+      
+      const fundCoin: CoinInfo = {
+        nonce: randomBytes(32), // Generate random nonce for uniqueness (Uint8Array)
+        color: treasuryCoinColor, // Use the exact color from contract state (already Uint8Array)
+        value: BigInt(amount) // Convert string to bigint
       };
       
-      logger.info(`Generated fund coin color: ${fundCoinColor}`);
-      
-      const daoVotingContract = await this.getDaoVotingContract();
       const result = await fundTreasury(daoVotingContract, fundCoin);
       
       // Serialize BigInt values for JSON response
@@ -294,7 +337,25 @@ export class DaoService {
       const config = this.getDaoConfig();
       logger.info(`Paying out DAO proposal for contract: ${config.contractAddress}`);
       
+      // Get the DAO contract state to check conditions before payout
       const daoVotingContract = await this.getDaoVotingContract();
+      const providers = await this.getDaoProviders();
+      const { state } = await displayDaoVotingState(providers, daoVotingContract);
+      
+      if (!state) {
+        throw new Error('Failed to retrieve DAO contract state');
+      }
+      
+      // Check if election is closed (payout typically requires closed election)
+      if (state.election_open) {
+        logger.warn('Election is still open. Payout may require election to be closed first.');
+      }
+      
+      // Check if treasury has funds
+      if (state.treasury.value === 0n) {
+        logger.warn('Treasury has no funds to payout.');
+      }
+      
       const result = await payoutApprovedProposal(daoVotingContract);
       
       // Serialize BigInt values for JSON response
@@ -308,6 +369,11 @@ export class DaoService {
       };
     } catch (error) {
       logger.error('Error paying out DAO proposal:', error);
+      logger.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'

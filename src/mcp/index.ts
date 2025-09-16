@@ -560,7 +560,7 @@ export class WalletServiceMCP {
 
   /**
    * Cast a vote in the DAO election
-   * @param voteType Type of vote (YES, NO, ABSENT)
+   * @param voteType Type of vote ('yes', 'no', or 'absence' - case-insensitive)
    * @returns Transaction result
    */
   public async castDaoVote(voteType: string) {

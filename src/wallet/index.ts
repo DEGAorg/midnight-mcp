@@ -444,8 +444,8 @@ export class WalletManager {
             pendingBalance: pendingBalance
           };
 
-          this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
-          this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
+          // this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
+          // this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
 
           // No more total/syncedIndices, just lag
           this.applyGap = applyGap;
