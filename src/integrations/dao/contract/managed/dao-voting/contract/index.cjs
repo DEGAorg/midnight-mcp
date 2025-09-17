@@ -338,7 +338,7 @@ class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.originalState != undefined && contextOrig_0.transactionContext != undefined))
           __compactRuntime.type_error('cancel_payout',
                                       'argument 1 (as invoked from Typescript)',
-                                      'dao-voting.compact line 107 char 1',
+                                      'dao-voting.compact line 105 char 1',
                                       'CircuitContext',
                                       contextOrig_0)
         const context = { ...contextOrig_0 };
@@ -1237,11 +1237,11 @@ class Contract {
                                                                               pushPath: false,
                                                                               path: [
                                                                                      { tag: 'value',
-                                                                                       value: { value: _descriptor_17.toValue(2n),
+                                                                                       value: { value: _descriptor_17.toValue(3n),
                                                                                                 alignment: _descriptor_17.alignment() } }] } },
                                                                      { popeq: { cached: false,
                                                                                 result: undefined } }]).value)
-                            >
+                            <
                             _descriptor_2.fromValue(Contract._query(context,
                                                                     partialProofData,
                                                                     [
@@ -1250,7 +1250,7 @@ class Contract {
                                                                               pushPath: false,
                                                                               path: [
                                                                                      { tag: 'value',
-                                                                                       value: { value: _descriptor_17.toValue(3n),
+                                                                                       value: { value: _descriptor_17.toValue(2n),
                                                                                                 alignment: _descriptor_17.alignment() } }] } },
                                                                      { popeq: { cached: false,
                                                                                 result: undefined } }]).value),
