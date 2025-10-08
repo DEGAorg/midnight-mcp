@@ -404,15 +404,23 @@ The MCP server integrates with ElizaOS to provide:
 
 ### Available MCP Tools for Agents
 
-When integrated with ElizaOS, agents have access to these tools:
+When integrated with ElizaOS, agents have access to these tools, grouped by category:
+
+#### Wallet Tools
 
 - `walletStatus` - Check wallet synchronization status
 - `walletAddress` - Get wallet receiving address
 - `walletBalance` - View current balance
 - `getTransactions` - List transaction history
+- `getTransactionStatus` - Get the status of a transaction by ID
 - `sendFunds` - Send funds to another address
 - `verifyTransaction` - Verify transaction status
 - `getWalletConfig` - Get wallet configuration
+
+#### Marketplace Tools
+
+- `registerInMarketplace` - Register a user in the marketplace
+- `verifyUserInMarketplace` - Verify a user in the marketplace
 
 ### Example Agent Conversations
 
