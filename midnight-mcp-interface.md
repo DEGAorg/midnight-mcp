@@ -25,6 +25,23 @@ Get the current synchronization status of the wallet.
 
 - **Description**: Checks if the wallet is synced with the Midnight blockchain.
 - **Parameters**: None.
+- **Output**:
+    - `ready` (boolean): Whether the wallet is ready for operations.
+    - `syncing` (boolean): Whether the wallet is currently syncing.
+    - `syncProgress` (object): Sync progress information.
+        - `synced` (boolean): True if fully synced.
+        - `lag` (object): Lag information.
+            - `applyGap` (string): Apply gap value.
+            - `sourceGap` (string): Source gap value.
+        - `percentage` (number): Sync percentage.
+    - `address` (string): The wallet's address.
+    - `balances` (object): Current wallet balances.
+        - `balance` (string): Available spendable funds.
+        - `pendingBalance` (string): Funds not yet available for spending.
+    - `recovering` (boolean): Whether the wallet is in recovery mode.
+    - `recoveryAttempts` (number): Number of recovery attempts made.
+    - `maxRecoveryAttempts` (number): Maximum number of recovery attempts allowed.
+    - `isFullySynced` (boolean): Whether the wallet is fully synced.
 
 ### `walletAddress`
 
@@ -32,6 +49,8 @@ Get the wallet's receiving address.
 
 - **Description**: Retrieves the public address that can be used to receive funds.
 - **Parameters**: None.
+- **Output**:
+    - `address` (string): The wallet's base address for receiving funds.
 
 ### `walletBalance`
 
@@ -39,6 +58,9 @@ Get the current balance of the wallet.
 
 - **Description**: Fetches the current balance of the wallet from the Midnight network.
 - **Parameters**: None.
+- **Output**:
+    - `balance` (string): The total spendable balance in the wallet (as a string in dust format).
+    - `pendingBalance` (string): Coins that are pending and not yet available for spending (as a string in dust format).
 
 ### `sendFunds`
 
@@ -48,6 +70,12 @@ Send funds to another wallet address.
 - **Parameters**:
     - `destinationAddress` (string, required): The recipient's wallet address.
     - `amount` (string, required): The amount of funds to send.
+- **Output**:
+    - `id` (string): UUID for the transaction record.
+    - `state` (string): Current state of the transaction (e.g., "initiated").
+    - `toAddress` (string): The recipient's wallet address.
+    - `amount` (string): The amount sent (in dust format).
+    - `createdAt` (number): Timestamp of when the transaction was created.
 
 ### `verifyTransaction`
 
@@ -56,6 +84,15 @@ Verify if a transaction has been received.
 - **Description**: Verifies the status of a transaction using an identifier. This can be used to confirm if a payment has been received.
 - **Parameters**:
     - `identifier` (string, required): The transaction identifier to verify.
+- **Output**:
+    - `exists` (boolean): Whether the transaction exists in the wallet.
+    - `syncStatus` (object): Current sync status information.
+        - `syncedIndices` (string): Indices that have been synced.
+        - `lag` (object): Lag information.
+            - `applyGap` (string): Apply gap value.
+            - `sourceGap` (string): Source gap value.
+        - `isFullySynced` (boolean): Whether the wallet is fully synced.
+    - `transactionAmount` (string): The amount of the transaction (in dust format).
 
 ### `getTransactionStatus`
 
@@ -64,13 +101,37 @@ Get the status of a transaction by its ID.
 - **Description**: Retrieves the current status of a specific transaction.
 - **Parameters**:
     - `transactionId` (string, required): The ID of the transaction to check.
+- **Output**:
+    - `transaction` (object): The transaction record.
+        - `id` (string): UUID of the transaction.
+        - `state` (string): Current state ("initiated", "sent", "completed", or "failed").
+        - `fromAddress` (string): Sender address.
+        - `toAddress` (string): Recipient address.
+        - `amount` (string): Amount in dust format.
+        - `txIdentifier` (string, optional): Transaction identifier (once available).
+        - `createdAt` (number): Timestamp of creation.
+        - `updatedAt` (number): Timestamp of last update.
+        - `errorMessage` (string, optional): Error message if transaction failed.
+    - `blockchainStatus` (object, optional): Current blockchain status of the transaction.
+        - `exists` (boolean): Whether the transaction exists on the blockchain.
+        - `syncStatus` (object): Sync status information (same structure as in verifyTransaction).
 
 ### `getTransactions`
 
 Get all transactions for the wallet.
 
-- **Description**: Retrieves a list of all transactions associated with the wallet, optionally filtered by state.
+- **Description**: Retrieves a list of all transactions associated with the wallet.
 - **Parameters**: None.
+- **Output**: Array of transaction records, where each record contains:
+    - `id` (string): UUID of the transaction.
+    - `state` (string): Current state ("initiated", "sent", "completed", or "failed").
+    - `fromAddress` (string): Sender address.
+    - `toAddress` (string): Recipient address.
+    - `amount` (string): Amount in dust format.
+    - `txIdentifier` (string, optional): Transaction identifier (once available).
+    - `createdAt` (number): Timestamp of creation.
+    - `updatedAt` (number): Timestamp of last update.
+    - `errorMessage` (string, optional): Error message if transaction failed.
 
 ### `getWalletConfig`
 
@@ -78,6 +139,14 @@ Get the wallet's configuration.
 
 - **Description**: Retrieves the configuration of the wallet, including the connected NODE and Indexer URLs.
 - **Parameters**: None.
+- **Output**:
+    - `indexer` (string): The URL of the Indexer service.
+    - `indexerWS` (string): The WebSocket URL of the Indexer service.
+    - `node` (string): The URL of the Midnight node.
+    - `proofServer` (string): The URL of the proof server.
+    - `logDir` (string, optional): Directory for log files.
+    - `networkId` (string, optional): The network identifier.
+    - `useExternalProofServer` (boolean, optional): Flag indicating if an external proof server is used.
 
 ---
 
