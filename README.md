@@ -30,8 +30,16 @@ yarn build
 # Set up a new agent
 yarn setup-agent -a <agent-name>
 
-# Follow the instrucitons in the terminal
+# Or set up with a specific hex seed (32-byte entropy)
+yarn setup-agent -a <agent-name> -s "your-hex-seed-here"
+
+# Or set up with a BIP39 mnemonic phrase
+yarn setup-agent -a <agent-name> -m "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+
+# Follow the instructions in the terminal
 ```
+
+**Note:** The setup scripts support both hex seeds (32-byte entropy) and BIP39 mnemonic phrases. The hex seed is the actual entropy used by the Midnight wallet, while the mnemonic is a human-readable representation of the same cryptographic material.
 
 For detailed setup instructions, see [docs/setup-guide.md](docs/setup-guide.md).
 

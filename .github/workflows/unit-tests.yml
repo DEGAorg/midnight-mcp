@@ -1,10 +1,10 @@
 name: Unit Tests
 
 on:
-  # pull_request:
-  #   branches: [ develop ]
+  pull_request:
+    branches: [ main, uat, develop, feature/docker ]
   push:
-    branches: [ develop ]
+    branches: [ main, uat, develop, feature/docker ]
 
 jobs:
   unit-tests:
@@ -15,30 +15,28 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Build Docker image
-      run: docker build -t midnight-mcp-test .
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.15.1'
+        cache: 'yarn'
+
+    - name: Setup environment file
+      run: cp env.example .env
+
+    - name: Install dependencies
+      run: yarn install
 
     - name: Run linting
       continue-on-error: true
-      run: |
-        docker run --rm -u 0 -v $(pwd):/app -e YARN_CACHE_FOLDER=/tmp/.yarn-cache midnight-mcp-test \
-        sh -c "yarn install && yarn lint"
-
-    - name: Run unit tests
-      run: |
-        docker run --rm -u 0 -v $(pwd):/app -w /app midnight-mcp-test \
-        sh -c "yarn install && yarn test:unit"
-      env:
-        NODE_ENV: test
-        CI: true
+      run: yarn lint
 
     - name: Generate coverage report
-      run: |
-        docker run --rm -u 0 -v $(pwd):/app -w /app midnight-mcp-test \
-        sh -c "yarn install && yarn test:coverage"
+      run: yarn test:unit:coverage
       env:
         NODE_ENV: test
         CI: true
+        AGENT_ID: test-agent
 
     - name: Upload test results
       if: always()
@@ -56,9 +54,9 @@ jobs:
         echo "## Unit Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Environment" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Node.js version: 22.15.1 (from Dockerfile)" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Node.js version: 22.15.1" >> $GITHUB_STEP_SUMMARY
         echo "✅ Platform: ubuntu-latest" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Container: Docker-based execution" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Execution: Direct Node.js/Yarn execution" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Test Coverage" >> $GITHUB_STEP_SUMMARY
         if [ -f coverage/lcov.info ]; then
