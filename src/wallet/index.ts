@@ -27,7 +27,11 @@ import {
   TransactionStatusResult,
   MarketplaceUserData,
   RegistrationResult,
-  VerificationResult
+  VerificationResult,
+  TokenInfo,
+  TokenBalance,
+  TokenOperationResult,
+  CoinInfo
 } from '../types/wallet.js';
 import { TransactionDatabase } from './db/TransactionDatabase.js';
 import { FileManager, FileType } from '../utils/file-manager.js';
@@ -40,6 +44,12 @@ import {
 
 // Import marketplace API functions
 import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance, configureProviders } from '../integrations/marketplace/api.js';
+
+// Import shielded token manager
+import { ShieldedTokenManager } from './shielded-tokens.js';
+
+// Import DAO service
+import { DaoService } from './dao.js';
 
 // Set up crypto for Scala.js
 // globalThis.crypto = webcrypto;
@@ -182,6 +192,12 @@ export class WalletManager {
   private transactionLogger: TransactionTraceLogger;
   private agentLogger: AgentDecisionLogger;
   
+  // Shielded token manager
+  private shieldedTokenManager: ShieldedTokenManager;
+  
+  // DAO service
+  private daoService: DaoService;
+  
   // Track different balance types for the wallet (using bigint internally)
   private walletBalances: InternalWalletBalances = {
     balance: 0n,
@@ -203,6 +219,12 @@ export class WalletManager {
     this.auditService = AuditTrailService.getInstance();
     this.transactionLogger = new TransactionTraceLogger(this.auditService);
     this.agentLogger = new AgentDecisionLogger(this.auditService);
+    
+    // Initialize shielded token manager
+    this.shieldedTokenManager = new ShieldedTokenManager(this);
+    
+    // DAO service will be initialized after wallet is ready
+    this.daoService = null as any;
     
     // Set network ID if provided, default to TestNet
     this.logger.info('Initializing WalletManager with networkId: %s, walletFilename: %s, externalConfig: %s, agentId: %s', 
@@ -369,6 +391,9 @@ export class WalletManager {
         this.wallet = await this.buildWalletFromSeed(seed, finalFilename);
         
         if (this.wallet) {
+          // Initialize DAO service now that wallet is ready
+          this.daoService = new DaoService(this.wallet);
+          
           // Subscribe to wallet state changes with error recovery
           this.setupWalletSubscription();
           
@@ -419,8 +444,8 @@ export class WalletManager {
             pendingBalance: pendingBalance
           };
 
-          this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
-          this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
+          // this.logger.info(`Native balance: ${convertBigIntToDecimal(nativeBalance)}`);
+          // this.logger.info(`Pending balance: ${convertBigIntToDecimal(pendingBalance)}`);
 
           // No more total/syncedIndices, just lag
           this.applyGap = applyGap;
@@ -524,6 +549,8 @@ export class WalletManager {
         this.wallet = await this.buildWalletFromSeed(this.walletSeed, this.walletFilename);
         
         if (this.wallet) {
+          // Re-initialize DAO service after wallet recovery
+          this.daoService = new DaoService(this.wallet);
           this.setupWalletSubscription();
           this.logger.info('Wallet recovered successfully');
         } else {
@@ -882,10 +909,14 @@ export class WalletManager {
    */
   public async close(): Promise<void> {
     try {
+      // Set ready to false early to prevent new operations
+      this.ready = false;
+      
       // Stop transaction poller
       if (this.transactionPoller) {
         clearInterval(this.transactionPoller);
         this.transactionPoller = undefined;
+        this.logger.info('Transaction poller stopped');
       }
       
       // Close transaction database
@@ -909,6 +940,7 @@ export class WalletManager {
       // Unsubscribe from wallet state updates
       if (this.walletSyncSubscription) {
         this.walletSyncSubscription.unsubscribe();
+        this.logger.info('Wallet sync subscription unsubscribed');
       }
       
       // Close wallet
@@ -1047,11 +1079,19 @@ export class WalletManager {
   }
 
   /**
-   * Start the transaction poller to check for completed transactions
+   * Start the transaction status poller
    */
   private startTransactionPoller(): void {
+    // Clear any existing poller first
     if (this.transactionPoller) {
       clearInterval(this.transactionPoller);
+      this.transactionPoller = undefined;
+    }
+
+    // Only start poller if wallet is ready
+    if (!this.ready || !this.wallet) {
+      this.logger.debug('Skipping transaction poller start - wallet not ready');
+      return;
     }
 
     this.logger.info(`Starting transaction poller with interval of ${this.pollingInterval}ms`);
@@ -1060,7 +1100,17 @@ export class WalletManager {
     this.checkPendingTransactions();
 
     this.transactionPoller = setInterval(() => {
-      this.checkPendingTransactions();
+      // Only run if wallet is still ready
+      if (this.ready && this.wallet && !this.isRecovering) {
+        this.checkPendingTransactions();
+      } else {
+        // Stop the poller if wallet is no longer ready
+        if (this.transactionPoller) {
+          clearInterval(this.transactionPoller);
+          this.transactionPoller = undefined;
+          this.logger.debug('Stopped transaction poller - wallet no longer ready');
+        }
+      }
     }, this.pollingInterval);
   }
 
@@ -1096,7 +1146,10 @@ export class WalletManager {
         }
       }
     } catch (error) {
-      this.logger.error('Error checking pending transactions', error);
+      // Only log errors if the wallet is still ready and we're not in the process of shutting down
+      if (this.ready && this.wallet && !this.isRecovering) {
+        this.logger.error('Error checking pending transactions', error);
+      }
     }
   }
 
@@ -1480,6 +1533,257 @@ export class WalletManager {
       this.logger.error('Failed to verify user in marketplace', error);
       throw error;
     }
+  }
+
+  // ==================== SHIELDED TOKEN OPERATIONS ====================
+
+  /**
+   * Register a token with a human-readable name
+   * @param name Human-readable token name
+   * @param symbol Token symbol
+   * @param contractAddress Contract address for the token
+   * @param domainSeparator Domain separator for token type generation
+   * @param description Optional description
+   * @param decimals Number of decimal places (default: 6)
+   * @returns Token operation result
+   */
+  public registerToken(
+    name: string, 
+    symbol: string, 
+    contractAddress: string,
+    domainSeparator: string = 'custom_token',
+    description?: string,
+    decimals?: number
+  ): TokenOperationResult {
+    return this.shieldedTokenManager.registerToken(name, symbol, contractAddress, domainSeparator, description, decimals);
+  }
+
+  /**
+   * Get token information by name
+   * @param tokenName Token name
+   * @returns Token information or null if not found
+   */
+  public getTokenInfo(tokenName: string): TokenInfo | null {
+    return this.shieldedTokenManager.getTokenInfo(tokenName);
+  }
+
+  /**
+   * Get token balance by name
+   * @param tokenName Token name
+   * @returns Token balance as string or "0" if not found
+   */
+  public getTokenBalance(tokenName: string): string {
+    return this.shieldedTokenManager.getTokenBalance(tokenName);
+  }
+
+  /**
+   * Send tokens to another address
+   * @param tokenName Token name
+   * @param toAddress Recipient address
+   * @param amount Amount to send
+   * @returns Transaction result
+   */
+  public async sendToken(
+    tokenName: string, 
+    toAddress: string, 
+    amount: string
+  ): Promise<SendFundsResult> {
+    return this.shieldedTokenManager.sendToken(tokenName, toAddress, amount);
+  }
+
+  /**
+   * List all registered tokens with their balances
+   * @returns Array of token balances
+   */
+  public listWalletTokens(): TokenBalance[] {
+    return this.shieldedTokenManager.listWalletTokens();
+  }
+
+  /**
+   * Create a coin for DAO voting (requires 500 tokens)
+   * @param tokenName Token name to create coin for
+   * @param amount Amount for the coin (default 500 for DAO voting)
+   * @returns Coin info for transactions
+   */
+  public createCoinForVoting(tokenName: string, amount: bigint = 500n): CoinInfo {
+    return this.shieldedTokenManager.createCoinForVoting(tokenName, amount);
+  }
+
+  /**
+   * Create a coin for treasury funding (default 100 tokens)
+   * @param tokenName Token name to create coin for
+   * @param amount Amount for the coin (default 100 for treasury funding)
+   * @returns Coin info for transactions
+   */
+  public createCoinForFunding(tokenName: string, amount: bigint = 100n): CoinInfo {
+    return this.shieldedTokenManager.createCoinForFunding(tokenName, amount);
+  }
+
+  /**
+   * Get all registered token names
+   * @returns Array of registered token names
+   */
+  public getRegisteredTokenNames(): string[] {
+    return this.shieldedTokenManager.getRegisteredTokenNames();
+  }
+
+  /**
+   * Check if a token is registered
+   * @param tokenName Token name
+   * @returns True if token is registered
+   */
+  public isTokenRegistered(tokenName: string): boolean {
+    return this.shieldedTokenManager.isTokenRegistered(tokenName);
+  }
+
+  /**
+   * Remove a token from registry
+   * @param tokenName Token name
+   * @returns True if token was removed
+   */
+  public unregisterToken(tokenName: string): boolean {
+    return this.shieldedTokenManager.unregisterToken(tokenName);
+  }
+
+  /**
+   * Get token registry statistics
+   * @returns Registry statistics
+   */
+  public getTokenRegistryStats(): { totalTokens: number; tokensBySymbol: Record<string, number> } {
+    return this.shieldedTokenManager.getRegistryStats();
+  }
+
+  /**
+   * Register multiple tokens in batch
+   * @param tokenConfigs Array of token configurations
+   * @returns Batch registration result
+   */
+  public registerTokensBatch(tokenConfigs: Array<{
+    name: string;
+    symbol: string;
+    contractAddress: string;
+    domainSeparator?: string;
+    description?: string;
+  }>): {
+    success: boolean;
+    registeredCount: number;
+    errors: Array<{ token: string; error: string }>;
+    registeredTokens: string[];
+  } {
+    return this.shieldedTokenManager.registerTokensBatch(tokenConfigs);
+  }
+
+  /**
+   * Register tokens from environment variable string
+   * @param envValue Environment variable value with token configurations
+   * @returns Batch registration result
+   */
+  public registerTokensFromEnvString(envValue: string): {
+    success: boolean;
+    registeredCount: number;
+    errors: Array<{ token: string; error: string }>;
+    registeredTokens: string[];
+  } {
+    return this.shieldedTokenManager.registerTokensFromEnvString(envValue);
+  }
+
+  /**
+   * Get token configuration template for environment variables
+   * @returns Example configuration string
+   */
+  public getTokenEnvConfigTemplate(): string {
+    return this.shieldedTokenManager.getEnvConfigTemplate();
+  }
+
+  // ==================== DAO OPERATIONS ====================
+
+  /**
+   * Open a new election in the DAO voting contract
+   * @param electionId Unique identifier for the election
+   * @returns Transaction result
+   */
+  public async openDaoElection(electionId: string) {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.openDaoElection(electionId);
+  }
+
+  /**
+   * Close the current election in the DAO voting contract
+   * @returns Transaction result
+   */
+  public async closeDaoElection() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.closeDaoElection();
+  }
+
+  /**
+   * Cast a vote in the DAO election
+   * @param voteType Type of vote (YES, NO, ABSENT)
+   * @returns Transaction result
+   */
+  public async castDaoVote(voteType: string) {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.castDaoVote(voteType);
+  }
+
+  /**
+   * Fund the DAO treasury with tokens
+   * @param amount Amount to fund the treasury
+   * @returns Transaction result
+   */
+  public async fundDaoTreasury(amount: string) {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.fundDaoTreasury(amount);
+  }
+
+  /**
+   * Payout an approved proposal from the DAO treasury
+   * @returns Transaction result
+   */
+  public async payoutDaoProposal() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.payoutDaoProposal();
+  }
+
+  /**
+   * Get the current status of the DAO election
+   * @returns Election status
+   */
+  public async getDaoElectionStatus() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.getDaoElectionStatus();
+  }
+
+  /**
+   * Get the full state of the DAO voting contract
+   * @returns DAO state
+   */
+  public async getDaoState() {
+    if (!this.ready || !this.daoService) {
+      throw new Error('Wallet not ready or DAO service not initialized');
+    }
+    return await this.daoService.getDaoState();
+  }
+
+  /**
+   * Get DAO configuration template
+   * @returns DAO configuration template
+   */
+  public getDaoConfigTemplate(): string {
+    const { getDaoEnvConfigTemplate } = require('./dao-config.js');
+    return getDaoEnvConfigTemplate();
   }
 }
 

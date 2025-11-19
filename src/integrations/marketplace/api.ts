@@ -101,7 +101,7 @@ export const joinContract = async (
 
 export const register = async (marketplaceRegistryContract: DeployedMarketplaceRegistryContract, text: string): Promise<FinalizedTxData> => {
   console.log('Registering text identifier...');
-  const finalizedTxData = await marketplaceRegistryContract.callTx.register(text);
+  const finalizedTxData = await (marketplaceRegistryContract.callTx.register as any)(text);
   console.log(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
   return finalizedTxData.public;
 };

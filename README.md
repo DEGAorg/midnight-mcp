@@ -10,222 +10,80 @@ The architecture consists of two main components:
 1. **Wallet Server** (`server.ts`) - An Express.js HTTP server that runs the wallet logic and exposes REST API endpoints
 2. **STDIO Server** (`stdio-server.ts`) - An MCP-compliant server that acts as a proxy, forwarding tool calls to the wallet server via HTTP requests
 
-## Prerequisites
+## Quick Start
+
+### Prerequisites
 
 - Node.js (v18.20.5)
 - Yarn package manager
 - Docker and Docker Compose (for production deployment)
 
-## Setup and Installation
-
-### 1. Install Dependencies
+### Basic Setup
 
 ```bash
+# Install dependencies
 yarn install
-```
 
-### 2. Development Setup (Local)
-
-For local development, set up an agent and run the development server:
-
-#### Set Up Agent
-
-```bash
-# Set up a new agent with an auto-generated seed
-yarn setup-agent -a agent-123
-
-# Set up a new agent in a specific directory
-yarn setup-agent -a agent-123 -d /path/to/your/project
-
-# Or provide your own seed
-yarn setup-agent -a agent-123 -s "your-seed-here"
-
-# Force overwrite existing seed file
-yarn setup-agent -a agent-123 -f
-
-# Additional options:
-# -w, --words <number>    Number of words in mnemonic (12 or 24, default: 24)
-# -p, --password <string> Optional password for additional security
-```
-
-The script will:
-1. Create the necessary directory structure
-2. Generate or verify the provided seed
-3. Display the generated wallet information:
-   - Midnight Seed (hex)
-   - BIP39 Mnemonic
-   - Derived Seed (if password was provided)
-
-**IMPORTANT:** Save these values securely. The seed and mnemonic provide access to your funds.
-
-**NOTE:** The BIP39 mnemonic can be imported into any GUI wallet that supports the Midnight blockchain, providing direct access to your funds.
-
-#### Configure Environment Variables
-
-Create a `.env` file with the necessary configuration values:
-
-```bash
-# Copy the example .env file and customize it
-cp .env.example .env
-```
-
-Edit the `.env` file to include your agent ID and wallet server configuration:
-
-```env
-# Required
-AGENT_ID=agent-123
-
-# Wallet Server Configuration
-WALLET_SERVER_HOST=localhost
-WALLET_SERVER_PORT=3000
-
-# Network Configuration
-NETWORK_ID=TestNet
-WALLET_FILENAME=midnight-wallet
-LOG_LEVEL=info
-
-# External Services (if using external proof server)
-USE_EXTERNAL_PROOF_SERVER=true
-PROOF_SERVER=http://proof-server:8080
-INDEXER=http://indexer:8080
-INDEXER_WS=ws://indexer:8080
-MN_NODE=http://midnight-node:8080
-```
-
-#### Run Development Server
-
-```bash
-# Start the development server
-yarn dev
-```
-
-This will start the wallet server in development mode with hot reloading.
-
-### 3. Production Setup (Docker)
-
-For production deployment, use the Docker setup which creates an isolated environment for each agent:
-
-#### Set Up Docker Environment
-
-```bash
-# Set up a new agent for Docker deployment
-yarn setup-docker -a agent-123
-
-# Set up with custom configuration
-yarn setup-docker -a agent-123 -P 3001 -i http://custom-indexer:8080
-
-# Additional options:
-# -s, --seed <seed>           Wallet seed (if not provided, will be generated)
-# -f, --force                 Overwrite existing seed file if it exists
-# -w, --words <number>        Number of words in mnemonic (12 or 24, default: 24)
-# -p, --password <string>     Optional password for additional security
-# -P, --port <number>         Wallet server port (default: 3000)
-# -i, --indexer <url>         Indexer URL (default: http://indexer:8080)
-# -w, --indexer-ws <url>      Indexer WebSocket URL (default: ws://indexer:8080)
-# -n, --node <url>            Midnight node URL (default: http://midnight-node:8080)
-```
-
-This script will:
-1. Create a new directory structure in `agents/<agent-id>/`
-2. Generate a secure seed file
-3. Create a `.env` file with the appropriate configuration
-4. Copy the `docker-compose.yml` file to the agent directory
-5. Set up data and logs directories with proper permissions
-
-#### Deploy with Docker Compose
-
-Navigate to the agent directory and start the services:
-
-```bash
-# Change to the agent directory
-cd agents/agent-123
-
-# Build and start the containers
-docker-compose up -d
-
-# Check the logs
-docker-compose logs -f wallet-server
-
-# To stop the containers
-docker-compose down
-
-# To remove all data (including volumes)
-docker-compose down -v
-```
-
-The Docker setup includes:
-- **Proof Server**: Midnight proof server for cryptographic operations
-- **Wallet Server**: The main wallet service with persistent storage
-- **Health Checks**: Automatic health monitoring
-- **Volume Mounting**: Persistent data storage for wallet state
-
-### 4. Building for Production
-
-#### Build the Application
-
-```bash
-# Build the application
+# Build
 yarn build
+
+# Set up a new agent
+yarn setup-agent -a <agent-name>
+
+# Or set up with a specific hex seed (32-byte entropy)
+yarn setup-agent -a <agent-name> -s "your-hex-seed-here"
+
+# Or set up with a BIP39 mnemonic phrase
+yarn setup-agent -a <agent-name> -m "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+
+# Follow the instructions in the terminal
 ```
 
-#### Run Production Server
+**Note:** The setup scripts support both hex seeds (32-byte entropy) and BIP39 mnemonic phrases. The hex seed is the actual entropy used by the Midnight wallet, while the mnemonic is a human-readable representation of the same cryptographic material.
 
-```bash
-# Start the production server
-yarn start
+For detailed setup instructions, see [docs/setup-guide.md](docs/setup-guide.md).
+
+## Project Structure
+
 ```
-
-The stdio-server provides a standard input/output interface that conforms to the Model Context Protocol, allowing AI models to communicate with the Midnight network via HTTP requests to the wallet server.
+midnight-mcp/
+├── src/                    # Source code
+│   ├── mcp/               # MCP protocol implementation
+│   ├── wallet/            # Wallet management
+│   ├── logger/            # Logging system
+│   ├── audit/             # Audit trail system
+│   └── server.ts          # Express server
+├── test/                  # Test suites
+│   ├── unit/              # Unit tests
+│   ├── integration/       # Integration tests
+│   └── e2e/               # End-to-end tests
+├── docs/                  # Documentation
+│   ├── index.md           # Documentation index
+│   ├── system-design.md   # Architecture & API flows
+│   ├── setup-guide.md     # Complete setup guide
+│   └── wallet-mcp-api.md  # API reference
+├── scripts/               # Setup and utility scripts
+├── agents/                # Agent-specific configurations
+└── docker-compose.yml     # Docker deployment
+```
 
 ## Architecture
 
-```mermaid
-graph TB
-    AI[AI Agent<br/>via MCP] --> STDIO[STDIO Server<br/>MCP Proxy]
-    STDIO --> HTTP[HTTP Requests]
-    HTTP --> WALLET[Wallet Server<br/>Express.js]
-    WALLET --> BLOCKCHAIN[Midnight<br/>Blockchain]
-    
-    subgraph "MCP Protocol"
-        AI
-        STDIO
-    end
-    
-    subgraph "HTTP Layer"
-        HTTP
-    end
-    
-    subgraph "Wallet Logic"
-        WALLET
-    end
-    
-    subgraph "Blockchain"
-        BLOCKCHAIN
-    end
-    
-    style AI fill:#e1f5fe
-    style STDIO fill:#fff3e0
-    style WALLET fill:#f3e5f5
-    style BLOCKCHAIN fill:#e8f5e8
-```
+The Midnight MCP server follows a layered architecture:
 
-### Component Responsibilities
+- **MCP Protocol Layer**: STDIO server implementing the Model Context Protocol
+- **HTTP Communication Layer**: HTTP client for wallet server communication
+- **Wallet Server Layer**: Express.js server with wallet logic and REST API
+- **Storage Layer**: File-based storage for seeds, transactions, and backups
+- **External Services**: Integration with Midnight blockchain services
 
-1. **STDIO Server** (`stdio-server.ts`):
-   - Implements the Model Context Protocol
-   - Receives tool calls from AI agents
-   - Forwards requests to the wallet server via HTTP
-   - Returns responses back to the AI agent
+For detailed architecture diagrams and API flows, see [docs/system-design.md](docs/system-design.md).
 
-2. **Wallet Server** (`server.ts`):
-   - Runs the actual wallet logic
-   - Exposes REST API endpoints
-   - Manages wallet state and blockchain interactions
-   - Handles all wallet operations (balance, transactions, etc.)
+## Documentation
 
-## MCP Server Configuration for AI Models
+For complete documentation, including setup guides, API reference, testing, and integration examples, see [docs/index.md](docs/index.md).
 
-JSON Config:
+## License
 
 ```json
 "mcp": {

@@ -33,13 +33,14 @@ export const ALL_TOOLS = [
     },
   },
   {
-    name: "sendFunds",
-    description: "Send funds to another wallet address",
+    name: "send",
+    description: "Send funds or tokens to another wallet address. Can send native tokens (tDUST) or shielded tokens by name/symbol",
     inputSchema: {
       type: "object",
       properties: {
         destinationAddress: { type: "string" },
-        amount: { type: "string" }
+        amount: { type: "string" },
+        token: { type: "string", description: "Token name, symbol, or 'native'/'tDUST' for native tokens. If not specified, defaults to native tokens." }
       },
       required: ["destinationAddress", "amount"]
     }
@@ -84,6 +85,18 @@ export const ALL_TOOLS = [
       required: []
     },
   },
+  // Token balance tool
+  {
+    name: "getTokenBalance",
+    description: "Get the balance of a specific token by name or symbol. Use 'native' or 'tDUST' for native tokens",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tokenName: { type: "string" }
+      },
+      required: ["tokenName"]
+    }
+  },
   // Marketplace tools
   {
     name: "registerInMarketplace",
@@ -107,6 +120,80 @@ export const ALL_TOOLS = [
         verificationData: { type: "object" }
       },
       required: ["userId", "verificationData"]
+    }
+  },
+  // DAO tools
+  {
+    name: "openDaoElection",
+    description: "Open a new election in the DAO voting contract. DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        electionId: { type: "string", description: "Unique identifier for the election" }
+      },
+      required: ["electionId"]
+    }
+  },
+  {
+    name: "closeDaoElection",
+    description: "Close the current election in the DAO voting contract. DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "castDaoVote",
+    description: "Cast a vote in the DAO election. Accepts natural language vote strings: 'yes', 'no', or 'absence' (case-insensitive). DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        voteType: { 
+          type: "string", 
+          enum: ["yes", "no", "absence"], 
+          description: "Type of vote to cast. Must be one of: 'yes' (vote for), 'no' (vote against), or 'absence' (abstain/absent). Case-insensitive." 
+        }
+      },
+      required: ["voteType"]
+    }
+  },
+  {
+    name: "fundDaoTreasury",
+    description: "Fund the DAO treasury with tokens. DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        amount: { type: "string", description: "Amount to fund the treasury" }
+      },
+      required: ["amount"]
+    }
+  },
+  {
+    name: "payoutDaoProposal",
+    description: "Payout an approved proposal from the DAO treasury. DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "getDaoElectionStatus",
+    description: "Get the current status of the DAO election. DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "getDaoState",
+    description: "Get the full state of the DAO voting contract. DAO configuration is set via environment variables.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
     }
   }
 ];
@@ -152,24 +239,50 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
           ]
         };
         
-      case "sendFunds":
-        const { destinationAddress, amount } = toolArgs;
-        if (!destinationAddress || !amount) {
+      case "send":
+        const { destinationAddress, amount: sendAmount, token } = toolArgs;
+        if (!destinationAddress || !sendAmount) {
           throw new McpError(
             ErrorCode.InvalidParams,
             "Missing required parameters: destinationAddress and amount"
           );
         }
-        const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount });
-        return {
-          "content": [
-            {
-              "type": "text",
-              "text": JSON.stringify(sendResult, null, 2),
-              "mimeType": "application/json"
-            }
-          ]
-        };
+        
+        // Determine if this is a native token or shielded token
+        const isNativeToken = !token || 
+          token.toLowerCase() === 'native' || 
+          token.toLowerCase() === 'tdust' || 
+          token.toLowerCase() === 'dust';
+        
+        if (isNativeToken) {
+          // Send native tokens
+          const sendResult = await httpClient.post('/wallet/send', { destinationAddress, amount: sendAmount });
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(sendResult, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        } else {
+          // Send shielded tokens
+          const sendTokenResult = await httpClient.post('/wallet/tokens/send', { 
+            tokenName: token, 
+            toAddress: destinationAddress, 
+            amount: sendAmount 
+          });
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(sendTokenResult, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        }
         
       case "verifyTransaction":
         const { identifier } = toolArgs;
@@ -244,6 +357,47 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
             }
           ]
         };
+        
+      // Token balance tool handler
+      case "getTokenBalance":
+        const { tokenName: balanceTokenName } = toolArgs;
+        if (!balanceTokenName) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameter: tokenName"
+          );
+        }
+        
+        // Check if this is a native token request
+        const isNativeTokenBalance = balanceTokenName.toLowerCase() === 'native' || 
+          balanceTokenName.toLowerCase() === 'tdust' || 
+          balanceTokenName.toLowerCase() === 'dust';
+        
+        if (isNativeTokenBalance) {
+          // Get native token balance
+          const nativeBalance = await httpClient.get('/wallet/balance');
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(nativeBalance, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        } else {
+          // Get shielded token balance
+          const tokenBalance = await httpClient.get(`/wallet/tokens/balance/${balanceTokenName}`);
+          return {
+            "content": [
+              {
+                "type": "text",
+                "text": JSON.stringify(tokenBalance, null, 2),
+                "mimeType": "application/json"
+              }
+            ]
+          };
+        }
       
       // Marketplace tool handlers
       case "registerInMarketplace":
@@ -279,6 +433,112 @@ export async function handleToolCall(toolName: string, toolArgs: any, log: (...a
             {
               "type": "text",
               "text": JSON.stringify(verifyUserResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      // DAO tool handlers
+      case "openDaoElection":
+        const { electionId } = toolArgs;
+        if (!electionId) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameter: electionId"
+          );
+        }
+        const openElectionResult = await httpClient.post('/dao/open-election', { electionId });
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(openElectionResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "closeDaoElection":
+        const closeElectionResult = await httpClient.post('/dao/close-election', {});
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(closeElectionResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "castDaoVote":
+        const { voteType } = toolArgs;
+        if (!voteType) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameter: voteType"
+          );
+        }
+        const castVoteResult = await httpClient.post('/dao/cast-vote', { voteType });
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(castVoteResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "fundDaoTreasury":
+        const { amount: fundAmount } = toolArgs;
+        if (!fundAmount) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "Missing required parameter: amount"
+          );
+        }
+        const fundTreasuryResult = await httpClient.post('/dao/fund-treasury', { amount: fundAmount });
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(fundTreasuryResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "payoutDaoProposal":
+        const payoutResult = await httpClient.post('/dao/payout-proposal', {});
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(payoutResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "getDaoElectionStatus":
+        const electionStatusResult = await httpClient.get('/dao/election-status');
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(electionStatusResult, null, 2),
+              "mimeType": "application/json"
+            }
+          ]
+        };
+      
+      case "getDaoState":
+        const daoStateResult = await httpClient.get('/dao/state');
+        return {
+          "content": [
+            {
+              "type": "text",
+              "text": JSON.stringify(daoStateResult, null, 2),
               "mimeType": "application/json"
             }
           ]

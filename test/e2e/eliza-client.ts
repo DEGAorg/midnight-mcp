@@ -2,7 +2,8 @@
 const fetch = globalThis.fetch;
 
 // Import the API client
-import { ElizaClient as ApiClient } from '@elizaos/api-client';
+import { AgentCreateParams, DmChannelParams, MessageChannel, ElizaClient as ApiClient } from '@elizaos/api-client';
+import agentConfig from './agent.json';
 
 /**
  * Configuration for Eliza client
@@ -12,12 +13,14 @@ export interface ElizaClientConfig {
   timeout?: number;
   retries?: number;
   logger?: any;
+  authorId?: string; // Add authorId to configuration
 }
 
 /**
  * Options for sending messages
  */
 export interface SendMessageOptions {
+  agentId: string;
   clearHistory?: boolean;
   waitForResponse?: boolean;
   responseTimeout?: number; // Default: 60000ms (60 seconds) - increased from 15000
@@ -94,10 +97,18 @@ export interface Message {
 export interface IElizaClient {
   // Agent management
   getAgents(): Promise<Agent[]>;
+  getAgent(agentId: string): Promise<Agent>;
   getC3POAgent(): Promise<Agent>;
+  createC3P0Agent(): Promise<Agent>;
+  createAgent(agentConfig: any): Promise<Agent>;
+  startAgent(agentId: string): Promise<{ success: boolean, error?: string }>;
+  getAgentPanels(agentId: string): Promise<{ panels: Array<{ id: string; name: string; url: string; type: string; metadata?: Record<string, any> }> }>;
+  getAgentLogs(agentId: string, options?: { level?: 'debug' | 'info' | 'warn' | 'error'; limit?: number }): Promise<Array<{ id: string; agentId: string; level: 'debug' | 'info' | 'warn' | 'error'; message: string; timestamp: Date; metadata?: Record<string, any> }>>;
   
   // Channel management
-  getAgentChannelId(): Promise<string>;
+  getOrCreateDmChannel(params: DmChannelParams): Promise<MessageChannel>;
+  getAgentChannelId(agentId: string): Promise<string>;
+  getDmChannel(agentId: string): Promise<MessageChannel>;
   clearChannelHistory(channelId: string): Promise<{ success: boolean, error?: string }>;
   
   // Message operations
@@ -121,13 +132,18 @@ export class ElizaClient implements IElizaClient {
   private timeout: number;
   private retries: number;
   private logger: any;
+  private authorId: string; // Add authorId to class
+  private isFirstRun: boolean = true;
 
   constructor(config: ElizaClientConfig = {}) {
     this.baseUrl = config.baseUrl || process.env.ELIZA_API_URL || 'http://localhost:3001';
     this.timeout = config.timeout || 60000; // Increased from 15000 to 60000 (60 seconds)
     this.retries = config.retries || 3;
     this.logger = config.logger || console;
+    this.authorId = config.authorId || "5c9f5d45-8015-4b76-8a87-cf2efabcaccd"; // Set default authorId
   }
+
+
 
   /**
    * Get all available agents
@@ -165,40 +181,258 @@ export class ElizaClient implements IElizaClient {
   }
 
   /**
-   * Get or create a DM channel with the C3PO agent
+   * Get a specific agent by ID
    */
-  async getAgentChannelId(): Promise<string> {
-    const agent = await this.getC3POAgent();
-    if (!agent || !agent.id) {
-      throw new Error('C3PO agent not found');
-    }
+  async getAgent(agentId: string): Promise<Agent> {
+    const url = `${this.baseUrl}/api/agents/${agentId}`;
     
-    // Get channels from the central server
-    const url = `${this.baseUrl}/api/messaging/central-servers/00000000-0000-0000-0000-000000000000/channels`;
-    const response = await fetch(url, {
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`Failed to get agent ${agentId}. Status: ${response.status}, Response: ${errorText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      this.logger.info(`Agent ${agentId} retrieved successfully:`, JSON.stringify(result, null, 2));
+      
+      // Return the agent data with the correct structure
+      return {
+        ...result.data.character,
+        id: result.data.id // Use the actual agent ID, not the character ID
+      };
+    } catch (error) {
+      this.logger.error(`Error getting agent ${agentId}: ${error}`);
+      throw error;
+    }
+  }
+
+  // Create a new agent
+  async createC3P0Agent(): Promise<Agent> {
+    const agentData: AgentCreateParams = {
+      characterJson: agentConfig
+    };
+    
+    // Debug: Log the request data
+    this.logger.info('Creating C3PO agent with config:', JSON.stringify(agentData, null, 2));
+    
+    const response = await fetch(`${this.baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(agentData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Failed to create C3PO agent. Status: ${response.status}, Response: ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+
+    const newAgent = await response.json();
+    this.logger.info('C3PO agent created successfully:', JSON.stringify(newAgent, null, 2));
+    // Return the agent data with the correct ID from data.id, not character.id
+    return {
+      ...newAgent.data.character,
+      id: newAgent.data.id // Use the actual agent ID, not the character ID
+    };
+  }
+
+  // Create a new agent with custom config
+  async createAgent(agentConfig: any): Promise<Agent> {
+    const agentData: AgentCreateParams = {
+      characterJson: agentConfig
+    };
+    
+    // Debug: Log the request data
+    this.logger.info('Creating agent with config:', JSON.stringify(agentData, null, 2));
+    
+    const response = await fetch(`${this.baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(agentData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Failed to create agent. Status: ${response.status}, Response: ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+
+    const newAgent = await response.json();
+    this.logger.info('Agent created successfully:', JSON.stringify(newAgent, null, 2));
+    // Return the agent data with the correct ID from data.id, not character.id
+    return {
+      ...newAgent.data.character,
+      id: newAgent.data.id // Use the actual agent ID, not the character ID
+    };
+  }
+
+  /**
+   * Start an existing agent
+   */
+  async startAgent(agentId: string): Promise<{ success: boolean, error?: string }> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  /**
+   * Get agent panels
+   */
+  async getAgentPanels(agentId: string): Promise<{ panels: Array<{ id: string; name: string; url: string; type: string; metadata?: Record<string, any> }> }> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/panels`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+
+    const result = await response.json();
+    return result;
+  }
+
+  /**
+   * Get agent logs
+   */
+  async getAgentLogs(agentId: string, options: { level?: 'debug' | 'info' | 'warn' | 'error'; limit?: number } = {}): Promise<Array<{ id: string; agentId: string; level: 'debug' | 'info' | 'warn' | 'error'; message: string; timestamp: Date; metadata?: Record<string, any> }>> {
+    const url = new URL(`${this.baseUrl}/api/agents/${agentId}/logs`);
     
-    const channels = await response.json();
+    if (options.level) {
+      url.searchParams.append('level', options.level);
+    }
+    if (options.limit) {
+      url.searchParams.append('limit', options.limit.toString());
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  // /**
+  //  * Find or create a DM channel
+  //  */
+  async getOrCreateDmChannel(params: DmChannelParams): Promise<MessageChannel> {
+    const url = new URL(`${this.baseUrl}/api/messaging/dm-channel`);
     
-    // Find the DM channel with the C3PO agent
-    const dmChannel = channels.data?.channels?.find((channel: any) => 
-      channel.type === 'DM' && 
-      channel.metadata?.forAgent === agent.id
+    // Handle participantIds array properly - add each UUID as a separate query parameter
+    if (params.participantIds && Array.isArray(params.participantIds)) {
+      params.participantIds.forEach((participantId: string) => {
+        url.searchParams.append('participantIds', participantId);
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  }
+
+  /**
+   * Get or create a DM channel with the C3PO agent
+   */
+  async getAgentChannelId(agentId: string): Promise<string> {
+    
+    
+    // Direct fetch call to get or create DM channel
+    const response = await fetch(
+      `${this.baseUrl}/api/messaging/dm-channel?currentUserId=${this.authorId}&targetUserId=${agentId}&dmServerId=00000000-0000-0000-0000-000000000000`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
     
-    if (!dmChannel) {
-      throw new Error(`No DM channel found for C3PO agent (${agent.id}). Available channels:`, channels.data?.channels);
+    if (!result.success || !result.data?.id) {
+      throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
+    }
+
+    if (this.isFirstRun) {
+      console.log('Channel ID Response ===================>', JSON.stringify(result.data, null, 2));
+      this.isFirstRun = false;
     }
     
-    return dmChannel.id;
+    return result.data.id;
+  }
+
+  /**
+   * Get or create a DM channel with a specific agent
+   */
+  async getDmChannel(agentId: string): Promise<MessageChannel> {
+    // Direct fetch call to get or create DM channel
+    const response = await fetch(
+      `${this.baseUrl}/api/messaging/dm-channel?currentUserId=${this.authorId}&targetUserId=${agentId}&dmServerId=00000000-0000-0000-0000-000000000000`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success || !result.data?.id) {
+      throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
+    }
+    
+    return result.data;
   }
 
   /**
@@ -228,18 +462,21 @@ export class ElizaClient implements IElizaClient {
   /**
    * Send a message using the query.ts logic
    */
-  async sendMessage(message: string, options: SendMessageOptions = {}): Promise<SendMessageResponse> {
+  async sendMessage(message: string, options: SendMessageOptions): Promise<SendMessageResponse> {
     try {
       // validate message
       if (!message) {
         throw new Error('Message is required');
+      }
+      if (!options.agentId) {
+        throw new Error('Agent ID is required');
       }
 
       if (message.length > 1000) {
         throw new Error('Message is too long');
       }
       // Get the channel
-      const channelId = await this.getAgentChannelId();
+      const channelId = await this.getAgentChannelId(options.agentId);
       
       if (!channelId) {
         throw new Error('Could not obtain channel ID');
@@ -259,14 +496,14 @@ export class ElizaClient implements IElizaClient {
         body: JSON.stringify({
           channel_id: channelId,
           server_id: "00000000-0000-0000-0000-000000000000",
-          author_id: "5c9f5d45-8015-4b76-8a87-cf2efabcaccd",
+          author_id: this.authorId, // Use the authorId from the config
           content: message,
           source_type: "client_chat",
           raw_message: {},
           metadata: {
             channelType: "DM",
             isDm: true,
-            targetUserId: "22d22d5f-e650-03f9-8a74-1f0aa3107035"
+            targetUserId: options.agentId
           }
         }),
       });
@@ -326,18 +563,19 @@ export class ElizaClient implements IElizaClient {
   async waitForResponse(
     channelId: string, 
     messageId: string, 
-    timeout: number = 60000 // Increased from 30000 to 60000 (60 seconds)
+    timeout: number = 60000 // 60 seconds
   ): Promise<Message[]> {
     const startTime = Date.now();
     const interval = 1000; // Check every second
+    let lastMessageCount = 0;
 
     while (Date.now() - startTime < timeout) {
       try {
-        // Get more messages to handle multiple responses
-        const messages = await this.getChannelMessages(channelId, {limit: 10});
+        // Get messages
+        const messages = await this.getChannelMessages(channelId, {limit: 15});
 
         if (messages.messages && messages.messages.length > 0) {
-          // Filter messages to find responses to our specific message
+          // First try to find direct replies
           const responseMessages = messages.messages.filter((message: any) => 
             message.inReplyToRootMessageId === messageId
           );
@@ -347,8 +585,22 @@ export class ElizaClient implements IElizaClient {
             return responseMessages;
           }
 
-          // Continue waiting as long as we're within the timeout
-          this.logger.info(`Found ${messages.messages.length} total messages, continuing to wait for response...`);
+          // If no direct replies, check for any new messages from the agent
+          if (messages.messages.length > lastMessageCount) {
+            const recentMessages = messages.messages.slice(0, 5); // Check recent messages
+            const agentMessages = recentMessages.filter((message: any) => 
+              message.authorId !== this.authorId && // Not from us
+              message.content && 
+              message.content.trim().length > 0
+            );
+
+            if (agentMessages.length > 0) {
+              this.logger.info(`Found ${agentMessages.length} recent agent messages, assuming response to messageId: ${messageId}`);
+              return agentMessages;
+            }
+            
+            lastMessageCount = messages.messages.length;
+          }
         }
 
         // Wait before next check
@@ -374,25 +626,20 @@ export class ElizaClient implements IElizaClient {
   ): Promise<Message[]> {
     const startTime = Date.now();
     const interval = 1000; // Check every second
+    let lastMessageCount = 0;
 
     while (Date.now() - startTime < timeout) {
       try {
-        // Get more messages to handle multiple responses
+        // Get messages
         const messages = await this.getChannelMessages(channelId, {limit: 15});
 
         if (messages.messages && messages.messages.length > 0) {
-          // Filter messages to find responses to our specific message
+          // First try to find direct replies
           const responseMessages = messages.messages.filter((message: any) => 
             message.inReplyToRootMessageId === messageId
           );
 
-          // Debug: Log all messages to see what we're working with
-          this.logger.info(`Debug: Found ${messages.messages.length} total messages, ${responseMessages.length} responses`);
-          messages.messages.forEach((msg: any, index: number) => {
-            this.logger.info(`Debug: Message ${index}: content="${msg.content?.substring(0, 100)}...", inReplyToRootMessageId="${msg.inReplyToRootMessageId}", authorId="${msg.authorId}"`);
-          });
-
-          // Check only response messages for the expected content
+          // Check response messages for expected content
           for (const message of responseMessages) {
             if (message.content && contentValidator(message.content)) {
               this.logger.info(`Found message with expected content for messageId: ${messageId}`);
@@ -400,8 +647,25 @@ export class ElizaClient implements IElizaClient {
             }
           }
 
-          // Continue waiting as long as we're within the timeout
-          this.logger.info(`Found ${messages.messages.length} total messages, ${responseMessages.length} responses, continuing to wait for expected content...`);
+          // If no direct replies with expected content, check for any new messages from the agent
+          if (messages.messages.length > lastMessageCount) {
+            const recentMessages = messages.messages.slice(0, 5); // Check recent messages
+            const agentMessages = recentMessages.filter((message: any) => 
+              message.authorId !== this.authorId && // Not from us
+              message.content && 
+              message.content.trim().length > 0
+            );
+
+            // Check agent messages for expected content
+            for (const message of agentMessages) {
+              if (message.content && contentValidator(message.content)) {
+                this.logger.info(`Found agent message with expected content for messageId: ${messageId}`);
+                return [message];
+              }
+            }
+            
+            lastMessageCount = messages.messages.length;
+          }
         }
 
         // Wait before next check
@@ -448,7 +712,7 @@ export class ElizaClient implements IElizaClient {
    */
   async sendMessageWithRetry(
     message: string, 
-    options: SendMessageOptions = {}
+    options: SendMessageOptions
   ): Promise<SendMessageResponse> {
     let lastError: string | undefined;
 

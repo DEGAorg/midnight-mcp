@@ -148,12 +148,37 @@ type MockLogger = {
 };
 
 const mockLogger = {} as MockLogger;
-mockLogger.error = jest.fn();
-mockLogger.info = jest.fn();
-mockLogger.debug = jest.fn();
-mockLogger.warn = jest.fn();
-mockLogger.trace = jest.fn();
-mockLogger.fatal = jest.fn();
+mockLogger.error = jest.fn().mockImplementation((...args: any[]) => {
+  // Only log errors in non-test environments or when explicitly enabled
+  if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_LOGGING === 'true') {
+    console.error('[MOCK LOGGER ERROR]', ...args);
+  }
+});
+mockLogger.info = jest.fn().mockImplementation((...args: any[]) => {
+  if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_LOGGING === 'true') {
+    console.log('[MOCK LOGGER INFO]', ...args);
+  }
+});
+mockLogger.debug = jest.fn().mockImplementation((...args: any[]) => {
+  if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_LOGGING === 'true') {
+    console.log('[MOCK LOGGER DEBUG]', ...args);
+  }
+});
+mockLogger.warn = jest.fn().mockImplementation((...args: any[]) => {
+  if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_LOGGING === 'true') {
+    console.warn('[MOCK LOGGER WARN]', ...args);
+  }
+});
+mockLogger.trace = jest.fn().mockImplementation((...args: any[]) => {
+  if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_LOGGING === 'true') {
+    console.log('[MOCK LOGGER TRACE]', ...args);
+  }
+});
+mockLogger.fatal = jest.fn().mockImplementation((...args: any[]) => {
+  if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_LOGGING === 'true') {
+    console.error('[MOCK LOGGER FATAL]', ...args);
+  }
+});
 mockLogger.child = jest.fn(() => mockLogger);
 
 export function createLogger() {
