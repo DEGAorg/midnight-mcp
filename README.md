@@ -85,4 +85,212 @@ For complete documentation, including setup guides, API reference, testing, and 
 
 ## License
 
-This project is licensed under the MIT License.
+```json
+"mcp": {
+    "servers": {
+      "midnight-mcp": {
+        "type": "stdio",
+        "name": "Midnight MCP",
+        "command": "bash",
+        "args": [
+          "-c",
+          "source ~/.nvm/nvm.sh && AGENT_ID=<agent-id> nvm exec 22.15.1 node <path>/midnight-mcp/dist/stdio-server.js"
+        ]
+      }
+    }
+  }
+```
+
+### Agent ID Configuration
+
+The MCP server supports multiple agents running simultaneously through the use of agent IDs. Each agent gets its own isolated storage space for wallet data and transactions.
+
+#### Setting Agent ID
+
+You can set the agent ID in two ways:
+
+1. **Through Environment Variable** (Required):
+```json
+"args": [
+  "-c",
+  "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=agent-123 yarn start:mcp"
+]
+```
+
+#### Storage Structure
+
+Each agent's data is stored in an isolated directory:
+```
+storage/
+  ├── seeds/
+  │   ├── agent-123/
+  │   │   └── seed
+  │   └── agent-456/
+  │       └── seed
+  ├── wallet-backups/
+  │   ├── agent-123/
+  │   │   ├── wallet-1.json
+  │   │   └── wallet-1-transactions.db
+  │   └── agent-456/
+  │       ├── wallet-1.json
+  │       └── wallet-1-transactions.db
+  └── logs/
+      ├── agent-123/
+  │       └── wallet-app.log
+  └── agent-456/
+      └── wallet-app.log
+```
+
+For development, you can run with an agent ID:
+```bash
+AGENT_ID=agent-123 yarn dev
+```
+
+NOTE: Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.
+
+## Integrating with ElizaOS
+
+### Install ElizaOS
+
+Install Node.js: Ensure you have Node.js 23.3.0+ installed on your system. You can download and install it from the official Node.js website: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
+
+Install the ElizaOS CLI: Run the following command in your terminal:
+
+```bash
+npm install -g @elizaos/cli@beta
+```
+
+This will install the ElizaOS CLI globally on your system.
+
+Verify the Installation: After the installation is complete, verify that the ElizaOS CLI is working by running the following command:
+
+```bash
+elizaos --version
+```
+
+This should display the version of the ElizaOS CLI installed on your system.
+
+To create a new Eliza project using the eliza create command, follow these steps:
+
+1. Open a Terminal: Open a terminal window on your system.
+2. Run the eliza create Command: Run the following command in the terminal:
+
+```bash
+elizaos create
+```
+
+This will launch the ElizaOS project creation wizard:
+
+3. Follow the Wizard: Follow the prompts in the wizard to configure your new Eliza project. You will be asked to provide some basic project information, such as the project name and description.
+4. Create the Project: After filling in the required information, the wizard will create a new Eliza project for you. This may take a few seconds to complete.
+5. Navigate to the Project Directory: Once the project is created, navigate to the project directory using the cd command:
+
+```bash
+cd my-project-name
+```
+
+Replace my-project-name with the actual name of your project.
+
+```bash
+elizaos start
+```
+
+This will launch the ElizaOS server and make the agent accessible via the web interface at https://localhost:3000.
+
+You now have a new Eliza project up and running!
+
+### Install the MCP Plugin for ElizaOS
+
+Inside your eliza project run:
+
+```bash
+bun add @fleek-platform/eliza-plugin-mcp
+```
+
+Now in the character.json file that you'll use to create your AI Agent add the mcp json structure shown above.
+
+All set! You're ready to use AI agents with on-chain capabilities for the Midnight blockchain.
+
+## E2E Testing with ElizaOS
+
+This project includes comprehensive End-to-End testing that validates the integration between the Midnight MCP server and ElizaOS using the [@fleek-platform/eliza-plugin-mcp](https://github.com/fleek-platform/eliza-plugin-mcp).
+
+### Quick Demo
+
+Run the interactive demo to see ElizaOS + MCP integration in action:
+
+```bash
+yarn demo:eliza
+```
+
+This will:
+1. Check prerequisites and install ElizaOS CLI if needed
+2. Create a demo ElizaOS project with MCP integration
+3. Configure the Midnight MCP server connection
+4. Provide instructions to start the agent
+
+### E2E Test Suites
+
+Run different types of E2E tests:
+
+```bash
+# Direct MCP protocol testing
+yarn test:e2e
+
+# STDIO JSON-RPC testing
+yarn test:e2e:stdio
+
+# ElizaOS integration testing  
+yarn test:e2e:eliza
+
+# Comprehensive test suite
+yarn test:e2e:full
+
+# Interactive demo
+yarn demo:eliza
+```
+
+### ElizaOS Integration Features
+
+The MCP server integrates with ElizaOS to provide:
+
+- **AI Agent Conversations**: Natural language interactions with blockchain tools
+- **Automatic Tool Discovery**: MCP tools are automatically available to agents
+- **Contextual Help**: Agents understand Midnight blockchain concepts
+- **Error Handling**: Graceful error handling in conversational context
+- **Real-time Updates**: Live wallet and transaction status updates
+
+### Available MCP Tools for Agents
+
+When integrated with ElizaOS, agents have access to these tools, grouped by category:
+
+#### Wallet Tools
+
+- `walletStatus` - Check wallet synchronization status
+- `walletAddress` - Get wallet receiving address
+- `walletBalance` - View current balance
+- `getTransactions` - List transaction history
+- `getTransactionStatus` - Get the status of a transaction by ID
+- `sendFunds` - Send funds to another address
+- `verifyTransaction` - Verify transaction status
+- `getWalletConfig` - Get wallet configuration
+
+#### Marketplace Tools
+
+- `registerInMarketplace` - Register a user in the marketplace
+- `verifyUserInMarketplace` - Verify a user in the marketplace
+
+### Example Agent Conversations
+
+```
+User: "Hello! Can you check my wallet status?"
+Agent: "I'll check your wallet status for you! 💰 Let me connect to the Midnight network..."
+
+User: "What's my current balance?"
+Agent: "Let me check your current balance on the Midnight network. 🔍"
+
+User: "Show me my recent transactions"
+Agent: "I'll fetch your recent transactions from the Midnight blockchain. ⛓️"
+```
+
+For detailed E2E testing documentation, see [test/e2e/README.md](test/e2e/README.md).
