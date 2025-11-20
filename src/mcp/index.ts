@@ -1,8 +1,8 @@
 import { WalletManager, WalletConfig, TestnetRemoteConfig } from '../wallet/index.js';
 import { setNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 import type { Logger } from 'pino';
-import { SeedManager } from '../utils/seed-manager.js';
+import { SeedManager } from '../lib/utils/seed-manager.js';
 import { 
   WalletStatus, 
   WalletBalances, 

@@ -1,6 +1,6 @@
 import { Wallet } from '@midnight-ntwrk/wallet-api';
 import { Resource } from '@midnight-ntwrk/wallet';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 import {
   configureProviders,
   joinDaoVotingContract,
@@ -15,7 +15,7 @@ import {
   type DaoVotingProviders,
   type DeployedDaoVotingContract,
   type ElectionStatus
-} from '../integrations/dao/index.js';
+} from '../contracts/dao/index.js';
 import { getDaoConfigFromEnv, type DaoConfig } from './dao-config.js';
 import { tokenType } from '@midnight-ntwrk/compact-runtime';
 import { randomBytes } from 'crypto';

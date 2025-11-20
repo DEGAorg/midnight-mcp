@@ -1,4 +1,4 @@
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 
 const logger = createLogger('dao-config');
 

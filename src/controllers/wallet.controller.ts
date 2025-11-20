@@ -2,7 +2,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { WalletServiceMCP } from '../mcp/index.js';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 
 export class WalletController {
   private logger = createLogger('wallet-controller');

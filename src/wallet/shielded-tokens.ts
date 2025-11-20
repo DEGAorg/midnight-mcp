@@ -5,14 +5,14 @@
  * Provides human-readable names for tokens instead of using hex addresses directly.
  */
 
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 import type { Logger } from 'pino';
 import { nativeToken } from '@midnight-ntwrk/ledger';
 import { tokenType } from '@midnight-ntwrk/compact-runtime';
 import { convertBigIntToDecimal, convertDecimalToBigInt } from './utils.js';
 import type { WalletManager } from './index.js';
 import type { SendFundsResult, TokenInfo, TokenBalance, TokenOperationResult, CoinInfo } from '../types/wallet.js';
-import { TokenRegistryDatabase } from './db/TokenRegistryDatabase.js';
+import { TokenRegistryDatabase } from '../lib/database/token-registry-db.js';
 import { randomBytes } from 'crypto';
 import { 
   parseTokensFromMultipleEnvVars, 

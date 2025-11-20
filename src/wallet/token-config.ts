@@ -5,7 +5,7 @@
  * and provides batch registration functionality.
  */
 
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 import type { Logger } from 'pino';
 import type { TokenInfo } from '../types/wallet.js';
 

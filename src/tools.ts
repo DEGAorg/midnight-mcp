@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import { httpClient } from './utils/http-client.js';
+import { httpClient } from './lib/utils/http-client.js';
 
 // Define tools with their schemas
 export const ALL_TOOLS = [

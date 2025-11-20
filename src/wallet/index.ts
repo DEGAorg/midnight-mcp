@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../lib/logger/index.js';
 import type { Logger } from 'pino';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { webcrypto } from 'crypto';
@@ -33,8 +33,8 @@ import {
   TokenOperationResult,
   CoinInfo
 } from '../types/wallet.js';
-import { TransactionDatabase } from './db/TransactionDatabase.js';
-import { FileManager, FileType } from '../utils/file-manager.js';
+import { TransactionDatabase } from '../lib/database/transaction-db.js';
+import { FileManager, FileType } from '../lib/utils/file-manager.js';
 // Import audit trail components
 import { 
   TransactionTraceLogger, 
@@ -43,7 +43,7 @@ import {
 } from '../audit/index.js';
 
 // Import marketplace API functions
-import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance, configureProviders } from '../integrations/marketplace/api.js';
+import { isPublicKeyRegistered, verifyTextPure, joinContract, register, marketplaceRegistryContractInstance, configureProviders } from '../contracts/marketplace/api.js';
 
 // Import shielded token manager
 import { ShieldedTokenManager } from './shielded-tokens.js';
