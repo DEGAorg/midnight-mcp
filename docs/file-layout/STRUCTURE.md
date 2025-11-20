@@ -276,7 +276,7 @@ src/contracts/
 │   │       ├── indexer.compact
 │   │       └── marketplace.compact
 │   │
-│   └── wrapper.ts    # Clean wrapper functions for contract interactions
+│   └── api.ts    # Clean wrapper functions for contract interactions
 │
 └── dao/
     ├── compiled/     # Compiled DAO contract files
@@ -285,7 +285,7 @@ src/contracts/
     │   └── managed/
     │       └── dao.compact
     │
-    └── wrapper.ts    # DAO contract wrapper
+    └── api.ts    # DAO contract wrapper
 ```
 
 **Purpose:** Smart contract artifacts and wrapper functions.
