@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../../logger/index.js';
 import { TransactionRecord, TransactionState } from '../../types/wallet.js';
-import { config } from '../../config.js';
+import { config } from '../../lib/config/env.js';
 
 /**
  * Service for managing transaction records in SQLite

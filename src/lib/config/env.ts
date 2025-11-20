@@ -146,3 +146,9 @@ export function getNetworkId(config: AppConfig): NetworkId {
 export function getWalletBackupFolder(config: AppConfig): string {
   return path.join(config.WALLET_BACKUP_FOLDER, config.AGENT_ID);
 }
+
+/**
+ * Singleton configuration instance
+ * Loaded once at module initialization
+ */
+export const config = loadConfig();

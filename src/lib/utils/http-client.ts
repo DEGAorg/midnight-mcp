@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import { config } from '../config.js';
+import { config } from '../config/env.js';
 
 export class HttpError extends Error {
   constructor(

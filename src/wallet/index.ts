@@ -14,7 +14,7 @@ import { nativeToken } from '@midnight-ntwrk/ledger';
 import { WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { type Resource } from '@midnight-ntwrk/wallet';
-import { config } from '../config.js';
+import { config } from '../lib/config/env.js';
 import { convertBigIntToDecimal, convertDecimalToBigInt } from './utils.js';
 import { 
   WalletStatus, 

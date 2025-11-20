@@ -6,7 +6,7 @@
  * the current timestamp and a server value.
  */
 
-import { createServer } from './stdio-server.js';
+import { createServer } from './mcp/stdio-server.js';
 
 export {
   createServer
