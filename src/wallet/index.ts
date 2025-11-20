@@ -243,6 +243,7 @@ export class WalletManager {
     this.walletSeed = seed;
     
     // Initialize the transaction database with agent-specific path
+    //@q what the diffrence between this config and this.config?
     const dbPath = path.join(config.walletBackupFolder, `${walletFilename}-transactions.db`);
     this.transactionDb = new TransactionDatabase(dbPath);
     this.logger.info(`Transaction database initialized at ${dbPath}`);

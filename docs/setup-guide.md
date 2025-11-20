@@ -203,7 +203,7 @@ The stdio-server provides a standard input/output interface that conforms to the
         "command": "bash",
         "args": [
           "-c",
-          "source ~/.nvm/nvm.sh && AGENT_ID=<agent-id> nvm exec 22.15.1 node <path>/midnight-mcp/dist/stdio-server.js"
+          "source ~/.nvm/nvm.sh && AGENT_ID=testing nvm exec 22.15.1 node /Users/apple/dev/workstuff/MIDNIGHTAI-SIM/repo/midnight-mcp/dist/index.js"
         ]
       }
     }

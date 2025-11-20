@@ -1,0 +1,169 @@
+<svg width="1000" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="phase1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#93c5fd;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phase2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#86efac;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phase3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fde047;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#eab308;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phase4" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fdba74;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f97316;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phase5" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#86efac;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16a34a;stop-opacity:1" />
+    </linearGradient>
+    <filter id="phaseShadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="500" y="40" text-anchor="middle" font-size="28" font-weight="700" fill="#111827" font-family="Arial, sans-serif">
+    Refactoring Implementation Plan
+  </text>
+
+  <!-- Timeline base -->
+  <line x1="80" y1="100" x2="920" y2="100" stroke="#d1d5db" stroke-width="3"/>
+
+  <!-- Phase 1 -->
+  <g filter="url(#phaseShadow)">
+    <circle cx="120" cy="100" r="35" fill="url(#phase1)"/>
+    <text x="120" y="110" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="Arial, sans-serif">
+      1
+    </text>
+  </g>
+  <rect x="60" y="160" width="120" height="200" fill="#dbeafe" stroke="#3b82f6" stroke-width="2" rx="8"/>
+  <text x="120" y="185" text-anchor="middle" font-size="16" font-weight="700" fill="#1e40af" font-family="Arial, sans-serif">
+    File Moves
+  </text>
+  <line x1="75" y1="195" x2="165" y2="195" stroke="#3b82f6" stroke-width="1"/>
+  <text x="120" y="218" text-anchor="middle" font-size="13" fill="#1e3a8a" font-family="Arial, sans-serif">
+    Reorganize folders
+  </text>
+  <text x="120" y="238" text-anchor="middle" font-size="13" fill="#1e3a8a" font-family="Arial, sans-serif">
+    Update imports
+  </text>
+  <text x="120" y="258" text-anchor="middle" font-size="13" fill="#1e3a8a" font-family="Arial, sans-serif">
+    Fix paths
+  </text>
+  <rect x="75" y="280" width="90" height="25" fill="#22c55e" rx="4"/>
+  <text x="120" y="297" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+    Low Risk
+  </text>
+  <!-- Phase 2 -->
+  <g filter="url(#phaseShadow)">
+    <circle cx="280" cy="100" r="35" fill="url(#phase2)"/>
+    <text x="280" y="110" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="Arial, sans-serif">
+      2
+    </text>
+  </g>
+  <rect x="220" y="160" width="120" height="200" fill="#dcfce7" stroke="#22c55e" stroke-width="2" rx="8"/>
+  <text x="280" y="185" text-anchor="middle" font-size="16" font-weight="700" fill="#166534" font-family="Arial, sans-serif">
+    Configuration
+  </text>
+  <line x1="235" y1="195" x2="325" y2="195" stroke="#22c55e" stroke-width="1"/>
+  <text x="280" y="218" text-anchor="middle" font-size="13" fill="#14532d" font-family="Arial, sans-serif">
+    Extract constants
+  </text>
+  <text x="280" y="238" text-anchor="middle" font-size="13" fill="#14532d" font-family="Arial, sans-serif">
+    Remove magic
+  </text>
+  <text x="280" y="258" text-anchor="middle" font-size="13" fill="#14532d" font-family="Arial, sans-serif">
+    Add validation
+  </text>
+  <rect x="235" y="280" width="90" height="25" fill="#22c55e" rx="4"/>
+  <text x="280" y="297" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+    Low Risk
+  </text>
+
+  <!-- Phase 3 -->
+  <g filter="url(#phaseShadow)">
+    <circle cx="460" cy="100" r="35" fill="url(#phase3)"/>
+    <text x="460" y="110" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="Arial, sans-serif">
+      3
+    </text>
+  </g>
+  <rect x="400" y="160" width="120" height="200" fill="#fef9c3" stroke="#eab308" stroke-width="2" rx="8"/>
+  <text x="460" y="185" text-anchor="middle" font-size="16" font-weight="700" fill="#713f12" font-family="Arial, sans-serif">
+    Split Services
+  </text>
+  <line x1="415" y1="195" x2="505" y2="195" stroke="#eab308" stroke-width="1"/>
+  <text x="460" y="218" text-anchor="middle" font-size="13" fill="#713f12" font-family="Arial, sans-serif">
+    Break god classes
+  </text>
+  <text x="460" y="238" text-anchor="middle" font-size="13" fill="#713f12" font-family="Arial, sans-serif">
+    Create services
+  </text>
+  <text x="460" y="258" text-anchor="middle" font-size="13" fill="#713f12" font-family="Arial, sans-serif">
+    Add tests
+  </text>
+  <rect x="415" y="280" width="90" height="25" fill="#f97316" rx="4"/>
+  <text x="460" y="297" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+    High Risk
+  </text>
+
+  <!-- Phase 4 -->
+  <g filter="url(#phaseShadow)">
+    <circle cx="660" cy="100" r="35" fill="url(#phase4)"/>
+    <text x="660" y="110" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="Arial, sans-serif">
+      4
+    </text>
+  </g>
+  <rect x="600" y="160" width="120" height="200" fill="#fed7aa" stroke="#f97316" stroke-width="2" rx="8"/>
+  <text x="660" y="185" text-anchor="middle" font-size="16" font-weight="700" fill="#7c2d12" font-family="Arial, sans-serif">
+    API/MCP Split
+  </text>
+  <line x1="615" y1="195" x2="705" y2="195" stroke="#f97316" stroke-width="1"/>
+  <text x="660" y="218" text-anchor="middle" font-size="13" fill="#7c2d12" font-family="Arial, sans-serif">
+    Separate servers
+  </text>
+  <text x="660" y="238" text-anchor="middle" font-size="13" fill="#7c2d12" font-family="Arial, sans-serif">
+    Remove proxy
+  </text>
+  <text x="660" y="258" text-anchor="middle" font-size="13" fill="#7c2d12" font-family="Arial, sans-serif">
+    Direct calls
+  </text>
+  <rect x="615" y="280" width="90" height="25" fill="#fb923c" rx="4"/>
+  <text x="660" y="297" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+    Med Risk
+  </text>
+
+  <!-- Phase 5 -->
+  <g filter="url(#phaseShadow)">
+    <circle cx="860" cy="100" r="35" fill="url(#phase5)"/>
+    <text x="860" y="110" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="Arial, sans-serif">
+      5
+    </text>
+  </g>
+  <rect x="800" y="160" width="120" height="200" fill="#dcfce7" stroke="#16a34a" stroke-width="2" rx="8"/>
+  <text x="860" y="185" text-anchor="middle" font-size="16" font-weight="700" fill="#14532d" font-family="Arial, sans-serif">
+    Testing
+  </text>
+  <line x1="815" y1="195" x2="905" y2="195" stroke="#16a34a" stroke-width="1"/>
+  <text x="860" y="218" text-anchor="middle" font-size="13" fill="#14532d" font-family="Arial, sans-serif">
+    Full test suite
+  </text>
+  <text x="860" y="238" text-anchor="middle" font-size="13" fill="#14532d" font-family="Arial, sans-serif">
+    Performance
+  </text>
+  <text x="860" y="258" text-anchor="middle" font-size="13" fill="#14532d" font-family="Arial, sans-serif">
+    Deploy
+  </text>
+  <rect x="815" y="280" width="90" height="25" fill="#22c55e" rx="4"/>
+  <text x="860" y="297" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+    Low Risk
+  </text>
+
+  <!-- Timeline estimate -->
+  <text x="500" y="385" text-anchor="middle" font-size="16" font-weight="600" fill="#374151" font-family="Arial, sans-serif">
+    Estimated Timeline: 4-5 weeks
+  </text>
+</svg>

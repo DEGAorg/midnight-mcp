@@ -142,6 +142,9 @@ export class WalletServiceMCP {
     }
     
     this.logger = createLogger('wallet-service');
+    //the agentid name here is redundant because we are using the wallet filename to identify the agent
+    //https://gitkraken.dev/link/dnNjb2RlOi8vZWFtb2Rpby5naXRsZW5zL2xpbmsvci81OWZjZmRlODY2MjNhZGNlOGI2YjBhZWViOGM0YmYyZTNjNGZiMWRiL2Yvc3JjL21jcC9pbmRleC50cz91cmw9aHR0cHMlM0ElMkYlMkZnaXRodWIuY29tJTJGREVHQW9yZyUyRm1pZG5pZ2h0LW1jcC5naXQmbGluZXM9MTQ2?origin=gitlens
+    //that throws an error because the agentid is not set in the environment variables
     this.agentId = process.env.AGENT_ID || 'default';
     
     this.logger.info('Initializing Midnight Wallet Service');
