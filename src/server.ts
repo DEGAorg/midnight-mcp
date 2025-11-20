@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import pkg from 'body-parser';
 const { json } = pkg;
 import { WalletServiceMCP } from './mcp/index.js';
-import { WalletController } from './controllers/wallet.controller.js';
+import { WalletController } from './api/controllers/wallet.controller.js';
 import { config } from './config.js';
 import { SeedManager } from './lib/utils/seed-manager.js';
 import { createLogger } from './lib/logger/index.js';
