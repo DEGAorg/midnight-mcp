@@ -76,15 +76,24 @@ export const createWalletAndMidnightProvider = async (wallet: Wallet): Promise<W
 
 export const configureProviders = async (wallet: Wallet & Resource): Promise<DaoVotingProviders> => {
   const walletAndMidnightProvider = await createWalletAndMidnightProvider(wallet);
+
+  // Validate required config
+  if (!config.INDEXER || !config.INDEXER_WS) {
+    throw new Error('INDEXER and INDEXER_WS are required');
+  }
+  if (!config.PROOF_SERVER) {
+    throw new Error('PROOF_SERVER is required');
+  }
+
   return {
     privateStateProvider: levelPrivateStateProvider({
       privateStateStoreName: contractConfig.privateStateStoreName,
     }),
-    publicDataProvider: indexerPublicDataProvider(config.indexer, config.indexerWS),
+    publicDataProvider: indexerPublicDataProvider(config.INDEXER, config.INDEXER_WS),
     zkConfigProvider: new NodeZkConfigProvider<'open_election' | 'close_election' | 'cast_vote' | 'fund_treasury' | 'payout_approved_proposal' | 'cancel_payout'>(
       contractConfig.zkConfigPath,
     ),
-    proofProvider: httpClientProofProvider(config.proofServer),
+    proofProvider: httpClientProofProvider(config.PROOF_SERVER),
     walletProvider: walletAndMidnightProvider,
     midnightProvider: walletAndMidnightProvider,
   };

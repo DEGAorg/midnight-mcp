@@ -27,6 +27,8 @@ import { DaoService, type DaoServiceConfig } from './contract/dao/DaoService.js'
 import { MarketplaceService, type MarketplaceServiceConfig } from './contract/marketplace/MarketplaceService.js';
 import { AuditService } from './audit/AuditService.js';
 import { RecoveryService, type RecoveryOptions } from './recovery/RecoveryService.js';
+import { TokenRegistryDatabase } from '../lib/database/token-registry-db.js';
+import { FileManager, FileType } from '../lib/utils/file-manager.js';
 import type { Logger } from 'pino';
 
 /**
@@ -114,14 +116,20 @@ export class WalletOrchestrator {
       pollingIntervalMs: this.config.transactionPollingIntervalMs,
     });
 
-    // 4. Create TokenService (depends on WalletService, TransactionService)
+    // 4. Create TokenRegistryDatabase
+    const fileManager = FileManager.getInstance();
+    const tokenDbPath = fileManager.getPath(FileType.TRANSACTION_DB, this.config.agentId, 'token-registry.db');
+    const tokenDb = new TokenRegistryDatabase(tokenDbPath);
+
+    // 5. Create TokenService (depends on WalletService, TransactionService, TokenDB)
     this.tokenService = new TokenService({
       walletService: this.walletService,
       transactionService: this.transactionService,
+      tokenDb,
       agentId: this.config.agentId,
     });
 
-    // 5. Create optional services if contract addresses provided
+    // 6. Create optional services if contract addresses provided
     if (this.config.daoContractAddress) {
       this.daoService = new DaoService({
         walletService: this.walletService,

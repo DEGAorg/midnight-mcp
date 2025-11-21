@@ -4,9 +4,9 @@ import Database from 'better-sqlite3';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import { createLogger } from '../../logger/index.js';
+import { createLogger } from '../logger/index.js';
 import { TokenInfo } from '../../types/wallet.js';
-import { config } from '../../lib/config/env.js';
+import { config } from '../config/env.js';
 
 /**
  * Service for managing token registry records in SQLite
@@ -22,9 +22,9 @@ export class TokenRegistryDatabase {
    */
   constructor(dbPath?: string) {
     // Use provided path or create one in the wallet backup folder
-    const dbDirectory = dbPath 
-      ? path.dirname(dbPath) 
-      : path.resolve(config.walletBackupFolder);
+    const dbDirectory = dbPath
+      ? path.dirname(dbPath)
+      : path.resolve(config.WALLET_BACKUP_FOLDER);
     
     // Ensure directory exists
     if (!fs.existsSync(dbDirectory)) {

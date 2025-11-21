@@ -1,7 +1,7 @@
 import * as pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileManager, FileType } from '../lib/utils/file-manager.js';
+import { FileManager, FileType } from '../utils/file-manager.js';
 import { ILogger } from './types.js';
 import { PinoLogger } from './pino-logger.js';
 import { SentryLogger } from './sentry-logger.js';

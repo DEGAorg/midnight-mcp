@@ -16,9 +16,13 @@ export {
 // Replace require.main check with import.meta.url check for ES modules
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
-  const server = createServer();
-  server.start().catch(error => {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  });
+  (async () => {
+    try {
+      const server = await createServer();
+      await server.start();
+    } catch (error) {
+      console.error("Failed to start server:", error);
+      process.exit(1);
+    }
+  })();
 } 
