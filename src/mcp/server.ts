@@ -5,7 +5,7 @@
  * NO HTTP layer - handlers call services directly.
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -45,7 +45,7 @@ import { ALL_PROMPTS } from './prompts/registry.js';
  * - Fully testable
  */
 export class MCPServer {
-  private server: Server;
+  private server: McpServer;
   private walletHandler: WalletHandler;
   private tokenHandler: TokenHandler;
   private daoHandler: DaoHandler;
@@ -57,14 +57,8 @@ export class MCPServer {
     private services: ServiceDependencies,
     serverInfo: { name: string; version: string }
   ) {
-    // Initialize MCP server
-    this.server = new Server(serverInfo, {
-      capabilities: {
-        tools: {},
-        resources: {},
-        prompts: {}
-      }
-    });
+    // Initialize MCP server (using McpServer from SDK)
+    this.server = new McpServer(serverInfo);
 
     // Initialize domain handlers
     this.walletHandler = new WalletHandler(services);
@@ -243,7 +237,7 @@ export class MCPServer {
   /**
    * Get the underlying MCP Server instance
    */
-  getServer(): Server {
+  getServer(): McpServer {
     return this.server;
   }
 }
