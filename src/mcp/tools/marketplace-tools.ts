@@ -2,47 +2,92 @@
  * Marketplace Tools - MCP Tool Definitions for NFT Marketplace
  *
  * Defines all marketplace-related MCP tools with Zod validation.
+ *
+ * NEW: Each tool now has an execute function that receives services.
+ *
+ * NOTE: Marketplace tools updated to match actual MarketplaceService API
  */
 
 import { z } from 'zod';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { ServiceDependencies } from '../types.js';
+import type { ToolDefinition } from '../adapter/types.js';
 
 /**
  * Schemas
  */
-export const GetMarketplaceConfigSchema = z.object({});
+export const GetUserInfoSchema = z.object({
+  userId: z.string()
+    .min(1)
+    .describe("User identifier")
+});
 
-export const ListMarketplaceItemsSchema = z.object({
-  status: z.enum(['active', 'sold', 'cancelled', 'all'])
-    .default('active')
-    .describe("Filter by listing status")
+export const IsUserRegisteredSchema = z.object({
+  userId: z.string()
+    .min(1)
+    .describe("User identifier to check")
+});
+
+export const IsUserVerifiedSchema = z.object({
+  userId: z.string()
+    .min(1)
+    .describe("User identifier to check")
 });
 
 /**
  * Type Inference
  */
-export type GetMarketplaceConfigInput = z.infer<typeof GetMarketplaceConfigSchema>;
-export type ListMarketplaceItemsInput = z.infer<typeof ListMarketplaceItemsSchema>;
+export type GetUserInfoInput = z.infer<typeof GetUserInfoSchema>;
+export type IsUserRegisteredInput = z.infer<typeof IsUserRegisteredSchema>;
+export type IsUserVerifiedInput = z.infer<typeof IsUserVerifiedSchema>;
 
 /**
- * Tool Definitions
+ * Tool Definitions with Execute Functions
  */
-export const GET_MARKETPLACE_CONFIG_TOOL: Tool = {
-  name: "getMarketplaceConfig",
-  description: "Get the current marketplace configuration and contract details",
-  inputSchema: GetMarketplaceConfigSchema.shape
+export const getUserInfoTool: ToolDefinition = {
+  name: "getUserInfo",
+  description: "Get information about a marketplace user",
+  inputSchema: GetUserInfoSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { userId } = GetUserInfoSchema.parse(args);
+    return await services.marketplaceService.getUserInfo(userId);
+  }
 };
 
-export const LIST_MARKETPLACE_ITEMS_TOOL: Tool = {
-  name: "listMarketplaceItems",
-  description: "List marketplace items/listings with optional status filter",
-  inputSchema: ListMarketplaceItemsSchema.shape
+export const isUserRegisteredTool: ToolDefinition = {
+  name: "isUserRegistered",
+  description: "Check if a user is registered in the marketplace",
+  inputSchema: IsUserRegisteredSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { userId } = IsUserRegisteredSchema.parse(args);
+    return {
+      userId,
+      isRegistered: await services.marketplaceService.isUserRegistered(userId)
+    };
+  }
+};
+
+export const isUserVerifiedTool: ToolDefinition = {
+  name: "isUserVerified",
+  description: "Check if a user is verified in the marketplace",
+  inputSchema: IsUserVerifiedSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { userId } = IsUserVerifiedSchema.parse(args);
+    return {
+      userId,
+      isVerified: await services.marketplaceService.isUserVerified(userId)
+    };
+  }
 };
 
 /**
- * All marketplace tools
+ * All marketplace tools (ToolDefinition format)
+ *
+ * NOTE: Reduced to read-only operations for now.
+ * TODO: Add registerUser, verifyUser when needed (requires complex input data structures)
  */
-export const MARKETPLACE_TOOLS: Tool[] = [
-  GET_MARKETPLACE_CONFIG_TOOL,
-  LIST_MARKETPLACE_ITEMS_TOOL
+export const MARKETPLACE_TOOLS: ToolDefinition[] = [
+  getUserInfoTool,
+  isUserRegisteredTool,
+  isUserVerifiedTool
 ];

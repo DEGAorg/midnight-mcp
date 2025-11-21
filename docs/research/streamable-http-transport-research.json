@@ -1,0 +1,883 @@
+{
+  "search_summary": {
+    "platforms_searched": [
+      "github",
+      "official_mcp_docs",
+      "developer_blogs",
+      "technical_guides",
+      "npm_registry"
+    ],
+    "repositories_analyzed": 8,
+    "docs_reviewed": 15,
+    "search_date": "2025-11-21",
+    "specification_version": "2025-03-26"
+  },
+  "repositories": [
+    {
+      "citation": "[1] Model Context Protocol. 'TypeScript SDK - Official TypeScript SDK for Model Context Protocol servers and clients.' GitHub, 2025. https://github.com/modelcontextprotocol/typescript-sdk",
+      "platform": "github",
+      "stats": {
+        "type": "official_sdk",
+        "language": "typescript",
+        "maintained_by": "Model Context Protocol Team"
+      },
+      "key_features": [
+        "StreamableHTTPServerTransport for HTTP transport",
+        "StdioServerTransport for STDIO transport",
+        "Session management with session IDs",
+        "Event store for session resumability",
+        "Built-in reconnection support with Last-Event-ID"
+      ],
+      "architecture": "SDK provides transport abstraction layer with pluggable transports (STDIO, StreamableHTTP). StreamableHTTPServerTransport handles HTTP POST/GET/DELETE requests, manages SSE streams, and coordinates session lifecycle.",
+      "code_quality": {
+        "testing": "comprehensive",
+        "documentation": "good",
+        "maintenance": "active"
+      },
+      "usage_example": "import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';\nconst transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });",
+      "limitations": [
+        "No built-in Redis session storage (in-memory only)",
+        "Session persistence requires custom implementation",
+        "InMemoryEventStore not suitable for distributed deployments"
+      ],
+      "alternatives": [
+        "StdioServerTransport for single-process deployments",
+        "Custom transport implementations"
+      ]
+    },
+    {
+      "citation": "[2] Model Context Protocol. 'Official MCP Servers - Everything Example with StreamableHTTP.' GitHub, 2025. https://github.com/modelcontextprotocol/servers/blob/main/src/everything/streamableHttp.ts",
+      "platform": "github",
+      "stats": {
+        "type": "reference_implementation",
+        "language": "typescript"
+      },
+      "key_features": [
+        "Complete Express integration example",
+        "Stateful session management with Map storage",
+        "InMemoryEventStore for event replay",
+        "CORS configuration for MCP headers",
+        "Graceful shutdown handling",
+        "Health check patterns"
+      ],
+      "architecture": "Express server with /mcp endpoint handling POST (initialization + messages), GET (SSE streams), DELETE (session termination). Sessions stored in Map<string, StreamableHTTPServerTransport>. New transport created on initialize, reused for subsequent requests with same session ID.",
+      "code_quality": {
+        "testing": "adequate",
+        "documentation": "excellent",
+        "maintenance": "active"
+      },
+      "usage_example": "See complete implementation in technical_insights.reference_implementation",
+      "limitations": [
+        "In-memory session storage (not distributed)",
+        "No database persistence",
+        "Single-server deployment only without modification"
+      ],
+      "alternatives": [
+        "Redis-backed session storage for distributed deployment",
+        "Stateless mode for serverless"
+      ]
+    },
+    {
+      "citation": "[3] Invariant Labs. 'MCP Streamable HTTP - Example implementation of MCP Streamable HTTP client/server in Python and TypeScript.' GitHub, 2025. https://github.com/invariantlabs-ai/mcp-streamable-http",
+      "platform": "github",
+      "stats": {
+        "type": "cross_language_example",
+        "language": "python_and_typescript"
+      },
+      "key_features": [
+        "Cross-language compatibility (Python ↔ TypeScript)",
+        "Weather service example implementation",
+        "Both client and server examples",
+        "Demonstrates protocol interoperability"
+      ],
+      "architecture": "Demonstrates that MCP StreamableHTTP is language-agnostic. Python client can communicate with TypeScript server and vice-versa using the same protocol.",
+      "code_quality": {
+        "testing": "minimal",
+        "documentation": "good",
+        "maintenance": "active"
+      },
+      "usage_example": "Shows protocol compatibility across SDKs",
+      "limitations": [
+        "Example only, not production-ready",
+        "No session management complexity"
+      ],
+      "alternatives": [
+        "Language-specific SDK implementations"
+      ]
+    },
+    {
+      "citation": "[4] ferrants. 'MCP Streamable HTTP TypeScript Server - Starter for MCP Server with a Streamable HTTP Transport.' GitHub, 2025. https://github.com/ferrants/mcp-streamable-http-typescript-server",
+      "platform": "github",
+      "stats": {
+        "stars": "moderate",
+        "language": "typescript",
+        "license": "MIT"
+      },
+      "key_features": [
+        "Quick start template",
+        "TypeScript configuration included",
+        "Session management example from SDK",
+        "Development and production scripts"
+      ],
+      "architecture": "Starter template based on official MCP SDK StreamableHTTP with Session Management Example. Provides sensible defaults for tsconfig and dependencies.",
+      "code_quality": {
+        "testing": "minimal",
+        "documentation": "fair",
+        "maintenance": "moderate"
+      },
+      "usage_example": "npm install && npm run build && npm start",
+      "limitations": [
+        "Basic example only",
+        "No production hardening",
+        "Missing OAuth and advanced features"
+      ],
+      "alternatives": [
+        "Build from official SDK examples directly"
+      ]
+    },
+    {
+      "citation": "[5] jonigl. 'MCP Server with Streamable HTTP Example - A simple MCP server with streamable HTTP transport. Featuring tools, resources and prompts.' GitHub, 2025. https://github.com/jonigl/mcp-server-with-streamable-http-example",
+      "platform": "github",
+      "stats": {
+        "type": "python_example",
+        "language": "python"
+      },
+      "key_features": [
+        "Python implementation",
+        "Multiple tool examples (hello_world, add_numbers, BMI calculator)",
+        "Resource and prompt examples",
+        "Environment variable configuration"
+      ],
+      "architecture": "Python-based MCP server running on port 8000 with StreamableHTTP transport. Demonstrates tools, resources, and prompts in single server.",
+      "code_quality": {
+        "testing": "minimal",
+        "documentation": "good",
+        "maintenance": "moderate"
+      },
+      "usage_example": "python simple_streamable_http_mcp_server.py",
+      "limitations": [
+        "Python-specific",
+        "Not directly applicable to TypeScript/Node.js projects"
+      ],
+      "alternatives": [
+        "TypeScript equivalents"
+      ]
+    },
+    {
+      "citation": "[6] bh-rat. 'mcp-db - Session and event store for MCP server, also allows distributed coordination between servers.' GitHub, 2025. https://github.com/bh-rat/mcp-db",
+      "platform": "github",
+      "stats": {
+        "type": "session_persistence_library",
+        "language": "python",
+        "status": "experimental"
+      },
+      "key_features": [
+        "Redis-backed session storage",
+        "Cross-node session sharing",
+        "Event sourcing with Redis Streams",
+        "Automatic session failover",
+        "Load balancer support without sticky sessions",
+        "SessionManager for lifecycle tracking",
+        "ProtocolInterceptor for request/response capture",
+        "StreamableHTTPAdmissionController for cross-node reconstruction"
+      ],
+      "architecture": "Intercepts MCP StreamableHTTP traffic at transport level. Persists sessions as JSON in Redis. Events stored in Redis Streams with sequential IDs. Any node can reconstruct SDK transport from stored session data, enabling true horizontal scaling without sticky sessions.",
+      "code_quality": {
+        "testing": "minimal",
+        "documentation": "fair",
+        "maintenance": "experimental"
+      },
+      "usage_example": "pip install git+https://github.com/bh-rat/mcp-db.git",
+      "limitations": [
+        "Experimental status (not production-ready)",
+        "Not on PyPI yet",
+        "Python only (no TypeScript equivalent)",
+        "Live GET/SSE features remain node-specific",
+        "Doesn't recreate underlying async streams"
+      ],
+      "alternatives": [
+        "Custom Redis implementation for TypeScript",
+        "Stateless mode with external state storage"
+      ]
+    },
+    {
+      "citation": "[7] AWS Samples. 'Sample Serverless MCP Servers - Sample implementations of AI Agents and MCP Servers running on AWS Serverless compute.' GitHub, 2025. https://github.com/aws-samples/sample-serverless-mcp-servers",
+      "platform": "github",
+      "stats": {
+        "type": "cloud_deployment_examples",
+        "platform": "aws"
+      },
+      "key_features": [
+        "Stateful ECS deployment patterns",
+        "Stateless Lambda deployment patterns",
+        "ALB configuration for sticky sessions",
+        "Redis session storage examples",
+        "DynamoDB state management"
+      ],
+      "architecture": "Demonstrates both stateful (ECS with ALB sticky sessions) and stateless (Lambda with external state) architectures for MCP servers on AWS.",
+      "code_quality": {
+        "testing": "adequate",
+        "documentation": "excellent",
+        "maintenance": "active"
+      },
+      "usage_example": "CloudFormation/CDK templates for AWS deployment",
+      "limitations": [
+        "AWS-specific",
+        "Requires cloud infrastructure knowledge"
+      ],
+      "alternatives": [
+        "Platform-agnostic Kubernetes deployments",
+        "Docker Compose for local development"
+      ]
+    },
+    {
+      "citation": "[8] Model Context Protocol. 'Transports - Model Context Protocol Specification 2025-03-26.' Official Documentation, 2025. https://modelcontextprotocol.io/specification/2025-03-26/basic/transports",
+      "platform": "official_docs",
+      "stats": {
+        "type": "specification",
+        "version": "2025-03-26"
+      },
+      "key_features": [
+        "Single /mcp endpoint for all operations",
+        "POST for client-to-server messages",
+        "GET for SSE stream establishment",
+        "DELETE for session termination",
+        "Mcp-Session-Id header for session tracking",
+        "Last-Event-ID header for resumption",
+        "HTTP 404 for invalid sessions",
+        "HTTP 202 for notifications",
+        "CORS support requirements"
+      ],
+      "architecture": "Unified endpoint design replacing previous dual-channel (HTTP + SSE) approach. Server MAY assign session IDs at initialization. Clients MUST include session IDs on subsequent requests if provided. Server MUST send each message on only one SSE stream when multiple connections exist.",
+      "code_quality": {
+        "testing": "n/a",
+        "documentation": "excellent",
+        "maintenance": "official"
+      },
+      "usage_example": "See specification for protocol details",
+      "limitations": [
+        "Specification only, not implementation"
+      ],
+      "alternatives": [
+        "STDIO transport for single-process",
+        "Legacy HTTP+SSE (deprecated)"
+      ]
+    }
+  ],
+  "technical_insights": {
+    "common_patterns": [
+      "Express POST /mcp endpoint for initialization and messages",
+      "Express GET /mcp endpoint for SSE stream establishment",
+      "Express DELETE /mcp endpoint for session termination",
+      "Map<string, StreamableHTTPServerTransport> for session storage",
+      "InMemoryEventStore for event replay on reconnection",
+      "randomUUID() for session ID generation",
+      "CORS configuration exposing mcp-session-id, last-event-id headers",
+      "res.on('close', () => transport.close()) for cleanup",
+      "Graceful shutdown with SIGTERM/SIGINT handlers",
+      "onsessioninitialized callback for session tracking"
+    ],
+    "best_practices": [
+      "Use sessionIdGenerator: undefined for stateless mode",
+      "Use sessionIdGenerator: () => randomUUID() for stateful mode",
+      "Implement health check endpoints (/health, /health/ready) separate from MCP endpoint",
+      "Expose Prometheus metrics endpoint (/metrics) for monitoring",
+      "Set connection limits to 10-15 per CPU core",
+      "Cache health check results (30 second intervals) to prevent dependency overload",
+      "Implement request timeouts (5-10 seconds)",
+      "Use Redis for distributed session storage in production",
+      "Enable CORS with proper origin validation to prevent DNS rebinding",
+      "Bind to 127.0.0.1 for local deployment, not 0.0.0.0",
+      "Send SSE heartbeats every 30 seconds to prevent proxy timeouts",
+      "Set X-Accel-Buffering: no for Nginx deployments",
+      "Implement graceful shutdown with 30 second timeout",
+      "Clean up transports in SIGTERM handler",
+      "Use connection pooling for database access",
+      "Implement per-session or per-IP rate limiting"
+    ],
+    "pitfalls": [
+      "Missing Mcp-Session-Id header causes HTTP 400 errors",
+      "InMemoryEventStore not suitable for horizontal scaling",
+      "Long-lived SSE connections can be closed by proxies (60s idle timeout)",
+      "CORS errors if mcp-session-id not in exposedHeaders",
+      "Session state lost on server restart without persistence",
+      "Race conditions if session tracking not in onsessioninitialized",
+      "Memory leaks if transports not cleaned up on close",
+      "HTTP 404 if session expired or invalid",
+      "Request ID collisions in stateless mode if not careful",
+      "Sticky sessions required for stateful deployments without Redis",
+      "fetch API lacks native cookie support (needs fetch-cookie library)",
+      "DNS rebinding attacks if Origin header not validated"
+    ],
+    "emerging_trends": [
+      "Shift from SSE to StreamableHTTP (SSE deprecated as of 2025-03-26)",
+      "Stateless deployments for serverless (Lambda, Cloud Functions)",
+      "Redis-backed session storage for horizontal scaling",
+      "Multi-agent orchestration patterns",
+      "Agent-to-agent communication via MCP",
+      "Event sourcing with session resumability",
+      "GraphQL-style resource queries",
+      "AI gateway patterns (routing to multiple providers)",
+      "Edge deployment considerations (Cloudflare Workers)",
+      "Kubernetes-native deployments with health checks"
+    ],
+    "session_management_modes": {
+      "stateless": {
+        "description": "Each request creates fresh transport, no state retention between requests",
+        "use_cases": [
+          "AWS Lambda / serverless functions",
+          "Auto-scaling environments (Kubernetes HPA)",
+          "Vercel, Google Cloud Functions, Azure Functions",
+          "Simple request-response patterns",
+          "High scalability requirements"
+        ],
+        "implementation": {
+          "sessionIdGenerator": "undefined",
+          "session_storage": "none (or external DB for app state)",
+          "scaling": "unlimited horizontal scaling",
+          "complexity": "low"
+        },
+        "advantages": [
+          "Scale to zero support",
+          "No session affinity needed",
+          "Simplified load balancing",
+          "Lower memory usage",
+          "Easier to reason about"
+        ],
+        "disadvantages": [
+          "No conversation context preservation",
+          "Cannot resume dropped connections",
+          "Higher latency for repeated interactions",
+          "No server-push capabilities"
+        ]
+      },
+      "stateful": {
+        "description": "Server maintains session context in memory, supports persistent SSE connections and resumability",
+        "use_cases": [
+          "Interactive AI agents with conversation history",
+          "Long-running workflows requiring context",
+          "Server-initiated notifications (SSE push)",
+          "Complex multi-step processes",
+          "Real-time collaboration scenarios"
+        ],
+        "implementation": {
+          "sessionIdGenerator": "() => randomUUID()",
+          "session_storage": "Map or Redis for distributed",
+          "scaling": "requires sticky sessions or Redis",
+          "complexity": "medium to high"
+        },
+        "advantages": [
+          "Rich conversation context",
+          "Session resumability with Last-Event-ID",
+          "Server-push via SSE",
+          "Better for complex workflows",
+          "Event replay on reconnection"
+        ],
+        "disadvantages": [
+          "Requires session affinity (sticky sessions) or Redis",
+          "Higher memory usage per client",
+          "More complex infrastructure",
+          "Session state lost on restart (without Redis)",
+          "Scaling limitations without distributed storage"
+        ]
+      },
+      "hybrid_stateful_with_redis": {
+        "description": "Stateful mode with Redis-backed session storage for distributed deployments",
+        "use_cases": [
+          "Production multi-agent systems (100+ concurrent)",
+          "High-availability deployments",
+          "Load-balanced server clusters",
+          "Auto-scaling with session preservation",
+          "Multi-region deployments"
+        ],
+        "implementation": {
+          "sessionIdGenerator": "() => randomUUID()",
+          "session_storage": "Redis with JSON serialization",
+          "event_storage": "Redis Streams with sequential IDs",
+          "scaling": "unlimited with Redis cluster",
+          "complexity": "high"
+        },
+        "advantages": [
+          "Full session preservation across restarts",
+          "No sticky sessions required",
+          "Horizontal scaling without limits",
+          "Session failover between nodes",
+          "Survives node failures"
+        ],
+        "disadvantages": [
+          "Requires Redis infrastructure",
+          "Additional latency for Redis operations",
+          "More complex deployment",
+          "Cost of Redis hosting",
+          "Requires custom implementation (no SDK support yet)"
+        ],
+        "current_status": "Experimental - mcp-db project for Python, no TypeScript equivalent yet"
+      }
+    },
+    "reference_implementation": {
+      "source": "modelcontextprotocol/servers - everything/streamableHttp.ts",
+      "architecture_diagram": {
+        "layers": [
+          "Express HTTP Server (port 3001)",
+          "CORS Middleware (exposing MCP headers)",
+          "Route Handlers (POST /mcp, GET /mcp, DELETE /mcp)",
+          "StreamableHTTPServerTransport (per session)",
+          "McpServer (MCP protocol logic)",
+          "Domain Services (tools, resources, prompts)"
+        ]
+      },
+      "key_code_patterns": {
+        "express_setup": "app.use(cors({ origin: '*', methods: 'GET,POST,DELETE', exposedHeaders: ['mcp-session-id', 'last-event-id', 'mcp-protocol-version'] }));",
+        "session_storage": "const transports: Map<string, StreamableHTTPServerTransport> = new Map();",
+        "initialization": "transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), eventStore, onsessioninitialized: (sessionId) => { transports.set(sessionId, transport); } });",
+        "message_handling": "await transport.handleRequest(req, res);",
+        "session_reuse": "if (sessionId && transports.has(sessionId)) { transport = transports.get(sessionId)!; }",
+        "cleanup": "server.onclose = async () => { const sid = transport.sessionId; if (sid && transports.has(sid)) { transports.delete(sid); await cleanup(); } };",
+        "graceful_shutdown": "process.on('SIGINT', async () => { for (const [sessionId, transport] of transports) { await transport.close(); transports.delete(sessionId); } process.exit(0); });"
+      },
+      "complete_post_handler": "app.post('/mcp', async (req: Request, res: Response) => {\n  const sessionId = req.headers['mcp-session-id'] as string | undefined;\n  let transport: StreamableHTTPServerTransport;\n\n  if (sessionId && transports.has(sessionId)) {\n    // Reuse existing transport for this session\n    transport = transports.get(sessionId)!;\n  } else if (!sessionId) {\n    // Create new session\n    const { server, cleanup, startNotificationIntervals } = createServer();\n    const eventStore = new InMemoryEventStore();\n    \n    transport = new StreamableHTTPServerTransport({\n      sessionIdGenerator: () => randomUUID(),\n      eventStore,\n      onsessioninitialized: (sessionId: string) => {\n        transports.set(sessionId, transport);\n      }\n    });\n\n    server.onclose = async () => {\n      const sid = transport.sessionId;\n      if (sid && transports.has(sid)) {\n        transports.delete(sid);\n        await cleanup();\n      }\n    };\n\n    await server.connect(transport);\n    await transport.handleRequest(req, res);\n    startNotificationIntervals(transport.sessionId);\n    return;\n  } else {\n    res.status(400).json({\n      jsonrpc: '2.0',\n      error: { code: -32000, message: 'Bad Request: No valid session ID provided' },\n      id: req?.body?.id\n    });\n    return;\n  }\n\n  await transport.handleRequest(req, res);\n});",
+      "complete_get_handler": "app.get('/mcp', async (req: Request, res: Response) => {\n  const sessionId = req.headers['mcp-session-id'] as string | undefined;\n  \n  if (!sessionId || !transports.has(sessionId)) {\n    res.status(400).json({\n      jsonrpc: '2.0',\n      error: { code: -32000, message: 'Bad Request: No valid session ID provided' },\n      id: req?.body?.id\n    });\n    return;\n  }\n\n  const lastEventId = req.headers['last-event-id'] as string | undefined;\n  const transport = transports.get(sessionId);\n  await transport!.handleRequest(req, res);\n});",
+      "complete_delete_handler": "app.delete('/mcp', async (req: Request, res: Response) => {\n  const sessionId = req.headers['mcp-session-id'] as string | undefined;\n  \n  if (!sessionId || !transports.has(sessionId)) {\n    res.status(400).json({\n      jsonrpc: '2.0',\n      error: { code: -32000, message: 'Bad Request: No valid session ID provided' },\n      id: req?.body?.id\n    });\n    return;\n  }\n\n  const transport = transports.get(sessionId);\n  await transport!.handleRequest(req, res);\n});"
+    },
+    "health_check_patterns": {
+      "basic_liveness": "app.get('/health', (req, res) => { res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString(), service: 'mcp-server', uptime: process.uptime() }); });",
+      "readiness_with_dependencies": "app.get('/health/ready', async (req, res) => { const mcpReady = mcpServer.isInitialized && mcpServer.tools.length > 0; const dbConnected = await checkDatabaseConnection(); const ready = mcpReady && dbConnected; res.status(ready ? 200 : 503).json({ ready, checks: { mcp: mcpReady, database: dbConnected } }); });",
+      "prometheus_metrics": "app.get('/metrics', (req, res) => { const metrics = [ `mcp_server_up ${healthState.isReady ? 1 : 0}`, `mcp_server_uptime_seconds ${process.uptime()}`, `mcp_tools_total ${mcpServer.tools?.length || 0}`, `mcp_active_sessions ${transports.size}` ]; res.set('Content-Type', 'text/plain'); res.send(metrics.join('\\n')); });",
+      "kubernetes_probes": {
+        "startup": { "path": "/health/startup", "initialDelaySeconds": 60, "periodSeconds": 10 },
+        "liveness": { "path": "/health", "periodSeconds": 30, "timeoutSeconds": 5 },
+        "readiness": { "path": "/health/ready", "periodSeconds": 10, "timeoutSeconds": 5 }
+      },
+      "caching_strategy": "const HEALTH_CHECK_TIMEOUT = 5000; const DEPENDENCY_CHECK_INTERVAL = 30000; // Cache dependency checks for 30 seconds to prevent overload"
+    }
+  },
+  "implementation_recommendations": [
+    {
+      "scenario": "Development and Testing (Single Developer)",
+      "recommended_solution": "STDIO transport with existing architecture",
+      "rationale": "Current stdio-server.ts works perfectly for local development. No need for HTTP complexity. Single process per agent. Easy debugging. No network configuration required.",
+      "implementation_notes": "Keep existing STDIO transport. Use Claude Desktop with stdio transport config. No changes needed to current architecture."
+    },
+    {
+      "scenario": "Production with 1-10 Concurrent Agents (Small Scale)",
+      "recommended_solution": "StreamableHTTP with stateless mode + Express",
+      "rationale": "Simple stateless deployment. Each request independent. Easy to scale horizontally. No session management complexity. Works with any load balancer. Can deploy to Kubernetes, ECS, or VM.",
+      "implementation_notes": "Add Express server with POST /mcp endpoint. Use sessionIdGenerator: undefined. Store any needed state in database per request. Simple deployment with no sticky sessions needed.",
+      "code_example": "See stateless_express_server implementation below"
+    },
+    {
+      "scenario": "Production with 10-50 Concurrent Agents (Medium Scale)",
+      "recommended_solution": "StreamableHTTP with stateful mode + in-memory sessions + sticky sessions",
+      "rationale": "Need conversation context per agent. Can use in-memory Map for session storage. Deploy behind ALB/Nginx with sticky sessions. Sessions survive for duration of agent conversation. Supports SSE for notifications.",
+      "implementation_notes": "Use official reference implementation pattern (everything/streamableHttp.ts). Configure ALB with cookie-based routing. Monitor memory usage per session. Implement session timeout (e.g., 1 hour). Add health checks for orchestration.",
+      "code_example": "See stateful_express_server implementation below"
+    },
+    {
+      "scenario": "Production with 50-100+ Concurrent Agents (Large Scale)",
+      "recommended_solution": "StreamableHTTP with stateful mode + Redis session storage",
+      "rationale": "Need distributed session storage for horizontal scaling. Redis enables session failover across nodes. No sticky sessions required. Can scale to thousands of agents. High availability with Redis cluster. Sessions survive node restarts.",
+      "implementation_notes": "Implement custom Redis-backed session store (no SDK support yet - requires custom code). Store session state and event log in Redis. Use Redis Streams for event replay. Deploy multiple server instances behind standard load balancer. Implement session serialization/deserialization. Reference mcp-db project for patterns (Python), adapt to TypeScript.",
+      "code_example": "See redis_backed_session_server implementation below",
+      "current_limitation": "No official TypeScript SDK support for Redis persistence yet. Need custom implementation. mcp-db (Python) shows pattern but is experimental."
+    },
+    {
+      "scenario": "Serverless Deployment (AWS Lambda, Vercel, Cloud Functions)",
+      "recommended_solution": "StreamableHTTP with stateless mode",
+      "rationale": "Lambda doesn't support long-lived connections. Stateless mode perfect for serverless. Each invocation independent. Scale to zero when idle. Pay per request. Simple deployment model.",
+      "implementation_notes": "Use sessionIdGenerator: undefined. Store any needed state in DynamoDB/Firestore. Keep functions warm with scheduled pings. Set appropriate timeout (30s max for Lambda). No SSE support in serverless. Use JSON responses only.",
+      "code_example": "See serverless_handler implementation below"
+    },
+    {
+      "scenario": "Hybrid Development + Production (Recommended for Midnight MCP)",
+      "recommended_solution": "Support both STDIO and StreamableHTTP transports with shared service layer",
+      "rationale": "STDIO for development (Claude Desktop, local testing). StreamableHTTP for production (multi-agent deployment). Shared MCPServer and service layer. Transport is swappable. Single codebase for both modes.",
+      "implementation_notes": "Keep existing stdio-server.ts for development. Add new http-server.ts for production. Both use same MCPServer class and ServiceDependencies. Environment variable to choose transport (TRANSPORT=stdio|http). WalletOrchestrator remains unchanged. Services layer unchanged.",
+      "architecture": {
+        "shared": ["MCPServer", "ServiceDependencies", "WalletOrchestrator", "All services", "Tools/Resources/Prompts"],
+        "stdio_specific": ["stdio-server.ts", "StdioServerTransport"],
+        "http_specific": ["http-server.ts", "Express app", "StreamableHTTPServerTransport", "Health checks"]
+      },
+      "deployment_modes": {
+        "development": "TRANSPORT=stdio node dist/mcp/stdio-server.js",
+        "production": "TRANSPORT=http node dist/mcp/http-server.js"
+      },
+      "code_example": "See hybrid_architecture implementation below"
+    }
+  ],
+  "community_insights": {
+    "popular_solutions": [
+      "Official TypeScript SDK StreamableHTTPServerTransport for HTTP transport",
+      "Express.js as HTTP framework (most common)",
+      "InMemoryEventStore for session resumability (single server)",
+      "Redis for distributed session storage (custom implementations)",
+      "Stateless mode for serverless deployments",
+      "Stateful mode with sticky sessions for interactive agents",
+      "CORS middleware with MCP headers exposed",
+      "Graceful shutdown patterns for Kubernetes",
+      "Health check endpoints for load balancers"
+    ],
+    "controversial_topics": [
+      "Stateful vs stateless by default - community split on best approach",
+      "SDK should support Redis persistence natively (currently doesn't)",
+      "SSE deprecation in favor of StreamableHTTP (March 2025)",
+      "WebSocket transport proposal (not in spec yet)",
+      "Session persistence complexity for distributed deployments",
+      "Lack of built-in authentication in SDK",
+      "CORS security concerns for local deployments"
+    ],
+    "expert_opinions": [
+      "StreamableHTTP better than SSE for production (200x performance improvement)",
+      "Stateless mode ideal for serverless, stateful for interactive agents",
+      "Redis required for horizontal scaling beyond 50-100 agents",
+      "STDIO transport still best for development and testing",
+      "HTTP/2 multiplexing enables hundreds of concurrent SSE streams",
+      "10-15 connections per CPU core is optimal for Node.js",
+      "Send SSE heartbeats every 30s to prevent proxy timeouts",
+      "Bind to 127.0.0.1, not 0.0.0.0, for security",
+      "Validate Origin header to prevent DNS rebinding attacks",
+      "Graceful shutdown with 30s timeout prevents data loss"
+    ],
+    "scaling_recommendations": {
+      "1_to_10_agents": "Single server, stateless or stateful, no Redis needed",
+      "10_to_50_agents": "Single server or 2-3 servers with sticky sessions, consider Redis",
+      "50_to_100_agents": "3-5 servers with sticky sessions, or 2-3 with Redis (recommended)",
+      "100_to_500_agents": "Redis required, 5-10 servers, standard load balancing",
+      "500_plus_agents": "Redis cluster, 10+ servers, Kubernetes with HPA, monitoring essential"
+    }
+  },
+  "comparison_stdio_vs_http": {
+    "stdio_transport": {
+      "architecture": "Child process with stdin/stdout communication",
+      "connection_model": "Single persistent connection per client",
+      "deployment": "Local process spawned by client (Claude Desktop, CLI)",
+      "scalability": "Single machine, one process per client",
+      "infrastructure": "No network infrastructure required",
+      "session_recovery": "Not supported (process restart = full reset)",
+      "best_for": [
+        "Local development",
+        "Claude Desktop integration",
+        "Single developer testing",
+        "Debugging and prototyping",
+        "Personal AI assistants"
+      ],
+      "limitations": [
+        "Cannot scale horizontally",
+        "No load balancing",
+        "No high availability",
+        "Process-bound lifecycle",
+        "Limited to local machine"
+      ],
+      "current_midnight_mcp_usage": "Primary transport - used for all development and testing"
+    },
+    "streamable_http_transport": {
+      "architecture": "Standalone HTTP server with REST + SSE",
+      "connection_model": "On-demand connections, supports multiple concurrent clients",
+      "deployment": "Network-accessible server (cloud, containers, VMs)",
+      "scalability": "Horizontal scaling with load balancers",
+      "infrastructure": "Works with CDNs, load balancers, API gateways, reverse proxies",
+      "session_recovery": "Built-in with Last-Event-ID and event replay",
+      "best_for": [
+        "Production multi-agent systems",
+        "Cloud deployments",
+        "Horizontal scaling",
+        "High availability",
+        "Distributed agent orchestration",
+        "Multi-tenant SaaS"
+      ],
+      "limitations": [
+        "More complex deployment",
+        "Network configuration required",
+        "Need infrastructure (load balancers, etc.)",
+        "Higher operational overhead",
+        "CORS and security considerations"
+      ],
+      "recommended_for_midnight_mcp": "Production deployment for multi-agent scenarios"
+    },
+    "when_to_switch": [
+      "Need to support multiple concurrent agents (>1)",
+      "Deploying to cloud (AWS, GCP, Azure)",
+      "Need high availability / fault tolerance",
+      "Want horizontal scaling capability",
+      "Building multi-tenant system",
+      "Need session recovery across restarts",
+      "Want to use load balancers / Kubernetes"
+    ],
+    "hybrid_approach": {
+      "recommendation": "Support both transports in same codebase",
+      "implementation": "Shared MCPServer + services, swappable transport layer",
+      "benefits": [
+        "STDIO for development, HTTP for production",
+        "Single codebase, two deployment modes",
+        "Easy testing locally, production-ready deployment",
+        "No code duplication"
+      ]
+    }
+  },
+  "integration_with_midnight_mcp": {
+    "current_architecture": {
+      "entry_point": "src/mcp/stdio-server.ts",
+      "server_class": "MCPServer (src/mcp/server.ts)",
+      "transport": "StdioServerTransport (STDIO only)",
+      "service_orchestration": "WalletOrchestrator (src/services/WalletOrchestrator.ts)",
+      "services": [
+        "WalletService",
+        "TransactionService",
+        "TokenService",
+        "DaoService",
+        "MarketplaceService"
+      ],
+      "session_management": "WalletOrchestrator creates per-agent services with agentId",
+      "storage": "FileManager for wallet backups, SeedManager for seeds",
+      "agent_isolation": "Per-agent via AGENT_ID env var, separate wallet files"
+    },
+    "proposed_http_architecture": {
+      "new_entry_point": "src/mcp/http-server.ts (to be created)",
+      "transport": "StreamableHTTPServerTransport with Express",
+      "session_strategy": "Stateful mode with session ID -> agentId mapping",
+      "service_reuse": "MCPServer and all services unchanged",
+      "orchestrator_usage": "Create one WalletOrchestrator per session/agent",
+      "session_storage": "Map<sessionId, { orchestrator, services }> for medium scale, Redis for large scale",
+      "agent_isolation": "Session ID maps to agentId, each session has own orchestrator",
+      "wallet_persistence": "Existing FileManager pattern continues to work"
+    },
+    "implementation_plan": {
+      "phase_1_stateless_poc": {
+        "goal": "Prove StreamableHTTP works with existing architecture",
+        "scope": "Single POST /mcp endpoint, stateless mode, minimal code",
+        "changes": [
+          "Create src/mcp/http-server.ts",
+          "Add Express + StreamableHTTPServerTransport",
+          "Reuse existing MCPServer class",
+          "Stateless mode (sessionIdGenerator: undefined)",
+          "Each request creates/destroys services (not optimal but proves concept)"
+        ],
+        "testing": "MCP Inspector, simple tool calls",
+        "estimated_effort": "4-8 hours"
+      },
+      "phase_2_stateful_sessions": {
+        "goal": "Support multiple concurrent agents with session management",
+        "scope": "Stateful mode, session storage, proper lifecycle",
+        "changes": [
+          "Change to sessionIdGenerator: () => randomUUID()",
+          "Add session storage: Map<sessionId, SessionContext>",
+          "SessionContext: { agentId, orchestrator, services, createdAt }",
+          "Implement session creation on initialize",
+          "Implement session reuse on subsequent requests",
+          "Add session cleanup on close/timeout",
+          "Add health checks (/health, /health/ready)",
+          "Add metrics endpoint (/metrics)"
+        ],
+        "orchestrator_changes": "Orchestrator lifecycle tied to session lifecycle",
+        "testing": "Multiple concurrent MCP clients",
+        "estimated_effort": "8-16 hours"
+      },
+      "phase_3_production_hardening": {
+        "goal": "Production-ready with monitoring and resilience",
+        "scope": "Error handling, monitoring, deployment",
+        "changes": [
+          "Implement comprehensive error handling",
+          "Add request/response logging",
+          "Add session timeout (1 hour default)",
+          "Add max sessions limit",
+          "Add graceful shutdown",
+          "Add Prometheus metrics",
+          "Add Docker deployment",
+          "Add Kubernetes manifests",
+          "Add load testing",
+          "Document deployment guide"
+        ],
+        "monitoring": "Session count, request rate, error rate, latency p50/p95/p99",
+        "estimated_effort": "16-24 hours"
+      },
+      "phase_4_redis_scaling": {
+        "goal": "Support 100+ concurrent agents with Redis",
+        "scope": "Distributed session storage, horizontal scaling",
+        "changes": [
+          "Implement RedisSessionStore class",
+          "Store session state in Redis JSON",
+          "Store events in Redis Streams",
+          "Implement session reconstruction from Redis",
+          "Update session storage to use Redis",
+          "Add Redis health checks",
+          "Test multi-instance deployment",
+          "Document Redis setup"
+        ],
+        "complexity": "High - no SDK support, custom implementation",
+        "reference": "mcp-db (Python) for patterns",
+        "estimated_effort": "40-60 hours",
+        "note": "Only needed for >50 concurrent agents or HA requirements"
+      }
+    },
+    "recommended_starting_point": "Phase 1 (stateless POC) to validate approach, then Phase 2 (stateful sessions) for production",
+    "effort_estimate": {
+      "minimal_viable_http": "4-8 hours (Phase 1)",
+      "production_ready": "28-48 hours (Phase 1 + 2 + 3)",
+      "enterprise_scale": "68-108 hours (all phases)"
+    }
+  },
+  "code_examples": {
+    "stateless_express_server": {
+      "description": "Simplest StreamableHTTP server - stateless mode, each request independent",
+      "use_case": "Serverless deployments, simple request-response patterns",
+      "file": "src/mcp/http-server-stateless.ts",
+      "code": "import express from 'express';\nimport { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';\nimport { MCPServer } from './server.js';\nimport { initializeServices } from './stdio-server.js'; // Reuse service init\n\nconst app = express();\napp.use(express.json());\n\napp.post('/mcp', async (req, res) => {\n  try {\n    // Create fresh services for each request (stateless)\n    const { services, orchestrator } = await initializeServices();\n    const mcpServer = new MCPServer(services, { name: 'midnight-mcp', version: '2.0.0' });\n    const server = mcpServer.getServer();\n\n    // Create stateless transport\n    const transport = new StreamableHTTPServerTransport({\n      sessionIdGenerator: undefined,\n      enableJsonResponse: true\n    });\n\n    res.on('close', async () => {\n      await orchestrator.stop();\n      transport.close();\n    });\n\n    await server.connect(transport);\n    await transport.handleRequest(req, res, req.body);\n  } catch (error) {\n    console.error('Error:', error);\n    if (!res.headersSent) {\n      res.status(500).json({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' }, id: null });\n    }\n  }\n});\n\nconst port = parseInt(process.env.PORT || '3000');\napp.listen(port, () => console.log(`MCP HTTP Server (stateless) on http://localhost:${port}/mcp`));"
+    },
+    "stateful_express_server": {
+      "description": "Stateful server with session management - maintains context across requests",
+      "use_case": "Interactive agents, conversation history, 10-50 concurrent agents",
+      "file": "src/mcp/http-server-stateful.ts",
+      "code": "import express from 'express';\nimport cors from 'cors';\nimport { randomUUID } from 'crypto';\nimport { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';\nimport { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js';\nimport { MCPServer } from './server.js';\nimport { WalletOrchestrator } from '../services/WalletOrchestrator.js';\nimport { initializeServices } from './stdio-server.js';\n\ninterface SessionContext {\n  transport: StreamableHTTPServerTransport;\n  orchestrator: WalletOrchestrator;\n  services: ServiceDependencies;\n  agentId: string;\n  createdAt: Date;\n}\n\nconst app = express();\napp.use(express.json());\napp.use(cors({\n  origin: '*',\n  methods: 'GET,POST,DELETE',\n  exposedHeaders: ['mcp-session-id', 'last-event-id', 'mcp-protocol-version']\n}));\n\nconst sessions = new Map<string, SessionContext>();\n\napp.post('/mcp', async (req, res) => {\n  const sessionId = req.headers['mcp-session-id'] as string | undefined;\n  \n  if (sessionId && sessions.has(sessionId)) {\n    const session = sessions.get(sessionId)!;\n    await session.transport.handleRequest(req, res, req.body);\n  } else if (!sessionId) {\n    const { services, orchestrator } = await initializeServices();\n    const mcpServer = new MCPServer(services, { name: 'midnight-mcp', version: '2.0.0' });\n    const server = mcpServer.getServer();\n    const eventStore = new InMemoryEventStore();\n    \n    const transport = new StreamableHTTPServerTransport({\n      sessionIdGenerator: () => randomUUID(),\n      eventStore,\n      onsessioninitialized: (sid) => {\n        sessions.set(sid, {\n          transport,\n          orchestrator,\n          services,\n          agentId: process.env.AGENT_ID || 'default',\n          createdAt: new Date()\n        });\n        console.log(`Session created: ${sid}`);\n      }\n    });\n\n    server.onclose = async () => {\n      const sid = transport.sessionId;\n      if (sid && sessions.has(sid)) {\n        const session = sessions.get(sid)!;\n        await session.orchestrator.stop();\n        sessions.delete(sid);\n        console.log(`Session closed: ${sid}`);\n      }\n    };\n\n    await server.connect(transport);\n    await transport.handleRequest(req, res, req.body);\n  } else {\n    res.status(400).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Invalid session' }, id: null });\n  }\n});\n\napp.get('/mcp', async (req, res) => {\n  const sessionId = req.headers['mcp-session-id'] as string | undefined;\n  if (!sessionId || !sessions.has(sessionId)) {\n    res.status(400).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Invalid session' }, id: null });\n    return;\n  }\n  const session = sessions.get(sessionId)!;\n  await session.transport.handleRequest(req, res);\n});\n\napp.delete('/mcp', async (req, res) => {\n  const sessionId = req.headers['mcp-session-id'] as string | undefined;\n  if (!sessionId || !sessions.has(sessionId)) {\n    res.status(400).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Invalid session' }, id: null });\n    return;\n  }\n  const session = sessions.get(sessionId)!;\n  await session.transport.handleRequest(req, res);\n});\n\napp.get('/health', (req, res) => {\n  res.json({ status: 'healthy', sessions: sessions.size, uptime: process.uptime() });\n});\n\nconst port = parseInt(process.env.PORT || '3000');\nconst httpServer = app.listen(port, () => console.log(`MCP HTTP Server on http://localhost:${port}/mcp`));\n\nprocess.on('SIGTERM', async () => {\n  console.log('Shutting down...');\n  httpServer.close();\n  for (const [sid, session] of sessions) {\n    await session.orchestrator.stop();\n    session.transport.close();\n  }\n  process.exit(0);\n});"
+    },
+    "hybrid_architecture": {
+      "description": "Support both STDIO and HTTP transports from same codebase",
+      "use_case": "Development (STDIO) + Production (HTTP) with single codebase",
+      "files": {
+        "main_entry": "src/mcp/index.ts",
+        "stdio": "src/mcp/stdio-server.ts (existing)",
+        "http": "src/mcp/http-server.ts (new)"
+      },
+      "main_code": "// src/mcp/index.ts\nimport { createStdioServer } from './stdio-server.js';\nimport { createHttpServer } from './http-server.js';\n\nconst transport = process.env.TRANSPORT || 'stdio';\n\nasync function main() {\n  if (transport === 'stdio') {\n    console.error('Starting MCP server with STDIO transport');\n    const server = await createStdioServer();\n    await server.start();\n  } else if (transport === 'http') {\n    console.error('Starting MCP server with HTTP transport');\n    const server = await createHttpServer();\n    await server.start();\n  } else {\n    throw new Error(`Unknown transport: ${transport}`);\n  }\n}\n\nmain().catch(console.error);",
+      "usage": {
+        "development": "TRANSPORT=stdio node dist/mcp/index.js",
+        "production": "TRANSPORT=http PORT=3000 node dist/mcp/index.js"
+      }
+    },
+    "redis_session_store_interface": {
+      "description": "Interface for Redis-backed session storage (future implementation)",
+      "use_case": "100+ concurrent agents, horizontal scaling, high availability",
+      "code": "// src/mcp/redis-session-store.ts (future implementation)\nimport Redis from 'ioredis';\nimport { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';\n\ninterface SerializedSession {\n  sessionId: string;\n  agentId: string;\n  state: any;\n  createdAt: string;\n  lastAccess: string;\n}\n\nexport class RedisSessionStore {\n  private redis: Redis;\n  \n  constructor(redisUrl: string) {\n    this.redis = new Redis(redisUrl);\n  }\n  \n  async saveSession(sessionId: string, context: SessionContext): Promise<void> {\n    const serialized: SerializedSession = {\n      sessionId,\n      agentId: context.agentId,\n      state: context.services.serialize(), // Need to implement\n      createdAt: context.createdAt.toISOString(),\n      lastAccess: new Date().toISOString()\n    };\n    await this.redis.set(`mcp:session:${sessionId}`, JSON.stringify(serialized), 'EX', 3600);\n  }\n  \n  async loadSession(sessionId: string): Promise<SerializedSession | null> {\n    const data = await this.redis.get(`mcp:session:${sessionId}`);\n    return data ? JSON.parse(data) : null;\n  }\n  \n  async deleteSession(sessionId: string): Promise<void> {\n    await this.redis.del(`mcp:session:${sessionId}`);\n  }\n  \n  async saveEvent(sessionId: string, eventId: string, event: any): Promise<void> {\n    await this.redis.xadd(`mcp:events:${sessionId}`, eventId, 'data', JSON.stringify(event));\n  }\n  \n  async replayEvents(sessionId: string, afterEventId: string): Promise<any[]> {\n    const events = await this.redis.xrange(`mcp:events:${sessionId}`, afterEventId, '+');\n    return events.map(([id, data]) => ({ id, ...JSON.parse(data[1]) }));\n  }\n}\n\n// Note: This requires implementing serialization/deserialization of service state\n// Current WalletOrchestrator and services don't support this yet\n// Would need to add serialize()/deserialize() methods to services\n// Reference: mcp-db project (Python) for patterns"
+    },
+    "health_check_endpoints": {
+      "description": "Comprehensive health checks for Kubernetes/production",
+      "code": "// Add to http-server.ts\n\napp.get('/health', (req, res) => {\n  res.status(200).json({\n    status: 'healthy',\n    timestamp: new Date().toISOString(),\n    uptime: process.uptime()\n  });\n});\n\napp.get('/health/ready', async (req, res) => {\n  try {\n    const checks = {\n      sessions: sessions.size < 100, // Max sessions check\n      memory: process.memoryUsage().heapUsed < 1024 * 1024 * 1024, // <1GB\n      // Add more checks: database, external APIs, etc.\n    };\n    \n    const ready = Object.values(checks).every(check => check);\n    res.status(ready ? 200 : 503).json({ ready, checks });\n  } catch (error) {\n    res.status(503).json({ ready: false, error: String(error) });\n  }\n});\n\napp.get('/metrics', (req, res) => {\n  const metrics = [\n    `# HELP mcp_server_up Server is running`,\n    `# TYPE mcp_server_up gauge`,\n    `mcp_server_up 1`,\n    `# HELP mcp_sessions_active Active session count`,\n    `# TYPE mcp_sessions_active gauge`,\n    `mcp_sessions_active ${sessions.size}`,\n    `# HELP mcp_server_uptime_seconds Server uptime`,\n    `# TYPE mcp_server_uptime_seconds counter`,\n    `mcp_server_uptime_seconds ${process.uptime()}`\n  ];\n  res.set('Content-Type', 'text/plain; version=0.0.4');\n  res.send(metrics.join('\\n'));\n});"
+    },
+    "graceful_shutdown": {
+      "description": "Production-grade graceful shutdown handling",
+      "code": "// Add to http-server.ts\n\nlet isShuttingDown = false;\n\napp.use((req, res, next) => {\n  if (isShuttingDown) {\n    res.setHeader('Connection', 'close');\n    return res.status(503).json({ error: 'Server is shutting down' });\n  }\n  next();\n});\n\nasync function gracefulShutdown(signal: string) {\n  console.log(`Received ${signal}, shutting down gracefully...`);\n  isShuttingDown = true;\n  \n  httpServer.close(async () => {\n    console.log('HTTP server closed');\n    \n    console.log(`Cleaning up ${sessions.size} active sessions...`);\n    const cleanupPromises = Array.from(sessions.entries()).map(async ([sessionId, session]) => {\n      try {\n        await session.orchestrator.stop();\n        session.transport.close();\n        sessions.delete(sessionId);\n      } catch (error) {\n        console.error(`Error closing session ${sessionId}:`, error);\n      }\n    });\n    \n    await Promise.all(cleanupPromises);\n    console.log('All sessions cleaned up');\n    process.exit(0);\n  });\n  \n  setTimeout(() => {\n    console.error('Could not close connections in time, forcing shutdown');\n    process.exit(1);\n  }, 30000); // 30 second grace period\n}\n\nprocess.on('SIGTERM', () => gracefulShutdown('SIGTERM'));\nprocess.on('SIGINT', () => gracefulShutdown('SIGINT'));\nprocess.on('uncaughtException', (error) => {\n  console.error('Uncaught exception:', error);\n  gracefulShutdown('uncaughtException');\n});\nprocess.on('unhandledRejection', (reason) => {\n  console.error('Unhandled rejection:', reason);\n  gracefulShutdown('unhandledRejection');\n});"
+    }
+  },
+  "deployment_examples": {
+    "kubernetes": {
+      "deployment": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: midnight-mcp\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: midnight-mcp\n  template:\n    metadata:\n      labels:\n        app: midnight-mcp\n    spec:\n      containers:\n      - name: mcp-server\n        image: midnight-mcp:latest\n        env:\n        - name: TRANSPORT\n          value: http\n        - name: PORT\n          value: \"3000\"\n        ports:\n        - containerPort: 3000\n        livenessProbe:\n          httpGet:\n            path: /health\n            port: 3000\n          initialDelaySeconds: 30\n          periodSeconds: 30\n        readinessProbe:\n          httpGet:\n            path: /health/ready\n            port: 3000\n          initialDelaySeconds: 10\n          periodSeconds: 10\n        resources:\n          limits:\n            memory: 2Gi\n            cpu: 1000m\n          requests:\n            memory: 1Gi\n            cpu: 500m",
+      "service": "apiVersion: v1\nkind: Service\nmetadata:\n  name: midnight-mcp\nspec:\n  type: LoadBalancer\n  selector:\n    app: midnight-mcp\n  ports:\n  - port: 80\n    targetPort: 3000\n  sessionAffinity: ClientIP # For stateful sessions without Redis",
+      "hpa": "apiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: midnight-mcp-hpa\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: midnight-mcp\n  minReplicas: 3\n  maxReplicas: 10\n  metrics:\n  - type: Resource\n    resource:\n      name: cpu\n      target:\n        type: Utilization\n        averageUtilization: 70"
+    },
+    "docker_compose": {
+      "compose": "version: '3.8'\nservices:\n  mcp-server:\n    build: .\n    environment:\n      - TRANSPORT=http\n      - PORT=3000\n      - REDIS_URL=redis://redis:6379\n    ports:\n      - \"3000:3000\"\n    depends_on:\n      - redis\n    restart: unless-stopped\n  \n  redis:\n    image: redis:7-alpine\n    ports:\n      - \"6379:6379\"\n    volumes:\n      - redis-data:/data\n    restart: unless-stopped\n\nvolumes:\n  redis-data:"
+    },
+    "aws_lambda": {
+      "handler": "// src/lambda.ts\nimport serverless from 'serverless-http';\nimport { app } from './mcp/http-server-stateless.js';\n\nexport const handler = serverless(app);",
+      "serverless_config": "service: midnight-mcp\nprovider:\n  name: aws\n  runtime: nodejs20.x\n  timeout: 30\n  environment:\n    TRANSPORT: http\nfunctions:\n  mcp:\n    handler: dist/lambda.handler\n    events:\n      - http:\n          path: /mcp\n          method: post\n          cors: true"
+    }
+  },
+  "testing_strategies": {
+    "local_development": {
+      "tools": ["MCP Inspector", "curl", "Postman"],
+      "approach": "Start server locally, use MCP Inspector to connect via HTTP, test tool calls manually",
+      "example": "# Start server\nTRANSPORT=http PORT=3000 node dist/mcp/index.js\n\n# Test with curl\ncurl -X POST http://localhost:3000/mcp \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{},\"id\":1}'"
+    },
+    "integration_testing": {
+      "approach": "Spawn HTTP server in test, make requests with MCP client",
+      "example": "// test/integration/http-transport.test.ts\nimport { createHttpServer } from '../../src/mcp/http-server.js';\nimport { Client } from '@modelcontextprotocol/sdk/client/index.js';\nimport { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';\n\ntest('HTTP transport works', async () => {\n  const server = await createHttpServer();\n  await server.start();\n  \n  const client = new Client({ name: 'test-client', version: '1.0.0' });\n  const transport = new StreamableHTTPClientTransport('http://localhost:3000/mcp');\n  await client.connect(transport);\n  \n  const tools = await client.listTools();\n  expect(tools.tools.length).toBeGreaterThan(0);\n  \n  await client.close();\n  await server.stop();\n});"
+    },
+    "load_testing": {
+      "tools": ["k6", "artillery", "Apache Bench"],
+      "approach": "Simulate 100+ concurrent agents making tool calls",
+      "example": "// k6-load-test.js\nimport http from 'k6/http';\nimport { check, sleep } from 'k6';\n\nexport const options = {\n  stages: [\n    { duration: '2m', target: 50 },\n    { duration: '5m', target: 100 },\n    { duration: '2m', target: 0 },\n  ],\n};\n\nexport default function () {\n  const payload = JSON.stringify({\n    jsonrpc: '2.0',\n    method: 'tools/call',\n    params: { name: 'walletStatus', arguments: {} },\n    id: 1\n  });\n  \n  const res = http.post('http://localhost:3000/mcp', payload, {\n    headers: { 'Content-Type': 'application/json' },\n  });\n  \n  check(res, {\n    'status is 200': (r) => r.status === 200,\n    'response time < 500ms': (r) => r.timings.duration < 500,\n  });\n  \n  sleep(1);\n}"
+    }
+  },
+  "references": [
+    {
+      "id": 1,
+      "title": "Model Context Protocol - Transports Specification",
+      "url": "https://modelcontextprotocol.io/specification/2025-03-26/basic/transports",
+      "type": "official_spec",
+      "date": "2025-03-26"
+    },
+    {
+      "id": 2,
+      "title": "TypeScript SDK - StreamableHTTPServerTransport",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk",
+      "type": "official_sdk",
+      "date": "2025"
+    },
+    {
+      "id": 3,
+      "title": "MCP Servers - Everything Example",
+      "url": "https://github.com/modelcontextprotocol/servers/blob/main/src/everything/streamableHttp.ts",
+      "type": "reference_implementation",
+      "date": "2025"
+    },
+    {
+      "id": 4,
+      "title": "StreamableHTTP for Scalable MCP Deployments",
+      "url": "https://mcpcat.io/guides/setting-up-streamablehttp-scalable-deployments/",
+      "type": "guide",
+      "date": "2025"
+    },
+    {
+      "id": 5,
+      "title": "Configure MCP Servers for Multiple Connections",
+      "url": "https://mcpcat.io/guides/configuring-mcp-servers-multiple-simultaneous-connections/",
+      "type": "guide",
+      "date": "2025"
+    },
+    {
+      "id": 6,
+      "title": "Build Health Check Endpoints for MCP Servers",
+      "url": "https://mcpcat.io/guides/building-health-check-endpoint-mcp-server/",
+      "type": "guide",
+      "date": "2025"
+    },
+    {
+      "id": 7,
+      "title": "mcp-db - Session and Event Store for MCP",
+      "url": "https://github.com/bh-rat/mcp-db",
+      "type": "community_library",
+      "date": "2025",
+      "note": "Python only, experimental"
+    },
+    {
+      "id": 8,
+      "title": "AWS Sample Serverless MCP Servers",
+      "url": "https://github.com/aws-samples/sample-serverless-mcp-servers",
+      "type": "cloud_deployment_example",
+      "date": "2025"
+    },
+    {
+      "id": 9,
+      "title": "Deploy Remote MCP Servers to Koyeb",
+      "url": "https://www.koyeb.com/tutorials/deploy-remote-mcp-servers-to-koyeb-using-streamable-http-transport",
+      "type": "tutorial",
+      "date": "2025"
+    },
+    {
+      "id": 10,
+      "title": "StreamableHTTP vs SSE - Why MCP Switched",
+      "url": "https://blog.fka.dev/blog/2025-06-06-why-mcp-deprecated-sse-and-go-with-streamable-http/",
+      "type": "technical_analysis",
+      "date": "2025"
+    }
+  ],
+  "summary": {
+    "key_findings": [
+      "StreamableHTTP is the recommended transport for production multi-agent MCP servers",
+      "Official TypeScript SDK provides StreamableHTTPServerTransport with full session management",
+      "Three deployment modes: stateless (serverless), stateful with sticky sessions (small-medium scale), stateful with Redis (large scale 100+)",
+      "Midnight MCP current architecture (STDIO) works perfectly for development, needs HTTP transport for production",
+      "Existing MCPServer and service layer can be reused unchanged - only transport layer needs to change",
+      "Phase 1 (stateless POC) can be done in 4-8 hours to validate approach",
+      "Phase 2 (stateful sessions) adds 8-16 hours for production-ready multi-agent support",
+      "Redis-backed scaling (Phase 4) requires 40-60 hours and custom implementation (no SDK support)",
+      "Recommended approach: hybrid architecture supporting both STDIO (dev) and HTTP (prod) from same codebase"
+    ],
+    "recommended_action": "Start with Phase 1 (stateless POC) to validate StreamableHTTP integration with Midnight MCP architecture, then proceed to Phase 2 (stateful sessions) for production deployment supporting 10-50 concurrent agents. Defer Phase 4 (Redis) until actually needed (50+ agents).",
+    "immediate_next_steps": [
+      "Create src/mcp/http-server.ts with stateless mode",
+      "Test with MCP Inspector",
+      "Validate tool calls work over HTTP",
+      "Measure baseline performance",
+      "Document findings"
+    ]
+  }
+}

@@ -2,18 +2,16 @@
  * MCP Module Exports
  *
  * Central export file for all MCP components.
+ *
+ * NEW: Using tool adapter pattern - handlers no longer needed
  */
 
 // Server
 export { MCPServer } from './server.js';
 
-// Handlers
-export { WalletHandler } from './handlers/wallet-handler.js';
-export { TokenHandler } from './handlers/token-handler.js';
-export { DaoHandler } from './handlers/dao-handler.js';
-export { MarketplaceHandler } from './handlers/marketplace-handler.js';
-export { ResourceHandler } from './handlers/resource-handler.js';
-export { PromptHandler } from './handlers/prompt-handler.js';
+// Adapter
+export { createToolAdapter } from './adapter/tool-adapter.js';
+export type { ToolAdapter, ToolDefinition } from './adapter/types.js';
 
 // Tools
 export {

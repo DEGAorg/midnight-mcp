@@ -79,7 +79,7 @@ function createWalletFactory(appConfig: AppConfig): () => Promise<Wallet & Resou
 
     // Build new wallet from seed
     log('Building fresh wallet from seed');
-    const wallet = await WalletBuilder.buildFromSeed(
+    const wallet = await WalletBuilder.build(
       indexer,
       indexerWS,
       proofServer,

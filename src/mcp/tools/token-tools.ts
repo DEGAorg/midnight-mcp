@@ -2,10 +2,14 @@
  * Token Tools - MCP Tool Definitions for Shielded Tokens
  *
  * Defines all token-related MCP tools with Zod validation.
+ *
+ * NEW: Each tool now has an execute function that receives services.
  */
 
 import { z } from 'zod';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { ServiceDependencies } from '../types.js';
+import type { ToolDefinition } from '../adapter/types.js';
 
 /**
  * Midnight Address Validation (Bech32m)
@@ -70,38 +74,63 @@ export type SendTokenInput = z.infer<typeof SendTokenSchema>;
 export type ListTokensInput = z.infer<typeof ListTokensSchema>;
 
 /**
- * Tool Definitions
+ * Tool Definitions with Execute Functions
  */
-export const GET_TOKEN_BALANCE_TOOL: Tool = {
+export const getTokenBalanceTool: ToolDefinition = {
   name: "getTokenBalance",
   description: "Get the balance of a specific shielded token",
-  inputSchema: GetTokenBalanceSchema.shape
+  inputSchema: GetTokenBalanceSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { tokenName } = GetTokenBalanceSchema.parse(args);
+    return await services.tokenService.getTokenBalance(tokenName);
+  }
 };
 
-export const REGISTER_TOKEN_TOOL: Tool = {
+export const registerTokenTool: ToolDefinition = {
   name: "registerToken",
   description: "Register a new shielded token for use with the wallet",
-  inputSchema: RegisterTokenSchema.shape
+  inputSchema: RegisterTokenSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { name, symbol, contractAddress, decimals } = RegisterTokenSchema.parse(args);
+    // TokenService.registerToken takes individual params, not an object
+    return services.tokenService.registerToken(
+      name,
+      symbol,
+      contractAddress,
+      decimals
+    );
+  }
 };
 
-export const SEND_TOKEN_TOOL: Tool = {
+export const sendTokenTool: ToolDefinition = {
   name: "sendToken",
   description: "Send shielded tokens to another Midnight address",
-  inputSchema: SendTokenSchema.shape
+  inputSchema: SendTokenSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { tokenName, destinationAddress, amount } = SendTokenSchema.parse(args);
+    return await services.tokenService.sendToken(
+      tokenName,
+      destinationAddress,
+      BigInt(amount)
+    );
+  }
 };
 
-export const LIST_TOKENS_TOOL: Tool = {
+export const listTokensTool: ToolDefinition = {
   name: "listTokens",
   description: "List all registered shielded tokens",
-  inputSchema: ListTokensSchema.shape
+  inputSchema: ListTokensSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    return await services.tokenService.listTokens();
+  }
 };
 
 /**
- * All token tools
+ * All token tools (ToolDefinition format)
  */
-export const TOKEN_TOOLS: Tool[] = [
-  GET_TOKEN_BALANCE_TOOL,
-  REGISTER_TOKEN_TOOL,
-  SEND_TOKEN_TOOL,
-  LIST_TOKENS_TOOL
+export const TOKEN_TOOLS: ToolDefinition[] = [
+  getTokenBalanceTool,
+  registerTokenTool,
+  sendTokenTool,
+  listTokensTool
 ];

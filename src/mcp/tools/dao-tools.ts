@@ -2,10 +2,14 @@
  * DAO Tools - MCP Tool Definitions for DAO Operations
  *
  * Defines all DAO-related MCP tools with Zod validation.
+ *
+ * NEW: Each tool now has an execute function that receives services.
  */
 
 import { z } from 'zod';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { ServiceDependencies } from '../types.js';
+import type { ToolDefinition } from '../adapter/types.js';
 
 /**
  * Schemas
@@ -70,59 +74,85 @@ export type GetVotingPowerInput = z.infer<typeof GetVotingPowerSchema>;
 export type CloseDaoElectionInput = z.infer<typeof CloseDaoElectionSchema>;
 
 /**
- * Tool Definitions
+ * Tool Definitions with Execute Functions
  */
-export const GET_DAO_CONFIG_TOOL: Tool = {
-  name: "getDaoConfig",
-  description: "Get the current DAO configuration and settings",
-  inputSchema: GetDaoConfigSchema.shape
-};
 
-export const OPEN_DAO_ELECTION_TOOL: Tool = {
+// Simplified schema for openElection - just takes electionId
+export const OpenElectionSimpleSchema = z.object({
+  electionId: z.string()
+    .min(1)
+    .max(32)
+    .describe("Election identifier (max 32 chars)")
+});
+
+// Simplified schema for castVote - just takes voteChoice
+export const CastVoteSimpleSchema = z.object({
+  voteChoice: z.enum(['yes', 'no', 'absent'], {
+    errorMap: () => ({ message: "Vote choice must be 'yes', 'no', or 'absent'" })
+  })
+    .describe("Vote choice: yes, no, or absent")
+});
+
+// Schema for fundTreasury
+export const FundTreasurySchema = z.object({
+  amountDecimal: z.string()
+    .regex(/^\d+(\.\d+)?$/, {
+      message: "Amount must be a valid decimal number"
+    })
+    .describe("Amount to fund in decimal format (e.g., '100.5')")
+});
+
+export const openDaoElectionTool: ToolDefinition = {
   name: "openDaoElection",
-  description: "Open a new DAO election/proposal for voting",
-  inputSchema: OpenDaoElectionSchema.shape
+  description: "Open a new DAO election for voting",
+  inputSchema: OpenElectionSimpleSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { electionId } = OpenElectionSimpleSchema.parse(args);
+    // DaoService.openElection only takes electionId
+    return await services.daoService.openElection(electionId);
+  }
 };
 
-export const CAST_DAO_VOTE_TOOL: Tool = {
+export const castDaoVoteTool: ToolDefinition = {
   name: "castDaoVote",
-  description: "Cast a vote on an active DAO election",
-  inputSchema: CastDaoVoteSchema.shape
+  description: "Cast a vote on the active DAO election",
+  inputSchema: CastVoteSimpleSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { voteChoice } = CastVoteSimpleSchema.parse(args);
+    // DaoService.castVote only takes voteChoice string
+    return await services.daoService.castVote(voteChoice);
+  }
 };
 
-export const GET_DAO_ELECTION_TOOL: Tool = {
-  name: "getDaoElection",
-  description: "Get details of a specific DAO election including vote counts",
-  inputSchema: GetDaoElectionSchema.shape
-};
-
-export const LIST_DAO_ELECTIONS_TOOL: Tool = {
-  name: "listDaoElections",
-  description: "List all DAO elections with optional status filter",
-  inputSchema: ListDaoElectionsSchema.shape
-};
-
-export const GET_VOTING_POWER_TOOL: Tool = {
-  name: "getVotingPower",
-  description: "Get the wallet's voting power (token balance for governance)",
-  inputSchema: GetVotingPowerSchema.shape
-};
-
-export const CLOSE_DAO_ELECTION_TOOL: Tool = {
+export const closeDaoElectionTool: ToolDefinition = {
   name: "closeDaoElection",
   description: "Close a DAO election and finalize results",
-  inputSchema: CloseDaoElectionSchema.shape
+  inputSchema: CloseDaoElectionSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { electionId } = CloseDaoElectionSchema.parse(args);
+    return await services.daoService.closeElection(electionId);
+  }
+};
+
+export const fundDaoTreasuryTool: ToolDefinition = {
+  name: "fundDaoTreasury",
+  description: "Fund the DAO treasury with tokens",
+  inputSchema: FundTreasurySchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { amountDecimal } = FundTreasurySchema.parse(args);
+    return await services.daoService.fundTreasury(amountDecimal);
+  }
 };
 
 /**
- * All DAO tools
+ * All DAO tools (ToolDefinition format)
+ *
+ * NOTE: Reduced to only implemented methods.
+ * TODO: Add getConfig, getElection, listElections, getVotingPower when implemented in DaoService
  */
-export const DAO_TOOLS: Tool[] = [
-  GET_DAO_CONFIG_TOOL,
-  OPEN_DAO_ELECTION_TOOL,
-  CAST_DAO_VOTE_TOOL,
-  GET_DAO_ELECTION_TOOL,
-  LIST_DAO_ELECTIONS_TOOL,
-  GET_VOTING_POWER_TOOL,
-  CLOSE_DAO_ELECTION_TOOL
+export const DAO_TOOLS: ToolDefinition[] = [
+  openDaoElectionTool,
+  castDaoVoteTool,
+  closeDaoElectionTool,
+  fundDaoTreasuryTool
 ];
