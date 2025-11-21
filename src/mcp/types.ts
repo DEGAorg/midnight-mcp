@@ -5,8 +5,8 @@
 import type { WalletService } from '../services/wallet/WalletService.js';
 import type { TransactionService } from '../services/wallet/TransactionService.js';
 import type { TokenService } from '../services/wallet/TokenService.js';
-import type { DaoService } from '../services/wallet/DaoService.js';
-import type { MarketplaceService } from '../services/wallet/MarketplaceService.js';
+import type { DaoService } from '../services/contract/dao/DaoService.js';
+import type { MarketplaceService } from '../services/contract/marketplace/MarketplaceService.js';
 
 /**
  * MCP Tool Response
