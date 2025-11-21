@@ -3,6 +3,11 @@
  *
  * Type definitions for multi-agent session management.
  * Supports per-session service isolation with LRU eviction.
+ *
+ * ARCHITECTURE:
+ * - sessionId from HTTP header = agentId for system
+ * - Seeds loaded via SeedManager.getAgentSeed(agentId)
+ * - Files stored via FileManager with agentId
  */
 
 import type { ServiceDependencies } from '../types.js';
@@ -12,8 +17,8 @@ import type { WalletOrchestrator } from '../../services/WalletOrchestrator.js';
  * Session data stored per agent
  */
 export interface Session {
-  /** Unique session identifier */
-  sessionId: string;
+  /** Agent ID (same as sessionId from HTTP header) */
+  agentId: string;
 
   /** Service dependencies for this session */
   services: ServiceDependencies;
@@ -29,6 +34,9 @@ export interface Session {
 
   /** Session state */
   state: 'initializing' | 'active' | 'closing' | 'closed';
+
+  /** Set of agent IDs tracked in this session */
+  agentIds: Set<string>;
 }
 
 /**
@@ -46,14 +54,20 @@ export interface SessionManagerConfig {
 
   /** Base configuration for wallet orchestrators */
   baseConfig: {
-    /** Network URL */
-    networkUrl: string;
+    /** Indexer GraphQL endpoint */
+    indexer: string;
 
-    /** Indexer URL */
-    indexerUrl: string;
+    /** Indexer WebSocket endpoint */
+    indexerWS: string;
 
-    /** Proving server URL */
-    provingServerUrl: string;
+    /** ZKP proof server endpoint */
+    proofServer: string;
+
+    /** Midnight node RPC endpoint */
+    node: string;
+
+    /** Wallet filename pattern (default: 'wallet') */
+    walletFilename: string;
 
     /** DAO contract address (optional) */
     daoContractAddress?: string;
@@ -65,18 +79,23 @@ export interface SessionManagerConfig {
 
 /**
  * Session creation options
+ *
+ * NOTE: No seed parameter - seeds are loaded from SeedManager
  */
 export interface CreateSessionOptions {
-  /** Session ID */
-  sessionId: string;
+  /**
+   * Agent ID (typically from Mcp-Session-Id HTTP header)
+   * This is used to:
+   * - Load seed via SeedManager.getAgentSeed(agentId)
+   * - Create wallet path via FileManager
+   * - Initialize orchestrator with agentId
+   */
+  agentId: string;
 
-  /** Agent-specific seed for wallet */
-  seed: string;
-
-  /** Override DAO contract address */
+  /** Override DAO contract address for this session */
   daoContractAddress?: string;
 
-  /** Override marketplace contract address */
+  /** Override marketplace contract address for this session */
   marketplaceContractAddress?: string;
 }
 
@@ -101,4 +120,10 @@ export interface SessionStats {
 
   /** Most recently accessed session age */
   newestSessionAge: number;
+
+  /** Maximum sessions allowed */
+  maxSessions: number;
+
+  /** Utilization percentage */
+  utilizationPercent: number;
 }
