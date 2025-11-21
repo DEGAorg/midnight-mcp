@@ -46,6 +46,7 @@ const ConfigSchema = z.object({
   // Wallet Configuration
   WALLET_FILENAME: z.string().default(DEFAULT_WALLET_FILENAME),
   WALLET_BACKUP_FOLDER: z.string().default(DEFAULT_WALLET_BACKUP_FOLDER),
+  WALLET_SEED: z.string().min(1, 'WALLET_SEED is required for wallet creation'),
 
   // External Proof Server Configuration
   USE_EXTERNAL_PROOF_SERVER: z.boolean().default(false),
@@ -53,6 +54,10 @@ const ConfigSchema = z.object({
   INDEXER: z.string().url().optional(),
   INDEXER_WS: z.string().url().optional(),
   MN_NODE: z.string().url().optional(),
+
+  // Contract Configuration
+  DAO_CONTRACT_ADDRESS: z.string().optional(),
+  MARKETPLACE_CONTRACT_ADDRESS: z.string().optional(),
 
   // Server Configuration
   API_PORT: z.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
@@ -93,11 +98,14 @@ export function loadConfig(envPath?: string): AppConfig {
     NETWORK_ID: process.env.NETWORK_ID as typeof SUPPORTED_NETWORK_IDS[number] | undefined,
     WALLET_FILENAME: process.env.WALLET_FILENAME,
     WALLET_BACKUP_FOLDER: process.env.WALLET_BACKUP_FOLDER,
+    WALLET_SEED: process.env.WALLET_SEED,
     USE_EXTERNAL_PROOF_SERVER: process.env.USE_EXTERNAL_PROOF_SERVER === 'true',
     PROOF_SERVER: process.env.PROOF_SERVER,
     INDEXER: process.env.INDEXER,
     INDEXER_WS: process.env.INDEXER_WS,
     MN_NODE: process.env.MN_NODE,
+    DAO_CONTRACT_ADDRESS: process.env.DAO_CONTRACT_ADDRESS,
+    MARKETPLACE_CONTRACT_ADDRESS: process.env.MARKETPLACE_CONTRACT_ADDRESS,
     API_PORT: process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : undefined,
     SERVER_PORT: process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT, 10) : undefined,
     WALLET_SERVER_HOST: process.env.WALLET_SERVER_HOST,
