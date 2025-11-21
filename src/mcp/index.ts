@@ -5,10 +5,12 @@
  *
  * NEW: Using tool adapter pattern - handlers no longer needed
  * NEW: SessionManager for multi-agent support
+ * NEW: HTTP server with StreamableHTTP transport for 100+ concurrent agents
  */
 
-// Server
+// Servers
 export { MCPServer } from './server.js';
+export { startHttpServer, type HttpServerConfig } from './http-server.js';
 
 // Session Management
 export { SessionManager } from './session/index.js';
@@ -18,6 +20,15 @@ export type {
   CreateSessionOptions,
   SessionStats
 } from './session/index.js';
+
+// Middleware
+export {
+  corsMiddleware,
+  requestLoggerMiddleware,
+  requestTimeoutMiddleware,
+  errorHandlerMiddleware,
+  notFoundMiddleware
+} from './middleware/index.js';
 
 // Adapter
 export { createToolAdapter } from './adapter/tool-adapter.js';
