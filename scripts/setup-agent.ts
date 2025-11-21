@@ -2,8 +2,8 @@
 import { program } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileManager, FileType } from '../src/utils/file-manager.js';
-import { SeedManager } from '../src/utils/seed-manager.js';
+import { FileManager, FileType } from '../src/lib/utils/file-manager.js';
+import { SeedManager } from '../src/lib/utils/seed-manager.js';
 import * as bip39 from 'bip39';
 import { randomBytes } from 'crypto';
 import chalk from 'chalk';

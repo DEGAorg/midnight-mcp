@@ -17,6 +17,7 @@ import type { ServiceDependencies } from './types.js';
 import { WalletOrchestrator, type WalletOrchestratorConfig } from '../services/WalletOrchestrator.js';
 import { loadConfig, getNetworkId, getWalletBackupFolder, type AppConfig } from '../lib/config/env.js';
 import { FileManager, FileType } from '../lib/utils/file-manager.js';
+import { SeedManager } from '../lib/utils/seed-manager.js';
 
 /**
  * Simple logging to stderr (stdout is reserved for JSON-RPC)
@@ -39,7 +40,10 @@ function createWalletFactory(appConfig: AppConfig): () => Promise<Wallet & Resou
   const proofServer = appConfig.PROOF_SERVER || 'http://127.0.0.1:6300';
   const fileManager = FileManager.getInstance();
   const walletFilename = appConfig.WALLET_FILENAME;
-  const seed = appConfig.WALLET_SEED;
+  const agentId = appConfig.AGENT_ID;
+
+  // Load seed from agent-specific storage (not from env!)
+  const seed = SeedManager.getAgentSeed(agentId);
 
   return async (): Promise<Wallet & Resource> => {
     log("Building wallet from seed...");
@@ -115,6 +119,11 @@ async function initializeServices(): Promise<{
   const appConfig = loadConfig();
   log(`Agent ID: ${appConfig.AGENT_ID}`);
   log(`Network: ${appConfig.NETWORK_ID}`);
+
+  // Initialize SeedManager for this agent
+  // Seeds are stored per-agent in .storage/seeds/{agentId}/seed
+  SeedManager.initialize('.storage');
+  log(`SeedManager initialized for agent: ${appConfig.AGENT_ID}`);
 
   // Set network ID globally
   const networkId = getNetworkId(appConfig);

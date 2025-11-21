@@ -46,7 +46,7 @@ const ConfigSchema = z.object({
   // Wallet Configuration
   WALLET_FILENAME: z.string().default(DEFAULT_WALLET_FILENAME),
   WALLET_BACKUP_FOLDER: z.string().default(DEFAULT_WALLET_BACKUP_FOLDER),
-  WALLET_SEED: z.string().min(1, 'WALLET_SEED is required for wallet creation'),
+  // NOTE: WALLET_SEED is NOT in env - it's loaded per-agent from .storage/seeds/{agentId}/seed via SeedManager
 
   // External Proof Server Configuration
   USE_EXTERNAL_PROOF_SERVER: z.boolean().default(false),
@@ -98,7 +98,6 @@ export function loadConfig(envPath?: string): AppConfig {
     NETWORK_ID: process.env.NETWORK_ID as typeof SUPPORTED_NETWORK_IDS[number] | undefined,
     WALLET_FILENAME: process.env.WALLET_FILENAME,
     WALLET_BACKUP_FOLDER: process.env.WALLET_BACKUP_FOLDER,
-    WALLET_SEED: process.env.WALLET_SEED,
     USE_EXTERNAL_PROOF_SERVER: process.env.USE_EXTERNAL_PROOF_SERVER === 'true',
     PROOF_SERVER: process.env.PROOF_SERVER,
     INDEXER: process.env.INDEXER,
