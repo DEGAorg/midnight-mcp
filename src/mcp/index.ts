@@ -4,10 +4,20 @@
  * Central export file for all MCP components.
  *
  * NEW: Using tool adapter pattern - handlers no longer needed
+ * NEW: SessionManager for multi-agent support
  */
 
 // Server
 export { MCPServer } from './server.js';
+
+// Session Management
+export { SessionManager } from './session/index.js';
+export type {
+  Session,
+  SessionManagerConfig,
+  CreateSessionOptions,
+  SessionStats
+} from './session/index.js';
 
 // Adapter
 export { createToolAdapter } from './adapter/tool-adapter.js';
