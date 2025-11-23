@@ -8,7 +8,6 @@
 import type { Request, Response } from 'express';
 import { SeedManager } from '../../lib/utils/seed-manager.js';
 import { createLogger } from '../../lib/logger/index.js';
-import { randomUUID } from 'crypto';
 
 const logger = createLogger('mcp-request-validator');
 
@@ -45,10 +44,8 @@ export const HttpStatus = {
  * Validated MCP request context
  */
 export interface ValidatedRequest {
-  /** Pre-registered agent ID */
+  /** Pre-registered agent ID (used for session management) */
   agentId: string;
-  /** Transport session ID (auto-generated if not provided) */
-  transportSessionId: string;
   /** JSON-RPC request body */
   body: Record<string, unknown>;
 }
@@ -127,23 +124,6 @@ function extractAgentId(headers: Request['headers']): string | undefined {
   return undefined;
 }
 
-/**
- * Generate transport session ID
- */
-function generateTransportSessionId(): string {
-  return `session-${randomUUID()}`;
-}
-
-/**
- * Extract or generate transport session ID
- */
-function extractTransportSessionId(headers: Request['headers']): string {
-  const sessionId = headers['mcp-session-id'];
-  if (typeof sessionId === 'string' && sessionId.trim().length > 0) {
-    return sessionId.trim();
-  }
-  return generateTransportSessionId();
-}
 
 /**
  * Validate MCP request
@@ -222,16 +202,12 @@ export function validateMcpRequest(req: Request): ValidationResult {
     };
   }
 
-  // Extract transport session ID
-  const transportSessionId = extractTransportSessionId(req.headers);
-
-  logger.debug({ agentId, ip, transportSessionId }, 'Request validated');
+  logger.debug({ agentId, ip }, 'Request validated');
 
   return {
     valid: true,
     context: {
       agentId,
-      transportSessionId,
       body
     }
   };
