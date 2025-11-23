@@ -18,7 +18,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express from 'express';
-import { randomUUID } from 'crypto';
 import { createLogger } from '../lib/logger/index.js';
 import { SessionManager, type SessionManagerConfig } from './session/index.js';
 import { createToolAdapter } from './adapter/tool-adapter.js';
@@ -27,17 +26,14 @@ import {
   requestLoggerMiddleware,
   requestTimeoutMiddleware,
   errorHandlerMiddleware,
-  notFoundMiddleware
+  notFoundMiddleware,
+  validateMcpRequest,
+  sendValidationError,
+  createJsonRpcError,
+  HttpStatus
 } from './middleware/index.js';
 
 const logger = createLogger('mcp-http-server');
-
-/**
- * HTTP status codes
- */
-const HTTP_STATUS_OK = 200;
-const HTTP_STATUS_BAD_REQUEST = 400;
-const HTTP_STATUS_INTERNAL_ERROR = 500;
 
 /**
  * Percentage multiplier for utilization calculation
@@ -48,14 +44,6 @@ const PERCENTAGE_MULTIPLIER = 100;
  * Decimal places for metrics
  */
 const METRIC_DECIMAL_PLACES = 2;
-
-/**
- * Generate unique session ID using crypto.randomUUID()
- * This is collision-resistant even under high concurrency
- */
-function generateAgentId(): string {
-  return `agent-${randomUUID()}`;
-}
 
 /**
  * HTTP Server configuration
@@ -107,47 +95,19 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
    * Handles JSON-RPC 2.0 requests via StreamableHTTP transport
    */
   app.post('/mcp', async (req, res) => {
-    // Validate request body exists
-    if (!req.body || typeof req.body !== 'object') {
-      logger.warn({ ip: req.ip }, 'Invalid request: missing or invalid body');
-      res.status(HTTP_STATUS_BAD_REQUEST).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32600,
-          message: 'Invalid Request: body must be an object'
-        },
-        id: null
-      });
+    // Validate request (body, JSON-RPC version, agent ID, agent registration)
+    const validation = validateMcpRequest(req);
+
+    if (!validation.valid) {
+      sendValidationError(res, validation.error);
       return;
     }
 
-    // Type-safe access to body
-    const body = req.body as Record<string, unknown>;
-
-    // Validate JSON-RPC version
-    if (body['jsonrpc'] !== '2.0') {
-      logger.warn({ ip: req.ip, jsonrpc: body['jsonrpc'] }, 'Invalid JSON-RPC version');
-      res.status(HTTP_STATUS_BAD_REQUEST).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32600,
-          message: 'Invalid Request: jsonrpc must be "2.0"'
-        },
-        id: null
-      });
-      return;
-    }
-
-    // Extract or generate agent ID
-    // - Existing clients send 'mcp-session-id' header (from previous initialization)
-    // - New clients get a fresh agent ID generated
-    // This allows us to create SessionManager services before handling the request
-    const agentId =
-      (req.headers['mcp-session-id'] as string) || generateAgentId();
+    const { agentId } = validation.context;
 
     logger.info(
       { agentId, ip: req.ip, userAgent: req.headers['user-agent'] },
-      'MCP request received'
+      'MCP request validated'
     );
 
     try {
@@ -235,14 +195,9 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
         'Failed to handle MCP request'
       );
       if (!res.headersSent) {
-        res.status(HTTP_STATUS_INTERNAL_ERROR).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32603,
-            message: 'Internal server error'
-          },
-          id: null
-        });
+        res.status(HttpStatus.INTERNAL_ERROR).json(
+          createJsonRpcError(-32603, 'Internal server error')
+        );
       }
     }
   });
@@ -254,7 +209,7 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
    */
   app.get('/health', (_req, res) => {
     const stats = sessionManager.getStats();
-    res.status(HTTP_STATUS_OK).json({
+    res.status(HttpStatus.OK).json({
       status: 'healthy',
       ...stats,
       uptime: process.uptime(),
@@ -273,7 +228,7 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
       await sessionManager.closeSession(agentId);
       sessionServers.delete(agentId);
       logger.info({ agentId }, 'Session cleaned up via API');
-      res.status(HTTP_STATUS_OK).json({ success: true, agentId });
+      res.status(HttpStatus.OK).json({ success: true, agentId });
     } catch (error) {
       logger.error(
         {
@@ -282,7 +237,7 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
         },
         'Session cleanup failed'
       );
-      res.status(HTTP_STATUS_INTERNAL_ERROR).json({
+      res.status(HttpStatus.INTERNAL_ERROR).json({
         error: 'Cleanup failed',
         message: error instanceof Error ? error.message : 'Unknown error'
       });

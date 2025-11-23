@@ -24,8 +24,8 @@ export function corsMiddleware(req: Request, res: Response, next: NextFunction):
   // Allow common HTTP methods
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  // Allow Content-Type and custom Mcp-Session-Id header
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Mcp-Session-Id');
+  // Allow Content-Type, X-Agent-Id (required), and Mcp-Session-Id (transport session)
+  res.header('Access-Control-Allow-Headers', 'Content-Type, X-Agent-Id, Mcp-Session-Id');
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {

@@ -337,6 +337,8 @@ export class SessionManager {
         }
       }
 
+      //TOOD:IF THE FILE DOSENT EXIST, CREATE A AGENT SCRIPT ?
+
       // Build new wallet from seed
       this.logger.info('Building fresh wallet from seed', { agentId });
       const wallet = await WalletBuilder.build(
