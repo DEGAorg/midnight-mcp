@@ -214,7 +214,7 @@ export class SessionManager {
     // Create wallet factory for this agent
     const walletFactory = this.createWalletFactory(agentId);
 
-    // Create wallet path for this agent via FileManager
+    // Resolve wallet file path for this agent
     const walletFilename = `${this.config.baseConfig.walletFilename}.json`;
     const walletPath = this.fileManager.getPath(FileType.WALLET_BACKUP, agentId, walletFilename);
 

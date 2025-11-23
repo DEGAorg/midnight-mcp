@@ -89,7 +89,7 @@ export interface CreateSessionOptions {
    *
    * Used for:
    * - Loading seed via SeedManager.getAgentSeed(agentId)
-   * - Creating wallet path via FileManager
+   * - Resolving wallet file path via FileManager.getPath()
    * - Initializing WalletOrchestrator with agentId
    */
   agentId: string;
