@@ -215,6 +215,8 @@ export class SessionManager {
     const walletFactory = this.createWalletFactory(agentId);
 
     // Resolve wallet file path for this agent
+    // NOTE: Agent is already validated via SeedManager.hasAgentSeed() in request-validator.ts
+    // This ensures the agent exists and has a valid seed before we reach this point
     const walletFilename = `${this.config.baseConfig.walletFilename}.json`;
     const walletPath = this.fileManager.getPath(FileType.WALLET_BACKUP, agentId, walletFilename);
 
@@ -302,6 +304,7 @@ export class SessionManager {
       this.logger.info('Building wallet for agent', { agentId });
 
       // Load seed from SeedManager (secure storage)
+      // SAFE: Agent validated via SeedManager.hasAgentSeed() in request-validator.ts
       const seed = SeedManager.getAgentSeed(agentId);
 
       // Try to restore wallet from file if it exists
