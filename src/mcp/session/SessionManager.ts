@@ -199,7 +199,7 @@ export class SessionManager {
    * Create a new session
    */
   private async createSession(options: CreateSessionOptions): Promise<ServiceDependencies> {
-    const { agentId, daoContractAddress, marketplaceContractAddress } = options;
+    const { agentId } = options;
 
     this.logger.info('Creating new session', { agentId });
 
@@ -220,7 +220,7 @@ export class SessionManager {
 
     this.logger.debug('Wallet path configured', { agentId, walletPath });
 
-    // Create WalletOrchestrator config
+    // Create WalletOrchestrator config (contract addresses from baseConfig)
     const orchestratorConfig = {
       walletConfig: {
         walletFactory,
@@ -228,8 +228,8 @@ export class SessionManager {
         agentId
       },
       agentId,
-      daoContractAddress: daoContractAddress || this.config.baseConfig.daoContractAddress,
-      marketplaceContractAddress: marketplaceContractAddress || this.config.baseConfig.marketplaceContractAddress
+      daoContractAddress: this.config.baseConfig.daoContractAddress,
+      marketplaceContractAddress: this.config.baseConfig.marketplaceContractAddress
     };
 
     // Create orchestrator

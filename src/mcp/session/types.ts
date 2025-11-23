@@ -81,22 +81,18 @@ export interface SessionManagerConfig {
  * Session creation options
  *
  * NOTE: No seed parameter - seeds are loaded from SeedManager
+ * NOTE: Contract addresses come from SessionManagerConfig.baseConfig
  */
 export interface CreateSessionOptions {
   /**
-   * Agent ID (typically from Mcp-Session-Id HTTP header)
-   * This is used to:
-   * - Load seed via SeedManager.getAgentSeed(agentId)
-   * - Create wallet path via FileManager
-   * - Initialize orchestrator with agentId
+   * Agent ID (from X-Agent-Id HTTP header)
+   *
+   * Used for:
+   * - Loading seed via SeedManager.getAgentSeed(agentId)
+   * - Creating wallet path via FileManager
+   * - Initializing WalletOrchestrator with agentId
    */
   agentId: string;
-
-  /** Override DAO contract address for this session */
-  daoContractAddress?: string;
-
-  /** Override marketplace contract address for this session */
-  marketplaceContractAddress?: string;
 }
 
 /**
