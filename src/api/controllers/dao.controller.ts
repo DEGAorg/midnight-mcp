@@ -75,7 +75,7 @@ export class DaoController {
       const { electionId } = req.body;
       const _daoService = this.getDaoServiceOrThrow();
 
-      const result = await daoService.openElection(electionId);
+      const result = await _daoService.openElection(electionId);
 
       res.json(successResponse(result));
     } catch (error) {
@@ -92,7 +92,7 @@ export class DaoController {
       const { electionId } = req.body;
       const _daoService = this.getDaoServiceOrThrow();
 
-      const result = await daoService.closeElection(electionId);
+      const result = await _daoService.closeElection(electionId);
 
       res.json(successResponse(result));
     } catch (error) {
@@ -109,7 +109,7 @@ export class DaoController {
       const { voteType } = req.body;
       const _daoService = this.getDaoServiceOrThrow();
 
-      const result = await daoService.castVote(voteType);
+      const result = await _daoService.castVote(voteType);
 
       res.json(successResponse(result));
     } catch (error) {
@@ -126,7 +126,7 @@ export class DaoController {
       const { amount } = req.body;
       const _daoService = this.getDaoServiceOrThrow();
 
-      const result = await daoService.fundTreasury(amount);
+      const result = await _daoService.fundTreasury(amount);
 
       res.json(successResponse(result));
     } catch (error) {
