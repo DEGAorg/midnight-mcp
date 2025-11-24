@@ -305,18 +305,15 @@ USE_EXTERNAL_PROOF_SERVER=false
     console.log();
 
     console.log(chalk.yellow('🚀 To start the demo:'));
-    console.log(chalk.white('   1. Start the Midnight proof server (if not running):'));
-    console.log(chalk.gray('      docker-compose up -d'));
-    console.log();
-    console.log(chalk.white('   2. Navigate to the demo project:'));
+    console.log(chalk.white('   1. Navigate to the demo project:'));
     console.log(chalk.gray(`      cd ${this.demoProjectPath}`));
     console.log();
-    console.log(chalk.white('   3. Start the ElizaOS agent:'));
+    console.log(chalk.white('   2. Start the ElizaOS agent:'));
     console.log(chalk.gray('      npm start'));
     console.log(chalk.gray('      # or if elizaos command is not available globally:'));
     console.log(chalk.gray('      npx @elizaos/cli@beta start --character=characters/midnight-agent.json'));
     console.log();
-    console.log(chalk.white('   4. Open your browser to:'));
+    console.log(chalk.white('   3. Open your browser to:'));
     console.log(chalk.gray(`      http://localhost:${this.port}`));
     console.log();
 

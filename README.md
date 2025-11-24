@@ -16,7 +16,6 @@ The architecture consists of two main components:
 
 - Node.js (v18.20.5)
 - Yarn package manager
-- Docker and Docker Compose (for production deployment)
 
 ### Basic Setup
 
@@ -63,8 +62,7 @@ midnight-mcp/
 │   ├── setup-guide.md     # Complete setup guide
 │   └── wallet-mcp-api.md  # API reference
 ├── scripts/               # Setup and utility scripts
-├── agents/                # Agent-specific configurations
-└── docker-compose.yml     # Docker deployment
+└── agents/                # Agent-specific configurations
 ```
 
 ## Architecture

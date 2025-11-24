@@ -169,27 +169,14 @@ graph TB
         STORAGE2[Storage<br/>agent-456]
         STORAGE3[Storage<br/>agent-789]
     end
-    
-    subgraph "Docker Containers"
-        CONTAINER1[Container<br/>agent-123]
-        CONTAINER2[Container<br/>agent-456]
-        CONTAINER3[Container<br/>agent-789]
-    end
-    
-    AGENT1 --> CONTAINER1
-    AGENT2 --> CONTAINER2
-    AGENT3 --> CONTAINER3
-    
-    CONTAINER1 --> STORAGE1
-    CONTAINER2 --> STORAGE2
-    CONTAINER3 --> STORAGE3
-    
+
+    AGENT1 --> STORAGE1
+    AGENT2 --> STORAGE2
+    AGENT3 --> STORAGE3
+
     style AGENT1 fill:#e1f5fe
     style AGENT2 fill:#e1f5fe
     style AGENT3 fill:#e1f5fe
-    style CONTAINER1 fill:#fff3e0
-    style CONTAINER2 fill:#fff3e0
-    style CONTAINER3 fill:#fff3e0
     style STORAGE1 fill:#f3e5f5
     style STORAGE2 fill:#f3e5f5
     style STORAGE3 fill:#f3e5f5

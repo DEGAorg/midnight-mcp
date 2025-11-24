@@ -5,7 +5,7 @@ This directory contains comprehensive tests for the Midnight Control Plane (MCP)
 ## 📚 Test Documentation
 
 - **[Unit Tests](unit/README.md)** - Comprehensive unit tests with 100% coverage across all metrics
-- **[Integration Tests](integration/README.md)** - HTTP-based integration tests for Docker deployments  
+- **[Integration Tests](integration/README.md)** - HTTP-based integration tests
 - **[E2E Tests](e2e/README.md)** - End-to-end tests with ElizaOS integration and MCP protocol validation
 
 ## 🚀 Quick Start
@@ -39,7 +39,6 @@ test/
 ## 🔧 Prerequisites
 
 - Node.js and Yarn installed
-- For integration tests: Docker server running
 - For E2E tests: Eliza AI agents accessible
 
 ## 📈 Test Statistics
