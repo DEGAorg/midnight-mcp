@@ -112,13 +112,17 @@ HTTP Client → Express Routes → Controllers → Services
 - Node.js v18.20.5 or higher
 - Yarn package manager
 
-### Installation
+### Installation & Build
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd midnight-mcp
+
 # Install dependencies
 yarn install
 
-# Build the project
+# Build the project (compiles TypeScript to dist/)
 yarn build
 ```
 
@@ -238,6 +242,250 @@ GET  /wallet/balance      # Get balance
 POST /wallet/send         # Send transaction
 GET  /dao/elections       # List DAO elections
 POST /dao/vote            # Cast DAO vote
+```
+
+## 🚀 Available Commands
+
+This project uses **Yarn** as the package manager. Below are all available commands organized by category.
+
+### 🏗️ Build Commands
+
+```bash
+# Build the entire project (TypeScript → JavaScript in dist/)
+yarn build
+
+# Clean build artifacts
+yarn clean
+
+# Compile TypeScript only (without cleaning)
+yarn compile
+
+# Type checking without emitting files
+yarn type-check
+```
+
+**Dev vs Production:**
+- **Dev commands** (`yarn dev`) use `tsx` to run TypeScript files directly with hot reloading
+- **Production commands** (`yarn start`) use `node` to run compiled JavaScript from `dist/`
+
+### 🔧 Development Commands
+
+Run servers in development mode with hot reloading:
+
+```bash
+# Run STDIO server in dev mode (default)
+yarn dev
+# Equivalent to: tsx src/mcp/stdio-server.ts
+
+# Run STDIO server explicitly
+yarn dev:mcp:stdio
+
+# Run HTTP MCP server in dev mode
+yarn dev:mcp:http
+# Server runs on http://localhost:3001
+# Supports 100+ concurrent agents with session management
+
+# Run REST API server in dev mode
+yarn dev:api
+# Server runs on http://localhost:3000
+# Traditional REST endpoints for wallet operations
+```
+
+**When to use each:**
+- `yarn dev` (STDIO) — AI assistant integration (Claude Desktop, Cursor)
+- `yarn dev:mcp:http` — Multi-agent platforms, ElizaOS integration
+- `yarn dev:api` — Testing with REST clients, custom web apps
+
+### 🚀 Production Commands
+
+Run compiled servers from `dist/` directory:
+
+```bash
+# Run STDIO server (default - for AI assistants)
+yarn start
+# Runs: node dist/mcp/stdio-server.js
+
+# Run STDIO server explicitly
+yarn start:mcp:stdio
+
+# Run HTTP MCP server (for multi-agent platforms)
+yarn start:mcp:http
+# Production-ready HTTP server with session management
+
+# Run REST API server
+yarn start:api
+# Traditional REST API for non-MCP clients
+```
+
+**Note:** Always run `yarn build` before using production commands.
+
+### 🧪 Testing Commands
+
+```bash
+# Run all tests (unit + integration + e2e)
+yarn test
+
+# Run unit tests with coverage
+yarn test:unit
+# 429 tests across 18 suites, 100% coverage
+
+# Run integration tests
+yarn test:integration
+# Tests HTTP server with real transport
+
+# Run E2E tests with Jest
+yarn test:e2e
+# Full MCP protocol testing with real wallet
+
+# Run E2E tests with ElizaOS
+yarn test:e2e:eliza
+# Requires ElizaOS running on port 3001
+
+# Run STDIO protocol tests
+yarn test:stdio
+# Direct JSON-RPC protocol testing
+
+# Watch mode tests
+yarn test:watch          # All tests in watch mode
+yarn test:unit:watch     # Unit tests in watch mode
+yarn test:integration:watch # Integration tests in watch mode
+yarn test:e2e:watch      # E2E tests in watch mode
+
+# Test with coverage report
+yarn test:coverage
+# Generates coverage report in coverage/
+```
+
+**Test Documentation:** See [test/README.md](test/README.md) for detailed testing information.
+
+### 🛠️ Utility Scripts
+
+```bash
+# Generate a new agent with wallet seed
+yarn setup-agent -a my-agent
+# Creates .storage/seeds/my-agent/seed and displays BIP39 mnemonic
+
+# Generate BIP39 mnemonic and seed
+yarn generate-seed
+# Creates 24-word mnemonic for wallet backup
+
+# Generate MCP configuration for Claude Code
+yarn mcp:config
+# Auto-detects NVM Node.js path and generates JSON config
+
+# Run ElizaOS integration demo
+yarn demo:eliza
+# Creates demo-eliza-mcp-project/ with full setup
+```
+
+**Script Documentation:** See [scripts/README.md](scripts/README.md) for detailed script documentation and options.
+
+### 🔍 Code Quality Commands
+
+```bash
+# Run ESLint
+yarn lint
+
+# Fix ESLint issues automatically
+yarn lint:fix
+
+# Type check without building
+yarn type-check
+```
+
+### 📦 Package Management
+
+```bash
+# Install dependencies
+yarn install
+
+# Upgrade interactive
+yarn upgrade-interactive
+
+# Check outdated packages
+yarn outdated
+```
+
+## 📋 Developer Workflow
+
+Here's the recommended workflow for getting started:
+
+### First Time Setup
+
+```bash
+# 1. Clone and install
+git clone <repository-url>
+cd midnight-mcp
+yarn install
+
+# 2. Build the project
+yarn build
+
+# 3. Set up an agent with wallet
+yarn setup-agent -a my-agent
+# Save the displayed BIP39 mnemonic for backup!
+
+# 4. Choose your deployment mode:
+```
+
+**Option A: AI Assistant Integration (STDIO)**
+```bash
+# Generate MCP configuration
+yarn mcp:config
+# Paste the output into Claude Desktop/Cursor MCP settings
+
+# Test with development mode
+AGENT_ID=my-agent yarn dev
+```
+
+**Option B: Multi-Agent Platform (HTTP)**
+```bash
+# Start HTTP MCP server
+AGENT_ID=my-agent yarn start:mcp:http
+
+# Server runs on http://localhost:3001
+# Send requests with mcp-session-id header
+```
+
+**Option C: REST API**
+```bash
+# Start REST API server
+AGENT_ID=my-agent yarn start:api
+
+# Server runs on http://localhost:3000
+# Access wallet endpoints: /wallet/status, /wallet/balance, etc.
+```
+
+### Daily Development
+
+```bash
+# Start development server with hot reload
+AGENT_ID=my-agent yarn dev:mcp:http
+
+# Run tests in watch mode
+yarn test:unit:watch
+
+# Lint and fix issues
+yarn lint:fix
+
+# Build for production
+yarn build
+```
+
+### Running Tests
+
+```bash
+# Quick test run
+yarn test:unit          # Fast unit tests
+
+# Full test suite
+yarn test              # All tests
+yarn test:coverage     # With coverage report
+
+# E2E testing with ElizaOS
+yarn demo:eliza        # Set up demo project first
+cd demo-eliza-mcp-project && npm start  # Start ElizaOS
+yarn test:e2e:eliza    # Run E2E tests
 ```
 
 ## MCP Tools
@@ -428,14 +676,27 @@ API_PORT=3000                        # API server port
 
 See [docs/setup-guide.md](docs/setup-guide.md) for detailed configuration options.
 
-## Documentation
+## 📚 Documentation
 
-- [Setup Guide](docs/setup-guide.md) — Installation and configuration
+### Getting Started
+- [Setup Guide](docs/setup-guide.md) — Complete installation and configuration
+- [Scripts Documentation](scripts/README.md) — All utility scripts with examples
+- [Available Commands](#-available-commands) — All yarn commands documented above
+
+### Architecture & Design
 - [Architecture](docs/ARCHITECTURE.md) — Technical architecture deep-dive
-- [Deployment](docs/DEPLOYMENT.md) — Deployment methods and examples
 - [System Design](docs/system-design.md) — System design and flows
-- [API Reference](docs/wallet-mcp-api.md) — Complete API documentation
-- [Documentation Index](docs/index.md) — All documentation
+- [Deployment](docs/DEPLOYMENT.md) — Deployment methods and examples
+
+### Testing
+- [Test Overview](test/README.md) — Testing guide and commands
+- [E2E Testing](test/e2e/E2E_OVERVIEW.md) — End-to-end test details
+- [Unit Tests](test/unit/UNIT_OVERVIEW.md) — Unit test coverage
+- [Integration Tests](test/integration/INTEGRATION_OVERVIEW.md) — Integration testing
+
+### API Reference
+- [MCP Tools API](docs/wallet-mcp-api.md) — Complete API documentation
+- [Documentation Index](docs/index.md) — All documentation organized
 
 ## Common Issues
 
