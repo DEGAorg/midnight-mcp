@@ -1,3 +1,42 @@
+// Global BigInt serialization patch - MUST be first!
+(BigInt.prototype as any).toJSON = function() {
+  return this.toString();
+};
+
+// Also patch JSON.stringify globally
+const originalStringify = JSON.stringify;
+(globalThis as any).JSON.stringify = function(
+  value: any,
+  replacer?: ((key: string, value: any) => any) | (string | number)[] | null,
+  space?: string | number
+): string {
+  // Always wrap with BigInt handling
+  const bigIntReplacer = (key: string, val: any): any => {
+    if (typeof val === 'bigint') {
+      return val.toString();
+    }
+    return val;
+  };
+
+  if (!replacer) {
+    // No replacer provided, use our BigInt-safe replacer
+    return originalStringify(value, bigIntReplacer, space);
+  } else if (typeof replacer === 'function') {
+    // Wrap the existing replacer with BigInt handling
+    const combinedReplacer = (key: string, val: any): any => {
+      if (typeof val === 'bigint') {
+        return val.toString();
+      }
+      return replacer(key, val);
+    };
+    return originalStringify(value, combinedReplacer, space);
+  } else {
+    // Array replacer (property list) - still need to handle BigInt
+    const wrappedValue = JSON.parse(originalStringify(value, bigIntReplacer));
+    return originalStringify(wrappedValue, replacer as (string | number)[], space);
+  }
+};
+
 /**
  * MCP HTTP Server
  *
@@ -152,7 +191,7 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
       // - SessionManager controls the entire session lifecycle
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
-        enableJsonResponse: false // Disable to avoid double JSON serialization with BigInt issues
+        enableJsonResponse: true // Now safe with our global BigInt patch
       });
 
       res.on('close', () => {

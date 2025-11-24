@@ -218,7 +218,16 @@ class MCPTestClient {
 
       const result = await this.callTool('walletStatus');
 
-      log(`    Wallet ready: ${result.content[0]?.text?.includes('ready') ? 'Yes' : 'No'}`, colors.blue);
+      // Parse the JSON response to check isReady
+      const textContent = result.content[0]?.text;
+      const walletStatus = textContent ? JSON.parse(textContent) : null;
+      const isReady = walletStatus?.isReady ?? false;
+
+      log(`    Wallet ready: ${isReady ? 'Yes' : 'No'}`, colors.blue);
+      if (isReady) {
+        log(`    Balance: ${walletStatus.balance}`, colors.blue);
+        log(`    Sync: ${walletStatus.syncProgress.syncPercentage}%`, colors.blue);
+      }
 
       // Small delay between calls
       await new Promise(resolve => setTimeout(resolve, 100));

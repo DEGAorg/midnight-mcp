@@ -117,7 +117,8 @@ export class WalletOrchestrator {
     });
 
     // 4. Create TokenRegistryDatabase
-    const fileManager = FileManager.getInstance();
+    const storagePath = process.env.MCP_STORAGE_PATH;
+    const fileManager = FileManager.getInstance({ baseDir: storagePath });
     const tokenDbPath = fileManager.getPath(FileType.TRANSACTION_DB, this.config.agentId, 'token-registry.db');
     const tokenDb = new TokenRegistryDatabase(tokenDbPath);
 

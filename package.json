@@ -20,6 +20,7 @@
     "generate-seed": "tsx scripts/generate-seed.ts",
     "setup-agent": "tsx scripts/setup-agent.ts",
     "setup-docker": "tsx scripts/setup-docker.ts",
+    "mcp:config": "scripts/generate-mcp-config.sh",
     "demo:eliza": "tsx scripts/demo-eliza-mcp.ts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts test/**/*.ts --ext .ts",

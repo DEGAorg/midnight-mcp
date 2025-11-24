@@ -55,10 +55,13 @@ export class FileManager {
   private config: Required<FileConfig>;
   
   private constructor(config: FileConfig = {}) {
-    // Convert relative path to absolute path based on process execution directory
-    const baseDir = config.baseDir || '.storage';
-    const absoluteBaseDir = path.isAbsolute(baseDir) 
-      ? baseDir 
+    // Priority: config.baseDir > env.BASE_STORAGE_DIR > default '.storage'
+    const baseDir = config.baseDir || process.env.BASE_STORAGE_DIR || '.storage';
+
+    // If path is already absolute, use it as-is
+    // Otherwise resolve from process.cwd() (which should work when cwd is set correctly)
+    const absoluteBaseDir = path.isAbsolute(baseDir)
+      ? baseDir
       : path.resolve(process.cwd(), baseDir);
 
     this.config = {
