@@ -23,6 +23,11 @@ import { SeedManager } from '@lib/utils/seed-manager.js';
 // This is needed because other imports may create it with wrong process.cwd()
 FileManager.resetInstance();
 
+// Increase max listeners to prevent warning when server restarts
+// Each server adds 6 listeners (SIGINT, SIGTERM, SIGUSR1, SIGUSR2, uncaughtException, unhandledRejection)
+// Setting to 20 allows for multiple restarts without warnings
+process.setMaxListeners(20);
+
 /**
  * Simple logging to stderr (stdout is reserved for JSON-RPC)
  */

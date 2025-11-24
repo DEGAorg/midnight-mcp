@@ -154,7 +154,13 @@ export const getTransactionTool: ToolDefinition = {
   inputSchema: GetTransactionSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     const { transactionId } = GetTransactionSchema.parse(args);
-    return services.transactionService.getTransaction(transactionId);
+    const transaction = services.transactionService.getTransaction(transactionId);
+
+    if (!transaction) {
+      throw new Error(`Transaction not found: ${transactionId}`);
+    }
+
+    return transaction;
   }
 };
 

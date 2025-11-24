@@ -48,6 +48,9 @@ export const getUserInfoTool: ToolDefinition = {
   description: "Get information about a marketplace user",
   inputSchema: GetUserInfoSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.marketplaceService) {
+      throw new Error('Marketplace service not configured. Set MARKETPLACE_CONTRACT_ADDRESS environment variable to enable marketplace functionality.');
+    }
     const { userId } = GetUserInfoSchema.parse(args);
     return await services.marketplaceService.getUserInfo(userId);
   }
@@ -58,6 +61,9 @@ export const isUserRegisteredTool: ToolDefinition = {
   description: "Check if a user is registered in the marketplace",
   inputSchema: IsUserRegisteredSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.marketplaceService) {
+      throw new Error('Marketplace service not configured. Set MARKETPLACE_CONTRACT_ADDRESS environment variable to enable marketplace functionality.');
+    }
     const { userId } = IsUserRegisteredSchema.parse(args);
     return {
       userId,
@@ -71,6 +77,9 @@ export const isUserVerifiedTool: ToolDefinition = {
   description: "Check if a user is verified in the marketplace",
   inputSchema: IsUserVerifiedSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.marketplaceService) {
+      throw new Error('Marketplace service not configured. Set MARKETPLACE_CONTRACT_ADDRESS environment variable to enable marketplace functionality.');
+    }
     const { userId } = IsUserVerifiedSchema.parse(args);
     return {
       userId,

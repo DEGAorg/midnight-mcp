@@ -106,6 +106,9 @@ export const openDaoElectionTool: ToolDefinition = {
   description: "Open a new DAO election for voting",
   inputSchema: OpenElectionSimpleSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.daoService) {
+      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
+    }
     const { electionId } = OpenElectionSimpleSchema.parse(args);
     // DaoService.openElection only takes electionId
     return await services.daoService.openElection(electionId);
@@ -117,6 +120,9 @@ export const castDaoVoteTool: ToolDefinition = {
   description: "Cast a vote on the active DAO election",
   inputSchema: CastVoteSimpleSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.daoService) {
+      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
+    }
     const { voteChoice } = CastVoteSimpleSchema.parse(args);
     // DaoService.castVote only takes voteChoice string
     return await services.daoService.castVote(voteChoice);
@@ -128,6 +134,9 @@ export const closeDaoElectionTool: ToolDefinition = {
   description: "Close a DAO election and finalize results",
   inputSchema: CloseDaoElectionSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.daoService) {
+      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
+    }
     const { electionId } = CloseDaoElectionSchema.parse(args);
     return await services.daoService.closeElection(electionId);
   }
@@ -138,6 +147,9 @@ export const fundDaoTreasuryTool: ToolDefinition = {
   description: "Fund the DAO treasury with tokens",
   inputSchema: FundTreasurySchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
+    if (!services.daoService) {
+      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
+    }
     const { amountDecimal } = FundTreasurySchema.parse(args);
     return await services.daoService.fundTreasury(amountDecimal);
   }
