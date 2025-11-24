@@ -56,7 +56,9 @@ export async function createToolAdapter(services: ServiceDependencies): Promise<
      */
     toolHandler: async (name: string, args: unknown) => {
       console.error(`[ToolAdapter] Executing tool: ${name}`);
-      console.error(`[ToolAdapter] Args:`, JSON.stringify(args));
+      console.error(`[ToolAdapter] Args:`, JSON.stringify(args, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      ));
 
       // Find tool by name
       const tool = tools.find((t) => t.name === name);
@@ -68,19 +70,35 @@ export async function createToolAdapter(services: ServiceDependencies): Promise<
 
       try {
         // Execute tool with services injected
+        console.error(`[ToolAdapter] Executing tool.execute for ${name}...`);
         const result = await tool.execute(args, services);
+        console.error(`[ToolAdapter] Tool ${name} executed, result type:`, typeof result);
 
-        console.error(`[ToolAdapter] Tool ${name} executed successfully`);
+        // First serialize the result to ensure no BigInt values remain
+        console.error(`[ToolAdapter] Attempting to serialize result...`);
+        try {
+          const serializedResult = JSON.parse(JSON.stringify(result, (key, value) => {
+            if (typeof value === 'bigint') {
+              console.error(`[ToolAdapter] Converting BigInt ${key}=${value} to string`);
+              return value.toString();
+            }
+            return value;
+          }));
+          console.error(`[ToolAdapter] Result serialized successfully`);
 
-        // Return in MCP format with BigInt support
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(result, (key, value) =>
-              typeof value === 'bigint' ? value.toString() : value
-            , 2)
-          }]
-        };
+          // Return in MCP format with pre-serialized data
+          const response = {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify(serializedResult, null, 2)
+            }]
+          };
+          console.error(`[ToolAdapter] Returning MCP response`);
+          return response;
+        } catch (serializeError) {
+          console.error(`[ToolAdapter] Serialization error:`, serializeError);
+          throw serializeError;
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[ToolAdapter] Tool ${name} failed:`, errorMessage);

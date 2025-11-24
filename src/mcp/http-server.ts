@@ -152,7 +152,7 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
       // - SessionManager controls the entire session lifecycle
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
-        enableJsonResponse: true
+        enableJsonResponse: false // Disable to avoid double JSON serialization with BigInt issues
       });
 
       res.on('close', () => {
