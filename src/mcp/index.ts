@@ -47,7 +47,7 @@ export {
 } from './tools/index.js';
 
 // Resources
-export { ALL_RESOURCES, getResource } from './resources/registry.js';
+export { ALL_RESOURCES, getResource } from './resources/index.js';
 
 // Prompts
 export { ALL_PROMPTS, getPrompt } from './prompts/registry.js';
