@@ -2,13 +2,29 @@
 
 /**
  * Token Registration Script
- * 
- * This script demonstrates how to register tokens via API calls.
- * It can be used to batch register common tokens for development or testing.
+ *
+ * ⚠️  CURRENTLY BROKEN - NEEDS REFACTORING ⚠️
+ *
+ * This script uses the old god-class architecture (WalletServiceMCP) which has been removed.
+ * It needs to be refactored to use the new service-oriented architecture with WalletOrchestrator.
+ *
+ * TODO: Refactor to use:
+ * - WalletOrchestrator instead of WalletServiceMCP
+ * - TokenService.registerToken() for individual token registration
+ * - Proper service initialization from env config
+ *
+ * For now, use MCP tools to register tokens:
+ * - registerToken tool via MCP
+ * - Or call TokenService methods directly via API
  */
 
-import { WalletServiceMCP } from '../src/mcp/index.js';
-import { createLogger } from '../src/logger/index.js';
+// BROKEN IMPORTS - keeping for reference of what needs to be replaced
+// import { WalletServiceMCP } from '../src/mcp/index.js'; // REMOVED
+// import { createLogger } from '../src/logger/index.js'; // PATH CHANGED
+
+console.error('❌ This script is currently broken and needs refactoring.');
+console.error('Use the registerToken MCP tool instead, or call the API endpoint.');
+process.exit(1);
 
 const logger = createLogger('register-tokens');
 
