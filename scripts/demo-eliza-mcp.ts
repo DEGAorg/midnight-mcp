@@ -183,17 +183,15 @@ class ElizaMCPDemo {
             'midnight-mcp': {
               type: 'stdio',
               name: 'Midnight MCP Server',
-              command: 'tsx',
-              args: [path.resolve(__dirname, '../src/stdio-server.ts')],
+              command: 'node',
+              args: [path.resolve(__dirname, '../dist/mcp/stdio-server.js')],
               env: {
                 AGENT_ID: this.agentId,
-                NODE_ENV: 'development',
-                WALLET_SERVER_HOST: 'localhost',
-                WALLET_SERVER_PORT: '3000',
                 NETWORK_ID: 'TestNet',
-                USE_EXTERNAL_PROOF_SERVER: 'false'
+                BASE_STORAGE_DIR: path.resolve(__dirname, '../.storage'),
+                LOG_LEVEL: 'error'
               },
-              timeout: 30
+              timeout: 60
             }
           }
         }
@@ -276,14 +274,11 @@ class ElizaMCPDemo {
     const envContent = `
 # Midnight MCP Demo Configuration
 PORT=${this.port}
-NODE_ENV=development
 AGENT_ID=${this.agentId}
 
-# Midnight Network Configuration  
+# Midnight Network Configuration
 NETWORK_ID=TestNet
-WALLET_SERVER_HOST=localhost
-WALLET_SERVER_PORT=3000
-USE_EXTERNAL_PROOF_SERVER=false
+LOG_LEVEL=error
 
 # Optional: Add your API keys here
 # OPENAI_API_KEY=your_openai_api_key
