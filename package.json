@@ -21,6 +21,7 @@
     "setup-agent": "tsx scripts/setup-agent.ts",
     "setup-docker": "tsx scripts/setup-docker.ts",
     "demo:eliza": "tsx scripts/demo-eliza-mcp.ts",
+    "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts test/**/*.ts --ext .ts",
     "lint:fix": "eslint src/**/*.ts test/**/*.ts --ext .ts --fix",
     "test": "jest --config=jest.config.js",

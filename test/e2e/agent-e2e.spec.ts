@@ -34,7 +34,7 @@ import { createElizaClient, IElizaClient } from './eliza-client.js';
 describe('Eliza Integration Tests', () => {
   let elizaClient: IElizaClient;
   let logger: TestLogger;
-  let testResults: Array<{ name: string; result: TestResult }> = [];
+  const testResults: Array<{ name: string; result: TestResult }> = [];
   let agentId: string; // Store the agent ID for reuse
   let authorId: string; // Single UUID generated per test run
 

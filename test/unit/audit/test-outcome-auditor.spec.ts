@@ -98,43 +98,43 @@ describe('TestOutcomeAuditor', () => {
 
   // Cobertura de métodos privados de mapeo
   it('should map all test status to severity', () => {
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapTestStatusToSeverity('failed')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapTestStatusToSeverity('timeout')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapTestStatusToSeverity('skipped')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapTestStatusToSeverity('passed')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapTestStatusToSeverity('other')).toBeDefined();
   });
 
   it('should map all decision types to severity', () => {
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapDecisionTypeToSeverity('abort')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapDecisionTypeToSeverity('retry')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapDecisionTypeToSeverity('modify')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapDecisionTypeToSeverity('skip')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapDecisionTypeToSeverity('continue')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapDecisionTypeToSeverity('other')).toBeDefined();
   });
 
   it('should map all outcomes to severity', () => {
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapOutcomeToSeverity('failure')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapOutcomeToSeverity('partial')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapOutcomeToSeverity('inconclusive')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapOutcomeToSeverity('success')).toBeDefined();
-    // @ts-ignore
+    // @ts-expect-error
     expect(auditor.mapOutcomeToSeverity('other')).toBeDefined();
   });
 
@@ -152,7 +152,7 @@ describe('TestOutcomeAuditor', () => {
   });
 
   it('should cover the if (!testId) return; branch in getTestOutcomes', () => {
-    // @ts-ignore
+    // @ts-expect-error
     auditor.auditService.getAllEvents = jest.fn(() => [
       { type: AuditEventType.TEST_COMPLETED, context: {} }
     ]);

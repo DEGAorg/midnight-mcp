@@ -8,7 +8,6 @@
  */
 
 import { z } from 'zod';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ServiceDependencies } from '../types.js';
 import type { ToolDefinition } from '../adapter/types.js';
 

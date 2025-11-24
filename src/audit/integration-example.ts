@@ -63,7 +63,7 @@ export class AuditIntegrationExample {
       status: 'running'
     });
 
-    let transactionId = `tx-${Date.now()}`;
+    const transactionId = `tx-${Date.now()}`;
 
     try {
       // Step 1: Agent decision to initiate transaction

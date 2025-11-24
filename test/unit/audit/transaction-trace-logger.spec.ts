@@ -6,9 +6,9 @@ describe('TransactionTraceLogger exportTraces filters', () => {
 
     beforeEach(() => {
         logger = new TransactionTraceLogger();
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { error: jest.fn(), info: jest.fn(), debug: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = {
             getAllEvents: jest.fn(() => []),
             logEvent: jest.fn(() => 'event-id'),
@@ -51,13 +51,13 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     it('should call generateCorrelationId if correlationId is not provided', () => {
 
         const mockGenerateCorrelationId = jest.fn(() => 'mock-corr-id');
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = {
             generateCorrelationId: mockGenerateCorrelationId,
             logEvent: jest.fn(() => 'event-id')
         };
         // Mock logger to avoid errors
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
 
         const transactionId = 'tx-1';
@@ -81,7 +81,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
 
     it('should throw if step does not exist in completeStep', () => {
         // Prepare a valid trace but without steps
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx1', { steps: [] });
         expect(() => {
             logger.completeStep('tx1', 'missing-step');
@@ -91,12 +91,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     it('should complete step as completed when no error', () => {
         // Prepare a valid trace with a valid step
         const step = { stepId: 'step1', startTime: 1, status: 'started' };
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx2', { steps: [step], correlationId: 'corr', });
         // Mock logger and auditService
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { debug: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn() };
         logger.completeStep('tx2', 'step1', 'output');
         expect(step.status).toBe('completed');
@@ -104,11 +104,11 @@ describe('TransactionTraceLogger exportTraces filters', () => {
 
     it('should complete step as failed when error is provided', () => {
         const step = { stepId: 'step2', startTime: 1, status: 'started' };
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx3', { steps: [step], correlationId: 'corr', });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { debug: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn() };
         const error = new Error('fail');
         logger.completeStep('tx3', 'step2', 'output', error);
@@ -122,7 +122,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('should return a transaction trace if it exists', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx1', { id: 'tx1' });
         expect(logger.getTransactionTrace('tx1')).toBeDefined();
     });
@@ -132,7 +132,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('should filter transaction events by correlationId and type', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = {
             getAllEvents: jest.fn(() => [
                 { id: '1', context: { correlationId: 'corr1', timestamp: 0, source: 'source' }, type: AuditEventType.TRANSACTION_INITIATED, severity: AuditSeverity.LOW, message: '', createdAt: 0 },
@@ -160,7 +160,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             ],
             metadata: {}
         };
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx2', trace);
         // Mock getTransactionEvents
         jest.spyOn(logger, 'getTransactionEvents').mockReturnValue([{ type: 'TRANSACTION_INITIATED' }]);
@@ -172,13 +172,13 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('should return all active traces', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx1', {});
         expect(logger.getActiveTraces().length).toBeGreaterThan(0);
     });
 
     it('getTransactionEvents should handle events with missing context or type', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService.getAllEvents = jest.fn(() => [
             { context: undefined, type: 'transaction_initiated' },
             { context: { correlationId: 'corr1' }, type: undefined },
@@ -188,7 +188,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('getTransactionSummary should return totalDuration as undefined if endTime is missing', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx1', {
             correlationId: 'corr1',
             status: 'completed',
@@ -202,7 +202,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('getTransactionSummary should handle empty steps and events', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx1', {
             correlationId: 'corr1',
             status: 'completed',
@@ -220,17 +220,17 @@ describe('TransactionTraceLogger exportTraces filters', () => {
 
     it('logTransactionFailure should call logger and auditService', () => {
         const error = new Error('fail');
-        // @ts-ignore
+        // @ts-expect-error
         const spy = jest.spyOn(logger.logger, 'error');
         const eventId = logger.logTransactionFailure('tx1', error, { foo: 'bar' }, 'corr1');
         expect(eventId).toBe('event-id');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalled();
         expect(spy).toHaveBeenCalled();
     });
 
     it('getTraces should skip events with missing transactionId', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService.getAllEvents = jest.fn(() => [
             { type: 'transaction_completed', context: {}, data: {} }
         ]);
@@ -238,7 +238,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('getTraces should skip events with wrong type', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService.getAllEvents = jest.fn(() => [
             { type: 'not_transaction', context: { transactionId: 'id' }, data: {} }
         ]);
@@ -246,7 +246,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('getTransactionEvents should skip events where type is not a string', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService.getAllEvents = jest.fn(() => [
             { context: { correlationId: 'corr1' }, type: undefined },
             { context: { correlationId: 'corr1' }, type: null },
@@ -258,7 +258,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use HIGH severity for failed status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-failed', {
             correlationId: 'corr',
             status: 'processing',
@@ -266,12 +266,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-failed', 'failed', 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             expect.anything(),
             expect.anything(),
@@ -282,7 +282,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use MEDIUM severity for cancelled status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-cancelled', {
             correlationId: 'corr',
             status: 'processing',
@@ -290,12 +290,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-cancelled', 'cancelled', 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             expect.anything(),
             expect.anything(),
@@ -306,7 +306,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use LOW severity for completed status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-completed', {
             correlationId: 'corr',
             status: 'processing',
@@ -314,12 +314,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-completed', 'completed', 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             expect.anything(),
             expect.anything(),
@@ -330,7 +330,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use LOW severity for unknown status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-unknown', {
             correlationId: 'corr',
             status: 'processing',
@@ -338,12 +338,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-unknown', 'unknown' as any, 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             expect.anything(),
             expect.anything(),
@@ -354,7 +354,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use TRANSACTION_COMPLETED event type for completed status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-completed', {
             correlationId: 'corr',
             status: 'processing',
@@ -362,12 +362,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-completed', 'completed', 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             'transaction_completed', // AuditEventType.TRANSACTION_COMPLETED
             expect.anything(),
@@ -378,7 +378,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use TRANSACTION_FAILED event type for failed status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-failed', {
             correlationId: 'corr',
             status: 'processing',
@@ -386,12 +386,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-failed', 'failed', 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             'transaction_failed', // AuditEventType.TRANSACTION_FAILED
             expect.anything(),
@@ -402,7 +402,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use TRANSACTION_FAILED event type for cancelled status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-cancelled', {
             correlationId: 'corr',
             status: 'processing',
@@ -410,12 +410,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-cancelled', 'cancelled', 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             'transaction_failed', // AuditEventType.TRANSACTION_FAILED
             expect.anything(),
@@ -426,7 +426,7 @@ describe('TransactionTraceLogger exportTraces filters', () => {
     });
 
     it('completeTrace should use TRANSACTION_TRACE event type for unknown status', () => {
-        // @ts-ignore
+        // @ts-expect-error
         logger.activeTraces.set('tx-unknown', {
             correlationId: 'corr',
             status: 'processing',
@@ -434,12 +434,12 @@ describe('TransactionTraceLogger exportTraces filters', () => {
             steps: [],
             metadata: {}
         });
-        // @ts-ignore
+        // @ts-expect-error
         logger.logger = { info: jest.fn() };
-        // @ts-ignore
+        // @ts-expect-error
         logger.auditService = { logEvent: jest.fn(() => 'event-id') };
         logger.completeTrace('tx-unknown', 'unknown' as any, 'summary');
-        // @ts-ignore
+        // @ts-expect-error
         expect(logger.auditService.logEvent).toHaveBeenCalledWith(
             'transaction_trace', // AuditEventType.TRANSACTION_TRACE
             expect.anything(),

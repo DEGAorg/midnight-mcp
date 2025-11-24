@@ -24,11 +24,11 @@ export class DaoController {
    * Get the current DAO service or throw if unavailable
    */
   private getDaoServiceOrThrow() {
-    const daoService = this.orchestrator.getDaoService();
-    if (!daoService) {
+    const _daoService = this.orchestrator.getDaoService();
+    if (!_daoService) {
       throw ApiError.serviceUnavailable('DAO service not available');
     }
-    return daoService;
+    return _daoService;
   }
 
   /**
@@ -36,7 +36,7 @@ export class DaoController {
    */
   getDaoState = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const daoService = this.getDaoServiceOrThrow();
+      const _daoService = this.getDaoServiceOrThrow();
 
       // TODO: Implement getDaoState in DaoService
       res.json(successResponse({
@@ -54,7 +54,7 @@ export class DaoController {
    */
   getElectionStatus = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const daoService = this.getDaoServiceOrThrow();
+      const _daoService = this.getDaoServiceOrThrow();
 
       // TODO: Implement getElectionStatus in DaoService
       res.json(successResponse({
@@ -73,7 +73,7 @@ export class DaoController {
   openElection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { electionId } = req.body;
-      const daoService = this.getDaoServiceOrThrow();
+      const _daoService = this.getDaoServiceOrThrow();
 
       const result = await daoService.openElection(electionId);
 
@@ -90,7 +90,7 @@ export class DaoController {
   closeElection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { electionId } = req.body;
-      const daoService = this.getDaoServiceOrThrow();
+      const _daoService = this.getDaoServiceOrThrow();
 
       const result = await daoService.closeElection(electionId);
 
@@ -107,7 +107,7 @@ export class DaoController {
   castVote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { voteType } = req.body;
-      const daoService = this.getDaoServiceOrThrow();
+      const _daoService = this.getDaoServiceOrThrow();
 
       const result = await daoService.castVote(voteType);
 
@@ -124,7 +124,7 @@ export class DaoController {
   fundTreasury = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { amount } = req.body;
-      const daoService = this.getDaoServiceOrThrow();
+      const _daoService = this.getDaoServiceOrThrow();
 
       const result = await daoService.fundTreasury(amount);
 

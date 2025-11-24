@@ -14,12 +14,10 @@ const logger: Logger = createLogger('http');
 /**
  * Extend Express Request to include requestId
  */
-declare global {
-  namespace Express {
-    interface Request {
-      requestId: string;
-      startTime: number;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    requestId: string;
+    startTime: number;
   }
 }
 

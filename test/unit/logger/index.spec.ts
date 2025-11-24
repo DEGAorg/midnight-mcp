@@ -614,7 +614,7 @@ describe('Logger Module', () => {
 
     it('should fallback to PinoLogger if getLogger is called before configureLogger', () => {
       // Reset the logger variable (if possible)
-      // @ts-ignore
+      // @ts-expect-error
       import('../../../src/lib/logger/index.js').then(mod => {
         // forcibly reset the logger variable for test
         (mod as any).logger = undefined;
