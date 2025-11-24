@@ -9,6 +9,7 @@
  */
 
 import type { TransactionRecord } from '@services/wallet/TransactionService.js';
+import { TransactionState } from '@services/wallet/TransactionService.js';
 
 /**
  * Mock Midnight Addresses (Bech32m format)
@@ -54,7 +55,7 @@ export const MOCK_WALLET_BALANCE = {
 export const MOCK_TRANSACTIONS: Record<string, TransactionRecord> = {
   'tx-initiated': {
     id: 'tx-initiated',
-    state: 'INITIATED',
+    state: TransactionState.INITIATED,
     from: MOCK_ADDRESSES.WALLET,
     to: MOCK_ADDRESSES.RECIPIENT_1,
     amount: '100000',
@@ -63,7 +64,7 @@ export const MOCK_TRANSACTIONS: Record<string, TransactionRecord> = {
   },
   'tx-sent': {
     id: 'tx-sent',
-    state: 'SENT',
+    state: TransactionState.SENT,
     from: MOCK_ADDRESSES.WALLET,
     to: MOCK_ADDRESSES.RECIPIENT_1,
     amount: '250000',
@@ -73,7 +74,7 @@ export const MOCK_TRANSACTIONS: Record<string, TransactionRecord> = {
   },
   'tx-completed': {
     id: 'tx-completed',
-    state: 'COMPLETED',
+    state: TransactionState.COMPLETED,
     from: MOCK_ADDRESSES.WALLET,
     to: MOCK_ADDRESSES.RECIPIENT_2,
     amount: '500000',
@@ -83,7 +84,7 @@ export const MOCK_TRANSACTIONS: Record<string, TransactionRecord> = {
   },
   'tx-failed': {
     id: 'tx-failed',
-    state: 'FAILED',
+    state: TransactionState.FAILED,
     from: MOCK_ADDRESSES.WALLET,
     to: MOCK_ADDRESSES.RECIPIENT_1,
     amount: '1000000',
