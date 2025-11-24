@@ -7,6 +7,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { WalletOrchestrator } from '@services/WalletOrchestrator.js';
 import { createLogger } from '@lib/logger/index.js';
+import { ApiError } from '../middleware/index.js';
 import { successResponse } from '../routes/index.js';
 import type { Logger } from 'pino';
 
@@ -20,11 +21,22 @@ export class TokenController {
   }
 
   /**
+   * Get TokenService with initialization check
+   */
+  private getTokenServiceOrThrow() {
+    const tokenService = this.orchestrator.getTokenService();
+    if (!tokenService) {
+      throw ApiError.serviceUnavailable('Token service not initialized');
+    }
+    return tokenService;
+  }
+
+  /**
    * List all registered tokens
    */
   listTokens = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const tokenService = this.orchestrator.getTokenService();
+      const tokenService = this.getTokenServiceOrThrow();
       const tokens = tokenService.listTokens();
 
       res.json(successResponse({ tokens }));
@@ -40,7 +52,7 @@ export class TokenController {
   getTokenBalance = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { tokenName } = req.params;
-      const tokenService = this.orchestrator.getTokenService();
+      const tokenService = this.getTokenServiceOrThrow();
       const balance = tokenService.getTokenBalance(tokenName);
 
       res.json(successResponse({
@@ -61,7 +73,7 @@ export class TokenController {
       const { tokenId, toAddress, amount } = req.body;
 
       const amountBigInt = BigInt(amount);
-      const tokenService = this.orchestrator.getTokenService();
+      const tokenService = this.getTokenServiceOrThrow();
       const txId = await tokenService.sendShieldedToken(tokenId, toAddress, amountBigInt);
 
       const transactionService = this.orchestrator.getTransactionService();
@@ -88,7 +100,7 @@ export class TokenController {
     try {
       const { name, symbol, contractAddress, domainSeparator, decimals } = req.body;
 
-      const tokenService = this.orchestrator.getTokenService();
+      const tokenService = this.getTokenServiceOrThrow();
       const result = tokenService.registerToken(
         name,
         symbol,
@@ -111,7 +123,7 @@ export class TokenController {
     try {
       const { tokens } = req.body;
 
-      const tokenService = this.orchestrator.getTokenService();
+      const tokenService = this.getTokenServiceOrThrow();
       const results = tokenService.registerTokensBatch(tokens);
 
       res.json(successResponse({ results }));
