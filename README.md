@@ -244,6 +244,66 @@ GET  /dao/elections       # List DAO elections
 POST /dao/vote            # Cast DAO vote
 ```
 
+### Mock Mode (Testing & Development)
+
+For testing and development without requiring actual wallet initialization or network connections, all MCP tools support **Mock Mode** with hardcoded realistic data.
+
+**Features:**
+- ✅ All 16 MCP tools return realistic mock data
+- ✅ Proper Midnight blockchain data formats (Bech32m addresses, etc.)
+- ✅ Transaction state lifecycle (INITIATED → SENT → COMPLETED/FAILED)
+- ✅ Token balances with proper decimals
+- ✅ DAO elections and voting simulation
+- ✅ Marketplace user data
+- ✅ No wallet or network connection required
+
+**Running Mock Tests:**
+
+```bash
+# Run comprehensive mock tools test suite
+tsx scripts/test-mock-tools.ts
+```
+
+**Test Coverage:**
+- 🔐 **Wallet Tools** (5 tests): walletStatus, walletAddress, walletBalance, getTransaction
+- 🪙 **Token Tools** (5 tests): listTokens, getTokenBalance, registerToken, sendShieldedToken, sendNativeToken
+- 🗳️ **DAO Tools** (4 tests): openDaoElection, castDaoVote, closeDaoElection, fundDaoTreasury
+- 🏪 **Marketplace Tools** (4 tests): getUserInfo, isUserRegistered, isUserVerified
+
+**Mock Data Location:** `src/mcp/tools/mock-data.ts`
+
+**Example Mock Data:**
+```typescript
+// Mock Wallet Address
+"addr_test1qzx8m3qasx97l6lcrzfht5hc0g0v8l9lgs3yqgekkj5ru6nptlsaw"
+
+// Mock Balance
+{ balance: "1000000000", pendingBalance: "0" }
+
+// Mock Transaction
+{
+  id: "tx-completed",
+  state: "COMPLETED",
+  amount: "500000",
+  txIdentifier: "0x1234...abcdef"
+}
+
+// Mock Token
+{
+  tokenName: "DAO_VOTING",
+  symbol: "DVT",
+  balance: "5000000",
+  decimals: 6
+}
+```
+
+**Use Cases:**
+- Testing tool implementations without network access
+- Development without wallet setup
+- CI/CD pipeline integration
+- Learning the MCP tool APIs
+- Debugging tool logic
+
 ## Available Commands
 
 This project uses **Yarn** as the package manager. Below are all available commands organized by category.
