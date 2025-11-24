@@ -4,9 +4,9 @@ Welcome to the Midnight MCP documentation. This index provides navigation to all
 
 ## 📚 Quick Navigation
 
-### 🚀 Getting Started
+### Getting Started
 - **[Main README](../README.md)** - Project overview and quick start guide
-- **[Available Commands](../README.md#-available-commands)** - All yarn commands (build, dev, start, test)
+- **[Available Commands](../README.md#available-commands)** - All yarn commands (build, dev, start, test)
 - **[Setup Guide](setup-guide.md)** - Complete installation and configuration
 - **[Scripts Documentation](../scripts/README.md)** - Utility scripts with examples (setup-agent, generate-seed, etc.)
 

@@ -1,13 +1,13 @@
-# 🚀 Midnight MCP Setup Guide
+# Midnight MCP Setup Guide
 
 Complete setup and installation instructions for the Midnight MCP server. Follow this guide step-by-step to get your development environment ready.
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Node.js** v18.20.5 or higher
 - **Yarn** package manager
 
-## 🏗️ Quick Start
+## Quick Start
 
 Follow these steps in order for a complete setup:
 
@@ -29,7 +29,7 @@ yarn install
 yarn build
 ```
 
-## 🔐 Agent Setup
+## Agent Setup
 
 Before running any server, you need to create an agent with wallet credentials:
 
@@ -115,7 +115,7 @@ MN_NODE=http://midnight-node:8080
 
 **For complete script documentation, see [scripts/README.md](../scripts/README.md).**
 
-## 🎯 Choose Your Deployment Mode
+## Choose Your Deployment Mode
 
 The Midnight MCP server supports three deployment modes. Choose the one that fits your use case:
 
@@ -167,7 +167,7 @@ AGENT_ID=my-agent yarn start:api
 
 **For detailed comparison of all modes, see [SERVER_MODES.md](SERVER_MODES.md).**
 
-## 🔧 MCP Server Configuration for AI Models
+## MCP Server Configuration for AI Models
 
 ### Automatic Configuration (Recommended)
 
@@ -253,7 +253,7 @@ AGENT_ID=<agent-name> yarn dev
 
 **NOTE:** Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.
 
-## 🤖 Integrating with ElizaOS
+## Integrating with ElizaOS
 
 ### Quick Start with Demo
 
@@ -302,7 +302,7 @@ When integrated with ElizaOS, agents have access to these tools:
 
 **For complete API reference, see [wallet-mcp-api.md](wallet-mcp-api.md).**
 
-## 🧪 Testing
+## Testing
 
 ### Run Tests
 
@@ -322,7 +322,7 @@ yarn test:e2e
 
 **For detailed testing information, see [test/README.md](../test/README.md).**
 
-## 📚 Additional Documentation
+## Additional Documentation
 
 - **[Main README](../README.md)** — Project overview and all available commands
 - **[Scripts Documentation](../scripts/README.md)** — All utility scripts with examples
@@ -333,7 +333,7 @@ yarn test:e2e
 - **[Test Documentation](../test/README.md)** — Testing guide and organization
 - **[Documentation Index](index.md)** — Complete documentation navigation
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### "ENOENT: no such file or directory, mkdir '/.storage'"
 

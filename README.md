@@ -244,11 +244,11 @@ GET  /dao/elections       # List DAO elections
 POST /dao/vote            # Cast DAO vote
 ```
 
-## 🚀 Available Commands
+## Available Commands
 
 This project uses **Yarn** as the package manager. Below are all available commands organized by category.
 
-### 🏗️ Build Commands
+### Build Commands
 
 ```bash
 # Build the entire project (TypeScript → JavaScript in dist/)
@@ -268,7 +268,7 @@ yarn type-check
 - **Dev commands** (`yarn dev`) use `tsx` to run TypeScript files directly with hot reloading
 - **Production commands** (`yarn start`) use `node` to run compiled JavaScript from `dist/`
 
-### 🔧 Development Commands
+### Development Commands
 
 Run servers in development mode with hot reloading:
 
@@ -296,7 +296,7 @@ yarn dev:api
 - `yarn dev:mcp:http` — Multi-agent platforms, ElizaOS integration
 - `yarn dev:api` — Testing with REST clients, custom web apps
 
-### 🚀 Production Commands
+### Production Commands
 
 Run compiled servers from `dist/` directory:
 
@@ -319,7 +319,7 @@ yarn start:api
 
 **Note:** Always run `yarn build` before using production commands.
 
-### 🧪 Testing Commands
+### Testing Commands
 
 ```bash
 # Run all tests (unit + integration + e2e)
@@ -358,7 +358,7 @@ yarn test:coverage
 
 **Test Documentation:** See [test/README.md](test/README.md) for detailed testing information.
 
-### 🛠️ Utility Scripts
+### Utility Scripts
 
 ```bash
 # Generate a new agent with wallet seed
@@ -380,7 +380,7 @@ yarn demo:eliza
 
 **Script Documentation:** See [scripts/README.md](scripts/README.md) for detailed script documentation and options.
 
-### 🔍 Code Quality Commands
+### Code Quality Commands
 
 ```bash
 # Run ESLint
@@ -393,7 +393,7 @@ yarn lint:fix
 yarn type-check
 ```
 
-### 📦 Package Management
+### Package Management
 
 ```bash
 # Install dependencies
@@ -406,7 +406,7 @@ yarn upgrade-interactive
 yarn outdated
 ```
 
-## 📋 Developer Workflow
+## Developer Workflow
 
 Here's the recommended workflow for getting started:
 
@@ -676,12 +676,12 @@ API_PORT=3000                        # API server port
 
 See [docs/setup-guide.md](docs/setup-guide.md) for detailed configuration options.
 
-## 📚 Documentation
+## Documentation
 
 ### Getting Started
 - [Setup Guide](docs/setup-guide.md) — Complete installation and configuration
 - [Scripts Documentation](scripts/README.md) — All utility scripts with examples
-- [Available Commands](#-available-commands) — All yarn commands documented above
+- [Available Commands](#available-commands) — All yarn commands documented above
 
 ### Architecture & Design
 - [Architecture](docs/ARCHITECTURE.md) — Technical architecture deep-dive

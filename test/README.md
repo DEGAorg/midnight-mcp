@@ -1,8 +1,8 @@
-# 🧪 MCP Server Tests
+# MCP Server Tests
 
 This directory contains comprehensive tests for the Midnight MCP server, organized into three main categories: **Unit**, **Integration**, and **End-to-End** tests.
 
-## 📚 Test Documentation
+## Test Documentation
 
 ### Detailed Test Overviews
 - **[Unit Tests Overview](unit/UNIT_OVERVIEW.md)** — 429 tests across 18 suites with 100% coverage
@@ -10,7 +10,7 @@ This directory contains comprehensive tests for the Midnight MCP server, organiz
 - **[E2E Tests Overview](e2e/E2E_OVERVIEW.md)** — Complete workflows with ElizaOS integration
 - **[ElizaOS Client Guide](e2e/ELIZA_CLIENT_README.md)** — ElizaOS integration setup and usage
 
-## 🏗️ Test Categories
+## Test Categories
 
 ### Unit Tests
 
@@ -334,11 +334,11 @@ echo $BASE_STORAGE_DIR
 yarn setup-agent -a test-agent
 ```
 
-## 📖 Additional Documentation
+## Additional Documentation
 
 ### Project Documentation
 - **[Main README](../README.md)** — Project overview and quick start
-- **[Available Commands](../README.md#-available-commands)** — All test commands documented
+- **[Available Commands](../README.md#available-commands)** — All test commands documented
 - **[Scripts Documentation](../scripts/README.md)** — Utility scripts for testing setup
 - **[Documentation Index](../docs/index.md)** — Complete documentation navigation
 

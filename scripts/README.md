@@ -2,9 +2,9 @@
 
 This directory contains utility scripts for agent setup, testing, and demonstration purposes.
 
-## 📚 Available Scripts
+## Available Scripts
 
-### 🔧 Setup & Configuration
+### Setup & Configuration
 
 #### `setup-agent.ts`
 
@@ -124,7 +124,7 @@ yarn mcp:config
 
 ---
 
-### 🎭 Demo & Examples
+### Demo & Examples
 
 #### `demo-eliza-mcp.ts`
 
@@ -166,7 +166,7 @@ npm start
 
 ---
 
-### 🧪 Testing Scripts
+### Testing Scripts
 
 #### `test-e2e-eliza.ts`
 
@@ -261,7 +261,7 @@ tsx scripts/test-audit-trail.ts
 
 ---
 
-### 🔍 Utility Scripts
+### Utility Scripts
 
 #### `query.ts`
 
@@ -333,7 +333,7 @@ Helper script to find Node.js executable in NVM.
 
 ---
 
-## 📖 Usage Patterns
+## Usage Patterns
 
 ### Setting Up a New Agent
 
@@ -380,7 +380,7 @@ tsx scripts/test-e2e-full.ts
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### "Agent seed not found"
 
@@ -400,7 +400,7 @@ tsx scripts/test-e2e-full.ts
 
 ---
 
-## 📚 Related Documentation
+## Related Documentation
 
 - [Main Documentation](../docs/index.md) - Documentation index
 - [Setup Guide](../docs/setup-guide.md) - Complete setup instructions
@@ -409,7 +409,7 @@ tsx scripts/test-e2e-full.ts
 
 ---
 
-## 🔗 Script Index
+## Script Index
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
