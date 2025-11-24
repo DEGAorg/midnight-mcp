@@ -4,11 +4,16 @@
  * Defines all DAO-related MCP tools with Zod validation.
  *
  * NEW: Each tool now has an execute function that receives services.
+ * MOCK MODE: Returns hardcoded mock data for testing without actual DAO contract connections.
  */
 
 import { z } from 'zod';
 import type { ServiceDependencies } from '../types.js';
 import type { ToolDefinition } from '../adapter/types.js';
+import {
+  MOCK_DAO_RESULTS,
+  generateMockTransactionId,
+} from './mock-data.js';
 
 /**
  * Schemas
@@ -106,12 +111,13 @@ export const openDaoElectionTool: ToolDefinition = {
   description: "Open a new DAO election for voting",
   inputSchema: OpenElectionSimpleSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.daoService) {
-      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
-    }
     const { electionId } = OpenElectionSimpleSchema.parse(args);
-    // DaoService.openElection only takes electionId
-    return await services.daoService.openElection(electionId);
+    // MOCK: Return success response
+    return {
+      ...MOCK_DAO_RESULTS.OPEN_ELECTION,
+      electionId,
+      transactionId: generateMockTransactionId(),
+    };
   }
 };
 
@@ -120,12 +126,13 @@ export const castDaoVoteTool: ToolDefinition = {
   description: "Cast a vote on the active DAO election",
   inputSchema: CastVoteSimpleSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.daoService) {
-      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
-    }
     const { voteChoice } = CastVoteSimpleSchema.parse(args);
-    // DaoService.castVote only takes voteChoice string
-    return await services.daoService.castVote(voteChoice);
+    // MOCK: Return success response
+    return {
+      ...MOCK_DAO_RESULTS.CAST_VOTE,
+      voteChoice,
+      transactionId: generateMockTransactionId(),
+    };
   }
 };
 
@@ -134,11 +141,13 @@ export const closeDaoElectionTool: ToolDefinition = {
   description: "Close a DAO election and finalize results",
   inputSchema: CloseDaoElectionSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.daoService) {
-      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
-    }
     const { electionId } = CloseDaoElectionSchema.parse(args);
-    return await services.daoService.closeElection(electionId);
+    // MOCK: Return success response
+    return {
+      ...MOCK_DAO_RESULTS.CLOSE_ELECTION,
+      electionId,
+      transactionId: generateMockTransactionId(),
+    };
   }
 };
 
@@ -147,11 +156,13 @@ export const fundDaoTreasuryTool: ToolDefinition = {
   description: "Fund the DAO treasury with tokens",
   inputSchema: FundTreasurySchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.daoService) {
-      throw new Error('DAO service not configured. Set DAO_CONTRACT_ADDRESS environment variable to enable DAO functionality.');
-    }
     const { amountDecimal } = FundTreasurySchema.parse(args);
-    return await services.daoService.fundTreasury(amountDecimal);
+    // MOCK: Return success response
+    return {
+      ...MOCK_DAO_RESULTS.FUND_TREASURY,
+      amount: amountDecimal,
+      transactionId: generateMockTransactionId(),
+    };
   }
 };
 

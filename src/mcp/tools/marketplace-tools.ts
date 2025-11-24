@@ -4,6 +4,7 @@
  * Defines all marketplace-related MCP tools with Zod validation.
  *
  * NEW: Each tool now has an execute function that receives services.
+ * MOCK MODE: Returns hardcoded mock data for testing without actual marketplace contract connections.
  *
  * NOTE: Marketplace tools updated to match actual MarketplaceService API
  */
@@ -11,6 +12,11 @@
 import { z } from 'zod';
 import type { ServiceDependencies } from '../types.js';
 import type { ToolDefinition } from '../adapter/types.js';
+import {
+  getMockUserInfo,
+  isMockUserRegistered,
+  isMockUserVerified,
+} from './mock-data.js';
 
 /**
  * Schemas
@@ -48,11 +54,13 @@ export const getUserInfoTool: ToolDefinition = {
   description: "Get information about a marketplace user",
   inputSchema: GetUserInfoSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.marketplaceService) {
-      throw new Error('Marketplace service not configured. Set MARKETPLACE_CONTRACT_ADDRESS environment variable to enable marketplace functionality.');
-    }
     const { userId } = GetUserInfoSchema.parse(args);
-    return await services.marketplaceService.getUserInfo(userId);
+    // MOCK: Return hardcoded user info
+    const userInfo = getMockUserInfo(userId);
+    if (!userInfo) {
+      throw new Error(`User not found: ${userId}`);
+    }
+    return userInfo;
   }
 };
 
@@ -61,13 +69,11 @@ export const isUserRegisteredTool: ToolDefinition = {
   description: "Check if a user is registered in the marketplace",
   inputSchema: IsUserRegisteredSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.marketplaceService) {
-      throw new Error('Marketplace service not configured. Set MARKETPLACE_CONTRACT_ADDRESS environment variable to enable marketplace functionality.');
-    }
     const { userId } = IsUserRegisteredSchema.parse(args);
+    // MOCK: Return hardcoded registration status
     return {
       userId,
-      isRegistered: await services.marketplaceService.isUserRegistered(userId)
+      isRegistered: isMockUserRegistered(userId)
     };
   }
 };
@@ -77,13 +83,11 @@ export const isUserVerifiedTool: ToolDefinition = {
   description: "Check if a user is verified in the marketplace",
   inputSchema: IsUserVerifiedSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    if (!services.marketplaceService) {
-      throw new Error('Marketplace service not configured. Set MARKETPLACE_CONTRACT_ADDRESS environment variable to enable marketplace functionality.');
-    }
     const { userId } = IsUserVerifiedSchema.parse(args);
+    // MOCK: Return hardcoded verification status
     return {
       userId,
-      isVerified: await services.marketplaceService.isUserVerified(userId)
+      isVerified: isMockUserVerified(userId)
     };
   }
 };

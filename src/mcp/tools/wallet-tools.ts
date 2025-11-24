@@ -5,11 +5,18 @@
  * Midnight uses Bech32m encoding for addresses (not Ethereum hex).
  *
  * NEW: Each tool now has an execute function that receives services.
+ * MOCK MODE: Returns hardcoded mock data for testing without actual wallet connections.
  */
 
 import { z } from 'zod';
 import type { ServiceDependencies } from '../types.js';
 import type { ToolDefinition } from '../adapter/types.js';
+import {
+  MOCK_WALLET_STATUS,
+  MOCK_WALLET_BALANCE,
+  MOCK_ADDRESSES,
+  getMockTransaction,
+} from './mock-data.js';
 
 /**
  * Midnight Address Validation
@@ -86,20 +93,8 @@ export const walletStatusTool: ToolDefinition = {
   description: "Get the current wallet synchronization status and readiness state",
   inputSchema: WalletStatusSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    // Compose status from available methods
-    const syncProgress = services.walletService.getSyncProgress();
-    return {
-      isReady: services.walletService.isReady(),
-      address: services.walletService.getAddress(),
-      balance: services.walletService.getBalance().toString(),
-      syncProgress: {
-        synced: syncProgress.synced,
-        applyGap: syncProgress.applyGap.toString(),
-        sourceGap: syncProgress.sourceGap.toString(),
-        syncPercentage: syncProgress.syncPercentage
-      },
-      isSyncing: services.walletService.isSyncInProgress()
-    };
+    // MOCK: Return hardcoded wallet status
+    return MOCK_WALLET_STATUS;
   }
 };
 
@@ -108,7 +103,8 @@ export const walletAddressTool: ToolDefinition = {
   description: "Get the wallet's Midnight address (Bech32m encoded)",
   inputSchema: WalletAddressSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    return { address: services.walletService.getAddress() };
+    // MOCK: Return hardcoded wallet address
+    return { address: MOCK_ADDRESSES.WALLET };
   }
 };
 
@@ -117,10 +113,8 @@ export const walletBalanceTool: ToolDefinition = {
   description: "Get the wallet's native token balance",
   inputSchema: WalletBalanceSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    return {
-      balance: services.walletService.getBalance().toString(),
-      pendingBalance: services.walletService.getPendingBalance().toString()
-    };
+    // MOCK: Return hardcoded wallet balance
+    return MOCK_WALLET_BALANCE;
   }
 };
 
@@ -154,7 +148,8 @@ export const getTransactionTool: ToolDefinition = {
   inputSchema: GetTransactionSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     const { transactionId } = GetTransactionSchema.parse(args);
-    const transaction = services.transactionService.getTransaction(transactionId);
+    // MOCK: Return hardcoded transaction
+    const transaction = getMockTransaction(transactionId);
 
     if (!transaction) {
       throw new Error(`Transaction not found: ${transactionId}`);

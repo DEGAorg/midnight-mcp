@@ -4,11 +4,19 @@
  * Defines all token-related MCP tools with Zod validation.
  *
  * NEW: Each tool now has an execute function that receives services.
+ * MOCK MODE: Returns hardcoded mock data for testing without actual wallet connections.
  */
 
 import { z } from 'zod';
 import type { ServiceDependencies } from '../types.js';
 import type { ToolDefinition } from '../adapter/types.js';
+import {
+  MOCK_TOKENS,
+  MOCK_TOKEN_LIST,
+  getMockTokenBalance,
+  generateMockTransactionId,
+  MOCK_ADDRESSES,
+} from './mock-data.js';
 
 /**
  * Midnight Address Validation (Bech32m)
@@ -98,7 +106,8 @@ export const getTokenBalanceTool: ToolDefinition = {
   inputSchema: GetTokenBalanceSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     const { tokenName } = GetTokenBalanceSchema.parse(args);
-    return await services.tokenService.getTokenBalance(tokenName);
+    // MOCK: Return hardcoded token balance
+    return getMockTokenBalance(tokenName);
   }
 };
 
@@ -108,13 +117,19 @@ export const registerTokenTool: ToolDefinition = {
   inputSchema: RegisterTokenSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     const { name, symbol, contractAddress, decimals } = RegisterTokenSchema.parse(args);
-    // TokenService.registerToken takes individual params, not an object
-    return services.tokenService.registerToken(
-      name,
-      symbol,
-      contractAddress,
-      decimals
-    );
+    // MOCK: Return success response with registered token info
+    return {
+      success: true,
+      message: 'Token registered successfully (MOCK)',
+      token: {
+        id: `mock_token:${contractAddress}`,
+        name,
+        symbol,
+        contractAddress,
+        decimals,
+        domainSeparator: `mock_token`,
+      },
+    };
   }
 };
 
@@ -124,11 +139,18 @@ export const sendShieldedTokenTool: ToolDefinition = {
   inputSchema: SendShieldedTokenSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     const { tokenId, destinationAddress, amount } = SendShieldedTokenSchema.parse(args);
-    return await services.tokenService.sendShieldedToken(
-      tokenId,
-      destinationAddress,
-      BigInt(amount)
-    );
+    // MOCK: Return mock transaction ID
+    const txId = generateMockTransactionId();
+    return {
+      success: true,
+      transactionId: txId,
+      message: 'Shielded token sent successfully (MOCK)',
+      details: {
+        tokenId,
+        to: destinationAddress,
+        amount,
+      },
+    };
   }
 };
 
@@ -138,10 +160,17 @@ export const sendNativeTokenTool: ToolDefinition = {
   inputSchema: SendNativeTokenSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     const { destinationAddress, amount } = SendNativeTokenSchema.parse(args);
-    return await services.tokenService.sendNativeToken(
-      destinationAddress,
-      BigInt(amount)
-    );
+    // MOCK: Return mock transaction ID
+    const txId = generateMockTransactionId();
+    return {
+      success: true,
+      transactionId: txId,
+      message: 'Native token sent successfully (MOCK)',
+      details: {
+        to: destinationAddress,
+        amount,
+      },
+    };
   }
 };
 
@@ -150,7 +179,8 @@ export const listTokensTool: ToolDefinition = {
   description: "List all registered shielded tokens",
   inputSchema: ListTokensSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    return await services.tokenService.listTokens();
+    // MOCK: Return hardcoded token list
+    return MOCK_TOKEN_LIST;
   }
 };
 
