@@ -1,5 +1,5 @@
-import { AuditEventType, AuditSeverity } from '../../../src/audit/types';
-import { TransactionTraceLogger } from '../../../src/audit/transaction-trace-logger';
+import { AuditEventType, AuditSeverity } from '@audit/types.js';
+import { TransactionTraceLogger } from '@audit/transaction-trace-logger.js';
 
 describe('TransactionTraceLogger exportTraces filters', () => {
     let logger: TransactionTraceLogger;

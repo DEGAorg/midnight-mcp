@@ -10,11 +10,11 @@
  * This replaces the marketplace logic from god-class pattern.
  */
 
-import { createLogger } from '../../lib/logger/index.js';
-import { MARKETPLACE_CONFIG } from '../../lib/config/constants.js';
-import { ProviderFactory, type MarketplaceProviders } from '../providers/ProviderFactory.js';
-import type { WalletService } from '../wallet/WalletService.js';
-import type { AuditService } from '../audit/AuditService.js';
+import { createLogger } from '@lib/logger/index.js';
+import { MARKETPLACE_CONFIG } from '@lib/config/constants.js';
+import { ProviderFactory, type MarketplaceProviders } from '@services/providers/ProviderFactory.js';
+import type { WalletService } from '@services/wallet/WalletService.js';
+import type { AuditService } from '@services/audit/AuditService.js';
 import type { Logger } from 'pino';
 
 /**

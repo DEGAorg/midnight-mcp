@@ -26,6 +26,7 @@ import { createToolAdapter } from './adapter/tool-adapter.js';
 import type { ToolAdapter } from './adapter/types.js';
 import { ALL_RESOURCES } from './resources/registry.js';
 import { ALL_PROMPTS } from './prompts/registry.js';
+import { generatePromptMessage, validatePromptArguments } from './prompts/prompt-generator.js';
 
 /**
  * MCPServer
@@ -48,8 +49,14 @@ export class MCPServer {
     private services: ServiceDependencies,
     serverInfo: { name: string; version: string }
   ) {
-    // Initialize MCP server (using McpServer from SDK)
-    this.mcpServer = new McpServer(serverInfo);
+    // Initialize MCP server with capabilities (using McpServer from SDK)
+    this.mcpServer = new McpServer(serverInfo, {
+      capabilities: {
+        tools: {},
+        resources: {},
+        prompts: {}
+      }
+    });
 
     // Setup request handlers (async, toolAdapter created here)
     void this.setupHandlers();
@@ -132,7 +139,7 @@ export class MCPServer {
   }
 
   /**
-   * Handle prompt requests
+   * Handle prompt requests with dynamic argument substitution
    */
   private async handleGetPrompt(name: string, args: Record<string, unknown>) {
     const prompt = ALL_PROMPTS.find(p => p.name === name);
@@ -141,16 +148,22 @@ export class MCPServer {
       throw new Error(`Unknown prompt: ${name}`);
     }
 
-    // For now, return basic prompt structure
-    //TODO: Implement dynamic argument substitution
-    // This can be enhanced with dynamic argument substitution later
+    // Validate required arguments
+    const validationError = validatePromptArguments(prompt, args);
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    // Generate prompt message with argument substitution
+    const message = generatePromptMessage(prompt, args);
+
     return {
       messages: [
         {
-          role: 'user',
+          role: 'user' as const,
           content: {
-            type: 'text',
-            text: prompt.description || `Prompt: ${name}`
+            type: 'text' as const,
+            text: message
           }
         }
       ]

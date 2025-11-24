@@ -32,9 +32,6 @@ export type {
   TestExecution
 } from './test-outcome-auditor.js';
 
-// Export integration example
-export { AuditIntegrationExample, runAuditIntegrationExample } from './integration-example.js';
-
 // Convenience function to initialize all audit services
 export function initializeAuditServices(options?: {
   auditTrail?: any;

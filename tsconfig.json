@@ -18,13 +18,23 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "types": ["jest", "node"],
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@services/*": ["src/services/*"],
+      "@lib/*": ["src/lib/*"],
+      "@mcp/*": ["src/mcp/*"],
+      "@contracts/*": ["src/contracts/*"],
+      "@api/*": ["src/api/*"],
+      "@agents/*": ["src/agents/*"],
+      "@audit/*": ["src/audit/*"],
+      "@shared/*": ["src/types/*"]
+    }
   },
   "exclude": [
     "node_modules",
     "dist",
     "src/_wallet/**",
-    "src/api/**",
-    "src/audit/integration-example.ts"
+    "src/audit/integration-example.ts",
+    "src/audit/example-usage.ts"
   ]
 } 

@@ -7,7 +7,6 @@
  */
 
 import { z } from 'zod';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ServiceDependencies } from '../types.js';
 import type { ToolDefinition } from '../adapter/types.js';
 
@@ -44,10 +43,10 @@ export const RegisterTokenSchema = z.object({
     .describe("Number of decimal places (default: 6)")
 });
 
-export const SendTokenSchema = z.object({
-  tokenName: z.string()
+export const SendShieldedTokenSchema = z.object({
+  tokenId: z.string()
     .min(1)
-    .describe("Token name or symbol to send"),
+    .describe("Token ID (from registered token, format: domainSeparator:contractAddress)"),
   destinationAddress: z.string()
     .regex(BECH32M_ADDRESS_REGEX, {
       message: "Invalid Midnight address format"
@@ -63,6 +62,22 @@ export const SendTokenSchema = z.object({
     .describe("Amount in token's base units")
 });
 
+export const SendNativeTokenSchema = z.object({
+  destinationAddress: z.string()
+    .regex(BECH32M_ADDRESS_REGEX, {
+      message: "Invalid Midnight address format"
+    })
+    .describe("Recipient's Midnight wallet address (Bech32m encoded)"),
+  amount: z.string()
+    .regex(/^\d+$/, {
+      message: "Amount must contain only digits"
+    })
+    .refine(val => BigInt(val) > 0n, {
+      message: "Amount must be greater than zero"
+    })
+    .describe("Amount in base units (dust)")
+});
+
 export const ListTokensSchema = z.object({});
 
 /**
@@ -70,7 +85,8 @@ export const ListTokensSchema = z.object({});
  */
 export type GetTokenBalanceInput = z.infer<typeof GetTokenBalanceSchema>;
 export type RegisterTokenInput = z.infer<typeof RegisterTokenSchema>;
-export type SendTokenInput = z.infer<typeof SendTokenSchema>;
+export type SendShieldedTokenInput = z.infer<typeof SendShieldedTokenSchema>;
+export type SendNativeTokenInput = z.infer<typeof SendNativeTokenSchema>;
 export type ListTokensInput = z.infer<typeof ListTokensSchema>;
 
 /**
@@ -102,14 +118,27 @@ export const registerTokenTool: ToolDefinition = {
   }
 };
 
-export const sendTokenTool: ToolDefinition = {
-  name: "sendToken",
-  description: "Send shielded tokens to another Midnight address",
-  inputSchema: SendTokenSchema.shape,
+export const sendShieldedTokenTool: ToolDefinition = {
+  name: "sendShieldedToken",
+  description: "Send shielded tokens (colored coins) to another Midnight address",
+  inputSchema: SendShieldedTokenSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
-    const { tokenName, destinationAddress, amount } = SendTokenSchema.parse(args);
-    return await services.tokenService.sendToken(
-      tokenName,
+    const { tokenId, destinationAddress, amount } = SendShieldedTokenSchema.parse(args);
+    return await services.tokenService.sendShieldedToken(
+      tokenId,
+      destinationAddress,
+      BigInt(amount)
+    );
+  }
+};
+
+export const sendNativeTokenTool: ToolDefinition = {
+  name: "sendNativeToken",
+  description: "Send native tokens (tDUST/DUST) to another Midnight address",
+  inputSchema: SendNativeTokenSchema.shape,
+  execute: async (args: unknown, services: ServiceDependencies) => {
+    const { destinationAddress, amount } = SendNativeTokenSchema.parse(args);
+    return await services.tokenService.sendNativeToken(
       destinationAddress,
       BigInt(amount)
     );
@@ -131,6 +160,7 @@ export const listTokensTool: ToolDefinition = {
 export const TOKEN_TOOLS: ToolDefinition[] = [
   getTokenBalanceTool,
   registerTokenTool,
-  sendTokenTool,
+  sendShieldedTokenTool,
+  sendNativeTokenTool,
   listTokensTool
 ];

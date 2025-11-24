@@ -12,14 +12,14 @@
  * not generated locally. The contract determines the coin types.
  */
 
-import { createLogger } from '../../lib/logger/index.js';
-import { DAO_CONFIG, TOKEN_CONFIG } from '../../lib/config/constants.js';
-import { padBytes, convertDecimalToBigInt } from '../../lib/utils/conversions.js';
-import { ProviderFactory, type DaoVotingProviders } from '../providers/ProviderFactory.js';
-import type { WalletService } from '../wallet/WalletService.js';
-import type { AuditService } from '../audit/AuditService.js';
+import { createLogger } from '@lib/logger/index.js';
+import { DAO_CONFIG, TOKEN_CONFIG } from '@lib/config/constants.js';
+import { padBytes, convertDecimalToBigInt } from '@lib/utils/conversions.js';
+import { ProviderFactory, type DaoVotingProviders } from '@services/providers/ProviderFactory.js';
+import type { WalletService } from '@services/wallet/WalletService.js';
+import type { AuditService } from '@services/audit/AuditService.js';
 import type { Logger } from 'pino';
-import { joinDaoVotingContract, pad, type DeployedDaoVotingContract, VoteType } from '../../contracts/dao/index.js';
+import { joinDaoVotingContract, pad, type DeployedDaoVotingContract, VoteType } from '@contracts/dao/index.js';
 
 /**
  * DAO coin colors (read from contract state)

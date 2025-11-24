@@ -10,8 +10,8 @@
  * - Files stored via FileManager with agentId
  */
 
-import type { ServiceDependencies } from '../types.js';
-import type { WalletOrchestrator } from '../../services/WalletOrchestrator.js';
+import type { ServiceDependencies } from '@mcp/types.js';
+import type { WalletOrchestrator } from '@services/WalletOrchestrator.js';
 
 /**
  * Session data stored per agent

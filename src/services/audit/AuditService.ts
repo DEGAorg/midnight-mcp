@@ -9,8 +9,8 @@ import {
   AuditTrailService,
   TransactionTraceLogger,
   AgentDecisionLogger
-} from '../../audit/index.js';
-import { createLogger } from '../../lib/logger/index.js';
+} from '@audit/index.js';
+import { createLogger } from '@lib/logger/index.js';
 import type { Logger } from 'pino';
 
 /**
@@ -152,7 +152,7 @@ export class AuditService {
    *
    * @param agentId Agent identifier
    * @param transactionId Transaction identifier
-   * @param decision Decision made ('approve' | 'reject' | 'defer')
+   * @param decision Decision made ('approve' | 'reject' | 'hold')
    * @param reasoning Reasoning for the decision
    * @param amount Transaction amount
    * @param recipient Transaction recipient
@@ -161,7 +161,7 @@ export class AuditService {
   logAgentDecision(
     agentId: string,
     transactionId: string,
-    decision: string,
+    decision: 'approve' | 'reject' | 'hold',
     reasoning: string,
     amount: string,
     recipient: string,

@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../logger/index.js';
-import { TransactionRecord, TransactionState } from '../../types/wallet.js';
+import { TransactionRecord, TransactionState } from '@shared/wallet.js';
 import { config } from '../config/env.js';
 
 /**

@@ -11,8 +11,8 @@
  * - Concurrent prevention: Only one recovery at a time
  */
 
-import { createLogger } from '../../lib/logger/index.js';
-import { RECOVERY_CONFIG } from '../../lib/config/constants.js';
+import { createLogger } from '@lib/logger/index.js';
+import { RECOVERY_CONFIG } from '@lib/config/constants.js';
 import type { Logger } from 'pino';
 
 export interface RecoveryOptions {

@@ -7,16 +7,16 @@
 
 import type { Wallet } from '@midnight-ntwrk/wallet-api';
 import type { Resource } from '@midnight-ntwrk/wallet';
-import type {
-  WalletProvider,
-  MidnightProvider,
-  UnbalancedTransaction,
-  BalancedTransaction,
-  CoinInfo,
+import {
+  type WalletProvider,
+  type MidnightProvider,
+  type UnbalancedTransaction,
+  type BalancedTransaction,
+  createBalancedTx,
 } from '@midnight-ntwrk/midnight-js-types';
-import type { TransactionId } from '@midnight-ntwrk/zswap';
+import type { TransactionId, CoinInfo } from '@midnight-ntwrk/zswap';
 import { Transaction as ZswapTransaction } from '@midnight-ntwrk/zswap';
-import { Transaction, createBalancedTx } from '@midnight-ntwrk/ledger';
+import { Transaction } from '@midnight-ntwrk/ledger';
 import {
   getLedgerNetworkId,
   getZswapNetworkId,
@@ -26,9 +26,9 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { firstValueFrom } from 'rxjs';
-import { config } from '../../lib/config/env.js';
-import { DAO_CONFIG, MARKETPLACE_CONFIG } from '../../lib/config/constants.js';
-import { createLogger } from '../../lib/logger/index.js';
+import { config } from '@lib/config/env.js';
+import { DAO_CONFIG, MARKETPLACE_CONFIG } from '@lib/config/constants.js';
+import { createLogger } from '@lib/logger/index.js';
 import type { Logger } from 'pino';
 
 /**
@@ -89,7 +89,8 @@ export class ProviderFactory {
   static async createDualProvider(
     wallet: Wallet & Resource
   ): Promise<DualProvider> {
-    this.logger.debug('Creating dual provider from wallet');
+    const logger = this.logger;
+    logger.debug('Creating dual provider from wallet');
 
     // Get current wallet state
     const state = await firstValueFrom(wallet.state());
@@ -107,7 +108,7 @@ export class ProviderFactory {
         tx: UnbalancedTransaction,
         newCoins: CoinInfo[]
       ): Promise<BalancedTransaction> {
-        this.logger.debug('Balancing transaction');
+        logger.debug('Balancing transaction');
 
         return wallet
           .balanceTransaction(
@@ -132,7 +133,7 @@ export class ProviderFactory {
        * Submit a balanced transaction to the network
        */
       submitTx(tx: BalancedTransaction): Promise<TransactionId> {
-        this.logger.debug('Submitting transaction');
+        logger.debug('Submitting transaction');
         return wallet.submitTransaction(tx);
       },
     };
@@ -156,8 +157,8 @@ export class ProviderFactory {
         privateStateStoreName: DAO_CONFIG.PRIVATE_STATE_STORE_NAME,
       }),
       publicDataProvider: indexerPublicDataProvider(
-        config.INDEXER,
-        config.INDEXER_WS
+        config.INDEXER!,
+        config.INDEXER_WS!
       ),
       zkConfigProvider: new NodeZkConfigProvider<
         | 'open_election'
@@ -167,7 +168,7 @@ export class ProviderFactory {
         | 'payout_approved_proposal'
         | 'cancel_payout'
       >(DAO_CONFIG.ZK_CONFIG_PATH),
-      proofProvider: httpClientProofProvider(config.PROOF_SERVER),
+      proofProvider: httpClientProofProvider(config.PROOF_SERVER!),
       walletProvider: dualProvider,
       midnightProvider: dualProvider,
     };
@@ -191,13 +192,13 @@ export class ProviderFactory {
         privateStateStoreName: MARKETPLACE_CONFIG.PRIVATE_STATE_STORE_NAME,
       }),
       publicDataProvider: indexerPublicDataProvider(
-        config.INDEXER,
-        config.INDEXER_WS
+        config.INDEXER!,
+        config.INDEXER_WS!
       ),
       zkConfigProvider: new NodeZkConfigProvider(
         MARKETPLACE_CONFIG.ZK_CONFIG_PATH
       ),
-      proofProvider: httpClientProofProvider(config.PROOF_SERVER),
+      proofProvider: httpClientProofProvider(config.PROOF_SERVER!),
       walletProvider: dualProvider,
       midnightProvider: dualProvider,
     };
@@ -225,7 +226,7 @@ export class ProviderFactory {
    */
   static createPublicDataProvider(): any {
     this.logger.debug('Creating public data provider');
-    return indexerPublicDataProvider(config.INDEXER, config.INDEXER_WS);
+    return indexerPublicDataProvider(config.INDEXER!, config.INDEXER_WS!);
   }
 
   /**
@@ -250,6 +251,6 @@ export class ProviderFactory {
    */
   static createProofProvider(): any {
     this.logger.debug(`Creating proof provider: ${config.PROOF_SERVER}`);
-    return httpClientProofProvider(config.PROOF_SERVER);
+    return httpClientProofProvider(config.PROOF_SERVER!);
   }
 }

@@ -1,7 +1,7 @@
-import { AuditEventType } from '../../../src/audit/types';
-import { TestOutcomeAuditor, TestExecution, TestDecision, TestOutcome, TestMetrics } from '../../../src/audit/test-outcome-auditor';
+import { AuditEventType } from '@audit/types.js';
+import { TestOutcomeAuditor, TestExecution, TestDecision, TestOutcome, TestMetrics } from '@audit/test-outcome-auditor.js';
 
-jest.mock('../../../src/audit/audit-trail-service', () => {
+jest.mock('@audit/audit-trail-service.js', () => {
   return {
     AuditTrailService: {
       getInstance: jest.fn(() => ({

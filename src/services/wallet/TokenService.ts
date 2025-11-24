@@ -12,12 +12,13 @@
  */
 
 import { tokenType } from '@midnight-ntwrk/compact-runtime';
-import { createLogger } from '../../lib/logger/index.js';
-import { TOKEN_CONFIG } from '../../lib/config/constants.js';
-import { padBytes, convertDecimalToBigInt, convertBigIntToDecimal } from '../../lib/utils/conversions.js';
-import { TokenRegistryDatabase } from '../../lib/database/token-registry-db.js';
-import type { WalletService } from './WalletService.js';
-import type { TransactionService } from './TransactionService.js';
+import { nativeToken } from '@midnight-ntwrk/zswap';
+import { createLogger } from '@lib/logger/index.js';
+import { TOKEN_CONFIG } from '@lib/config/constants.js';
+import { padBytes, convertDecimalToBigInt, convertBigIntToDecimal } from '@lib/utils/conversions.js';
+import { TokenRegistryDatabase } from '@lib/database/token-registry-db.js';
+import type { WalletService } from '@services/wallet/WalletService.js';
+import type { TransactionService } from '@services/wallet/TransactionService.js';
 import type { Logger } from 'pino';
 
 /**
@@ -136,9 +137,20 @@ export class TokenService {
         name,
         symbol,
       });
+      // Reconstruct full TokenInfo with computed fields
+      const fullTokenInfo: TokenInfo = {
+        id,
+        name: existingToken.name,
+        symbol: existingToken.symbol,
+        contractAddress: existingToken.contractAddress,
+        decimals: existingToken.decimals ?? TOKEN_CONFIG.DEFAULT_DECIMALS,
+        domainSeparator: existingToken.domainSeparator,
+        tokenType: tokenTypeBytes,
+        tokenTypeHex: existingToken.tokenTypeHex ?? tokenTypeHex,
+      };
       // Cache in memory
-      this.tokens.set(id, existingToken);
-      return existingToken;
+      this.tokens.set(id, fullTokenInfo);
+      return fullTokenInfo;
     }
 
     // Create token info
@@ -444,21 +456,88 @@ export class TokenService {
   // ==================== TOKEN OPERATIONS ====================
 
   /**
-   * Send tokens to an address
-   * Creates transaction via TransactionService
+   * Send native tokens (tDUST/DUST) to an address
+   * Native tokens don't require a token type - they're the base currency
    *
-   * @param tokenId Token ID
+   * @param to Recipient address
+   * @param amount Amount in base units (dust)
+   * @returns Transaction ID
+   */
+  async sendNativeToken(to: string, amount: bigint): Promise<string> {
+    this.logger.info('Sending native token', {
+      to,
+      amount: amount.toString(),
+    });
+
+    // Check native balance from wallet
+    const balance = this.config.walletService.getBalance();
+    if (balance < amount) {
+      throw new Error(
+        `Insufficient native balance. Have: ${balance.toString()}, need: ${amount.toString()}`
+      );
+    }
+
+    // Create transaction record via TransactionService
+    const txId = this.config.transactionService.createTransaction(to, amount);
+
+    try {
+      // Get wallet instance
+      const wallet = this.config.walletService.getWallet();
+
+      // Build native transfer transaction (no type = native token)
+      const transferRecipe = await wallet.transferTransaction([
+        {
+          amount,
+          receiverAddress: to,
+          type: nativeToken(),
+        },
+      ]);
+
+      // Prove transaction
+      const provenTransaction = await wallet.proveTransaction(transferRecipe);
+
+      // Submit transaction to blockchain
+      const txIdentifier = await wallet.submitTransaction(provenTransaction);
+
+      // Mark as sent in TransactionService
+      this.config.transactionService.markTransactionSent(txId, txIdentifier);
+
+      this.logger.info('Native token sent successfully', {
+        txId,
+        txIdentifier,
+        amount: amount.toString(),
+      });
+
+      return txId;
+    } catch (error) {
+      // Mark as failed in TransactionService
+      this.config.transactionService.markTransactionFailed(txId, error as Error);
+
+      this.logger.error('Failed to send native token', {
+        error,
+        txId,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Send shielded tokens (colored coins) to an address
+   * Requires a registered token with tokenTypeHex
+   *
+   * @param tokenId Token ID (from registered token)
    * @param to Recipient address
    * @param amount Amount in base units
    * @returns Transaction ID
    */
-  async sendToken(tokenId: string, to: string, amount: bigint): Promise<string> {
+  async sendShieldedToken(tokenId: string, to: string, amount: bigint): Promise<string> {
     const token = this.tokens.get(tokenId);
     if (!token) {
       throw new Error(`Token not found: ${tokenId}`);
     }
 
-    this.logger.info('Sending token', {
+    this.logger.info('Sending shielded token', {
       tokenId,
       symbol: token.symbol,
       to,
@@ -500,7 +579,7 @@ export class TokenService {
       // Mark as sent in TransactionService
       this.config.transactionService.markTransactionSent(txId, txIdentifier);
 
-      this.logger.info('Token sent successfully', {
+      this.logger.info('Shielded token sent successfully', {
         tokenId,
         symbol: token.symbol,
         txId,
@@ -512,7 +591,7 @@ export class TokenService {
       // Mark as failed in TransactionService
       this.config.transactionService.markTransactionFailed(txId, error as Error);
 
-      this.logger.error('Failed to send token', {
+      this.logger.error('Failed to send shielded token', {
         error,
         tokenId,
         symbol: token.symbol,
@@ -524,14 +603,14 @@ export class TokenService {
   }
 
   /**
-   * Send tokens using decimal amount string
+   * Send shielded tokens using decimal amount string
    *
    * @param tokenId Token ID
    * @param to Recipient address
    * @param amountDecimal Amount as decimal string (e.g., "12.345")
    * @returns Transaction ID
    */
-  async sendTokenDecimal(tokenId: string, to: string, amountDecimal: string): Promise<string> {
+  async sendShieldedTokenDecimal(tokenId: string, to: string, amountDecimal: string): Promise<string> {
     const token = this.tokens.get(tokenId);
     if (!token) {
       throw new Error(`Token not found: ${tokenId}`);
@@ -540,7 +619,7 @@ export class TokenService {
     // Convert decimal to bigint
     const amount = convertDecimalToBigInt(amountDecimal, token.decimals);
 
-    return this.sendToken(tokenId, to, amount);
+    return this.sendShieldedToken(tokenId, to, amount);
   }
 
   // ==================== TOKEN TYPE GENERATION ====================

@@ -1,4 +1,4 @@
-import { TransactionState } from '../../../src/types/wallet';
+import { TransactionState } from '@shared/wallet';
 
 class WalletManager {
   public isReady = jest.fn(() => true);

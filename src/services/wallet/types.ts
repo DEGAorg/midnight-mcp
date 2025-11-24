@@ -12,7 +12,7 @@ import type {
   TransactionStatusResult,
   TransactionRecord,
   TransactionVerificationResult,
-} from '../../types/wallet.js';
+} from '@shared/wallet.js';
 
 // Re-export wallet types for convenience
 export type {

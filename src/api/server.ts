@@ -1,144 +1,178 @@
-import express, { Router, RequestHandler } from 'express';
+/**
+ * HTTP API Server
+ *
+ * Express server that exposes wallet and blockchain operations via HTTP endpoints.
+ * Uses WalletOrchestrator for all operations with a professional middleware stack.
+ *
+ * Architecture:
+ *   HTTP Request -> Middleware -> Routes -> Controllers -> Services
+ */
+
+import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import pkg from 'body-parser';
 const { json } = pkg;
-import { WalletServiceMCP } from '../mcp/index.js';
-import { WalletController } from './controllers/wallet.controller.js';
-import { config } from '../lib/config/env.js';
-import { SeedManager } from '../lib/utils/seed-manager.js';
-import { createLogger } from '../lib/logger/index.js';
 
-const app = express();
-const router = Router();
-const port = process.env.PORT || 3000;
-const logger = createLogger('server');
+import { createApiRoutes } from './routes/index.js';
+import { errorHandler, notFoundHandler, requestLogger } from './middleware/index.js';
+import type { WalletOrchestrator } from '@services/WalletOrchestrator.js';
+import { createLogger } from '@lib/logger/index.js';
+import type { Logger } from 'pino';
 
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(json());
+/**
+ * API Server Configuration
+ */
+export interface ApiServerConfig {
+  /** Port to listen on */
+  port: number;
+  /** WalletOrchestrator instance */
+  orchestrator: WalletOrchestrator;
+  /** Optional CORS options */
+  corsOptions?: cors.CorsOptions;
+  /** Enable request logging (default: true) */
+  enableLogging?: boolean;
+}
 
-// Initialize services
+/**
+ * API Server
+ *
+ * Professional Express server with:
+ * - Helmet for security headers
+ * - CORS support
+ * - Request logging with request IDs
+ * - Centralized error handling
+ * - Organized route structure
+ */
+export class ApiServer {
+  private app: express.Application;
+  private server?: ReturnType<typeof express.application.listen>;
+  private logger: Logger;
+  private config: ApiServerConfig;
 
-const seed = SeedManager.getAgentSeed(config.agentId);
-const externalConfig = {
-  proofServer: config.proofServer,
-  indexer: config.indexer,
-  indexerWS: config.indexerWS,
-  node: config.node,
-  useExternalProofServer: config.useExternalProofServer,
-  networkId: config.networkId
-};
+  constructor(config: ApiServerConfig) {
+    this.config = config;
+    this.logger = createLogger('api-server');
+    this.app = express();
 
-const walletService = new WalletServiceMCP(
-  config.networkId,
-  seed,
-  config.walletFilename,
-  externalConfig
-);
-
-// Initialize controller
-const walletController = new WalletController(walletService);
-
-// Register routes with bound methods
-const routes = [
-  { method: 'get', path: '/wallet/status', handler: walletController.getStatus },
-  { method: 'get', path: '/wallet/address', handler: walletController.getAddress },
-  { method: 'get', path: '/wallet/balance', handler: walletController.getBalance },
-  { method: 'post', path: '/wallet/send', handler: walletController.sendFunds },
-  { method: 'post', path: '/wallet/verify-transaction', handler: walletController.verifyTransaction },
-  { method: 'get', path: '/wallet/transaction/:transactionId', handler: walletController.getTransactionStatus },
-  { method: 'get', path: '/wallet/transactions', handler: walletController.getTransactions },
-  { method: 'get', path: '/wallet/pending-transactions', handler: walletController.getPendingTransactions },
-  { method: 'get', path: '/wallet/config', handler: walletController.getWalletConfig },
-  { method: 'get', path: '/health', handler: walletController.healthCheck },
-  // Token routes
-  { method: 'get', path: '/wallet/tokens/balance/:tokenName', handler: walletController.getTokenBalance },
-  { method: 'post', path: '/wallet/tokens/send', handler: walletController.sendToken },
-  { method: 'get', path: '/wallet/tokens/list', handler: walletController.listTokens },
-  { method: 'post', path: '/wallet/tokens/register', handler: walletController.registerToken },
-  { method: 'post', path: '/wallet/tokens/batch', handler: walletController.registerTokensBatch },
-  { method: 'post', path: '/wallet/tokens/register-from-env', handler: walletController.registerTokensFromEnv },
-  { method: 'get', path: '/wallet/tokens/config-template', handler: walletController.getTokenEnvConfigTemplate },
-  { method: 'get', path: '/wallet/tokens/stats', handler: walletController.getTokenRegistryStats },
-  // DAO routes
-  { method: 'post', path: '/dao/open-election', handler: walletController.openDaoElection },
-  { method: 'post', path: '/dao/close-election', handler: walletController.closeDaoElection },
-  { method: 'post', path: '/dao/cast-vote', handler: walletController.castDaoVote },
-  { method: 'post', path: '/dao/fund-treasury', handler: walletController.fundDaoTreasury },
-  { method: 'post', path: '/dao/payout-proposal', handler: walletController.payoutDaoProposal },
-  { method: 'get', path: '/dao/election-status', handler: walletController.getDaoElectionStatus },
-  { method: 'get', path: '/dao/state', handler: walletController.getDaoState },
-  { method: 'get', path: '/dao/config-template', handler: walletController.getDaoConfigTemplate },
-  // Marketplace routes
-  { method: 'post', path: '/marketplace/register', handler: walletController.registerInMarketplace },
-  { method: 'post', path: '/marketplace/verify', handler: walletController.verifyUserInMarketplace }
-] as const;
-
-// Register all routes
-routes.forEach(({ method, path, handler }) => {
-  const boundHandler = (handler as RequestHandler).bind(walletController);
-  /* istanbul ignore else */
-  if (method === 'get') {
-    router.get(path, boundHandler);
-  } else if (method === 'post') {
-    router.post(path, boundHandler);
-
-  } else if (method === 'put') {
-    router.put(path, boundHandler);
-    
-  } else if (method === 'delete') {
-    router.delete(path, boundHandler);
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.setupErrorHandling();
   }
-});
 
-// Mount router
-app.use(router);
+  /**
+   * Setup Express middleware stack
+   */
+  private setupMiddleware(): void {
+    // Security headers
+    this.app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+        },
+      },
+    }));
 
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message
-  });
-});
+    // CORS
+    this.app.use(cors(this.config.corsOptions ?? {
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    }));
 
-// Start server
-const server = app.listen(port, () => {
-  logger.info(`Server is running on port ${port}`);
-});
+    // Body parsing
+    this.app.use(json({ limit: '1mb' }));
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received. Closing HTTP server...');
-  server.close(async () => {
-    logger.info('HTTP server closed');
-    try {
-      await walletService.close();
-      logger.info('Wallet service closed');
-      process.exit(0);
-    } catch (error) {
-      logger.error('Error during shutdown:', error);
-      process.exit(1);
+    // Request logging (optional)
+    if (this.config.enableLogging !== false) {
+      this.app.use(requestLogger);
     }
-  });
-});
+  }
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT signal received. Closing HTTP server...');
-  server.close(async () => {
-    logger.info('HTTP server closed');
-    try {
-      await walletService.close();
-      logger.info('Wallet service closed');
-      process.exit(0);
-    } catch (error) {
-      logger.error('Error during shutdown:', error);
-      process.exit(1);
-    }
-  });
-});
+  /**
+   * Setup API routes
+   */
+  private setupRoutes(): void {
+    // Create and mount API routes
+    const apiRoutes = createApiRoutes(this.config.orchestrator);
 
-export { app, server };
+    // Mount at /api prefix
+    this.app.use('/api', apiRoutes);
+
+    // Also mount at root for backwards compatibility
+    this.app.use('/', apiRoutes);
+  }
+
+  /**
+   * Setup error handling
+   */
+  private setupErrorHandling(): void {
+    // 404 handler for undefined routes
+    this.app.use(notFoundHandler);
+
+    // Global error handler
+    this.app.use(errorHandler);
+  }
+
+  /**
+   * Start the server
+   */
+  async start(): Promise<void> {
+    return new Promise((resolve) => {
+      this.server = this.app.listen(this.config.port, () => {
+        this.logger.info({
+          port: this.config.port,
+          endpoints: {
+            health: '/api/health',
+            wallet: '/api/wallet/*',
+            tokens: '/api/tokens/*',
+            dao: '/api/dao/*',
+            marketplace: '/api/marketplace/*',
+          },
+        }, `API server listening on port ${this.config.port}`);
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * Stop the server
+   */
+  async stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.server) {
+        resolve();
+        return;
+      }
+
+      this.server.close((err) => {
+        if (err) {
+          this.logger.error({ err }, 'Error closing server');
+          reject(err);
+        } else {
+          this.logger.info('API server closed');
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Get Express app (for testing)
+   */
+  getApp(): express.Application {
+    return this.app;
+  }
+}
+
+/**
+ * Create and start API server
+ */
+export async function startApiServer(config: ApiServerConfig): Promise<ApiServer> {
+  const server = new ApiServer(config);
+  await server.start();
+  return server;
+}

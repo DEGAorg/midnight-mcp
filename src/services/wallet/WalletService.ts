@@ -12,14 +12,32 @@
  * This replaces the god-class WalletManager pattern with a clean service interface.
  */
 
-import type { Wallet } from '@midnight-ntwrk/wallet-api';
-import type { Resource, WalletState } from '@midnight-ntwrk/wallet';
+import type { Wallet, WalletState as SdkWalletState } from '@midnight-ntwrk/wallet-api';
+import type { Resource } from '@midnight-ntwrk/wallet';
 import type { Subscription } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
-import { createLogger } from '../../lib/logger/index.js';
-import { WALLET_SYNC_CONFIG } from '../../lib/config/constants.js';
-import { RecoveryService } from '../recovery/RecoveryService.js';
+import { createLogger } from '@lib/logger/index.js';
+import { WALLET_SYNC_CONFIG } from '@lib/config/constants.js';
+import { RecoveryService } from '@services/recovery/RecoveryService.js';
 import type { Logger } from 'pino';
+
+/**
+ * Extended wallet state with sync tracking properties
+ * The SDK's WalletState doesn't include sync progress fields,
+ * but the runtime wallet implementation provides them
+ */
+export interface WalletState extends SdkWalletState {
+  /** Whether wallet is fully synced */
+  synced?: boolean;
+  /** Blocks remaining to apply */
+  applyGap?: bigint | string | number;
+  /** Blocks remaining from source */
+  sourceGap?: bigint | string | number;
+  /** Balance breakdown by type (extended with unshielded) */
+  balances: SdkWalletState['balances'] & {
+    unshielded?: bigint;
+  };
+}
 
 /**
  * Wallet configuration
@@ -188,25 +206,26 @@ export class WalletService {
     // Cache state for fast reads
     this.cachedState = state;
 
-    // Update balance tracking
-    this.nativeBalance = state.balances.unshielded;
+    // Update balance tracking (use unshielded if available, otherwise 0)
+    this.nativeBalance = state.balances.unshielded ?? 0n;
     this.pendingBalance = 0n; // Will be updated by TransactionService
 
-    // Track sync progress
+    // Track sync progress (handle optional fields)
     const wasNotSynced = !this.syncProgress.synced;
     const applyGap = BigInt(state.applyGap ?? 0);
     const sourceGap = BigInt(state.sourceGap ?? 0);
     const totalGap = applyGap + sourceGap;
+    const isSynced = state.synced ?? (totalGap === 0n);
 
     this.syncProgress = {
-      synced: state.synced,
+      synced: isSynced,
       applyGap,
       sourceGap,
       syncPercentage: totalGap === 0n ? 100 : Math.min(100, Math.round(Number((totalGap * 100n) / (totalGap + 1n)))),
     };
 
     // Log sync progress
-    if (!state.synced && this.syncProgress.syncPercentage % 10 === 0) {
+    if (!isSynced && this.syncProgress.syncPercentage % 10 === 0) {
       this.logger.info('Wallet sync progress', {
         percentage: this.syncProgress.syncPercentage,
         applyGap: applyGap.toString(),
@@ -215,9 +234,9 @@ export class WalletService {
     }
 
     // Log when sync completes
-    if (state.synced && wasNotSynced) {
+    if (isSynced && wasNotSynced) {
       this.logger.info('Wallet sync completed', {
-        address: state.address,
+        address: state.address ?? 'unknown',
         balance: this.nativeBalance.toString(),
       });
     }
@@ -226,7 +245,7 @@ export class WalletService {
     // Only save if enough time has passed since last save
     const now = Date.now();
     if (
-      !state.synced &&
+      !isSynced &&
       now - this.lastSaveTime >= WALLET_SYNC_CONFIG.SAVE_INTERVAL_MS
     ) {
       this.lastSaveTime = now;
@@ -244,7 +263,7 @@ export class WalletService {
     }
 
     // Clear syncing flag when done
-    if (state.synced && this.isSyncing) {
+    if (isSynced && this.isSyncing) {
       this.isSyncing = false;
     }
   }

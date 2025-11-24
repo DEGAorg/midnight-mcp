@@ -23,10 +23,10 @@ import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-pri
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
-import { config } from "../../lib/config/env.js";
+import { config } from "@lib/config/env.js";
 import path from "path";
 import { firstValueFrom } from 'rxjs';
-import { createLogger } from "../../lib/logger/index.js";
+import { createLogger } from "@lib/logger/index.js";
 
 const logger = createLogger('dao-voting-api');
 

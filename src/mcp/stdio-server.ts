@@ -12,12 +12,16 @@ import type { Resource } from '@midnight-ntwrk/wallet';
 import { NetworkId, setNetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import path from 'path';
 
-import { MCPServer } from './server.js';
-import type { ServiceDependencies } from './types.js';
-import { WalletOrchestrator, type WalletOrchestratorConfig } from '../services/WalletOrchestrator.js';
-import { loadConfig, getNetworkId, getWalletBackupFolder, type AppConfig } from '../lib/config/env.js';
-import { FileManager, FileType } from '../lib/utils/file-manager.js';
-import { SeedManager } from '../lib/utils/seed-manager.js';
+import { MCPServer } from '@mcp/mcp-server.js';
+import type { ServiceDependencies } from '@mcp/types.js';
+import { WalletOrchestrator, type WalletOrchestratorConfig } from '@services/WalletOrchestrator.js';
+import { loadConfig, getNetworkId, getWalletBackupFolder, type AppConfig } from '@lib/config/env.js';
+import { FileManager, FileType } from '@lib/utils/file-manager.js';
+import { SeedManager } from '@lib/utils/seed-manager.js';
+
+// Reset FileManager singleton before initialization to ensure correct path
+// This is needed because other imports may create it with wrong process.cwd()
+FileManager.resetInstance();
 
 /**
  * Simple logging to stderr (stdout is reserved for JSON-RPC)
@@ -34,10 +38,8 @@ function log(...args: any[]) {
  * with proper file restoration and error handling.
  */
 function createWalletFactory(appConfig: AppConfig): () => Promise<Wallet & Resource> {
-  const indexer = appConfig.INDEXER || 'https://indexer.testnet-02.midnight.network/api/v1/graphql';
-  const indexerWS = appConfig.INDEXER_WS || 'wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws';
-  const node = appConfig.MN_NODE || 'https://rpc.testnet-02.midnight.network';
-  const proofServer = appConfig.PROOF_SERVER || 'http://127.0.0.1:6300';
+  // All config values have defaults from TESTNET_CONFIG via env.ts - no fallbacks needed
+  const { INDEXER: indexer, INDEXER_WS: indexerWS, MN_NODE: node, PROOF_SERVER: proofServer } = appConfig;
   const fileManager = FileManager.getInstance();
   const walletFilename = appConfig.WALLET_FILENAME;
   const agentId = appConfig.AGENT_ID;
@@ -121,20 +123,18 @@ async function initializeServices(): Promise<{
   log(`Network: ${appConfig.NETWORK_ID}`);
 
   // Initialize SeedManager for this agent
-  // Seeds are stored per-agent in .storage/seeds/{agentId}/seed
-  SeedManager.initialize('.storage');
-  log(`SeedManager initialized for agent: ${appConfig.AGENT_ID}`);
+  // Seeds are stored per-agent in {BASE_STORAGE_DIR}/seeds/{agentId}/seed
+  SeedManager.initialize(appConfig.BASE_STORAGE_DIR);
+  log(`SeedManager initialized with storage: ${appConfig.BASE_STORAGE_DIR}`);
 
   // Set network ID globally
   const networkId = getNetworkId(appConfig);
   setNetworkId(networkId);
   log(`Network ID set to: ${NetworkId[networkId]}`);
 
-  // Log configuration
-  const indexer = appConfig.INDEXER || 'https://indexer.testnet-02.midnight.network/api/v1/graphql';
-  const proofServer = appConfig.PROOF_SERVER || 'http://127.0.0.1:6300';
-  log(`Indexer: ${indexer}`);
-  log(`Proof Server: ${proofServer}`);
+  // Log configuration - all values have defaults from env.ts
+  log(`Indexer: ${appConfig.INDEXER}`);
+  log(`Proof Server: ${appConfig.PROOF_SERVER}`);
 
   // Create wallet factory (reuses WalletManager pattern)
   const walletFactory = createWalletFactory(appConfig);

@@ -1,6 +1,6 @@
 import { AuditTrailService } from './audit-trail-service.js';
 import { AuditEventType, AuditSeverity } from './types.js';
-import { createLogger } from '../lib/logger/index.js';
+import { createLogger } from '@lib/logger/index.js';
 
 export interface AgentDecision {
   agentId: string;

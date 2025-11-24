@@ -15,11 +15,15 @@ import {
   DEFAULT_WALLET_FILENAME,
   DEFAULT_WALLET_BACKUP_FOLDER,
   DEFAULT_LOG_LEVEL,
+  DEFAULT_PROOF_SERVER_PORT,
+  DEFAULT_STORAGE_DIR,
   LOG_LEVELS,
   SUPPORTED_NETWORK_IDS,
+  TESTNET_CONFIG,
 } from './constants.js';
 
-// Calculate root directory path for finding .env file
+// Calculate root directory path (project root, not process.cwd())
+// This ensures relative paths resolve correctly regardless of where the process is started
 let rootDir: string;
 
 try {
@@ -28,6 +32,20 @@ try {
   rootDir = path.resolve(__dirname, '../../..');
 } catch (err) {
   rootDir = process.cwd();
+}
+
+// Export rootDir for use by other modules
+export { rootDir };
+
+/**
+ * Resolve a path relative to the project root
+ * If the path is absolute, return it as-is
+ * If the path is relative, resolve it from rootDir
+ */
+export function resolveProjectPath(relativePath: string): string {
+  return path.isAbsolute(relativePath)
+    ? relativePath
+    : path.resolve(rootDir, relativePath);
 }
 
 // ===== Zod Schema Definitions =====
@@ -43,17 +61,22 @@ const ConfigSchema = z.object({
   // Network Configuration
   NETWORK_ID: NetworkIdSchema.default('TestNet'),
 
+  // Storage Configuration
+  BASE_STORAGE_DIR: z.string().default(DEFAULT_STORAGE_DIR),
+
   // Wallet Configuration
   WALLET_FILENAME: z.string().default(DEFAULT_WALLET_FILENAME),
   WALLET_BACKUP_FOLDER: z.string().default(DEFAULT_WALLET_BACKUP_FOLDER),
-  // NOTE: WALLET_SEED is NOT in env - it's loaded per-agent from .storage/seeds/{agentId}/seed via SeedManager
+  // NOTE: WALLET_SEED is NOT in env - it's loaded per-agent from {BASE_STORAGE_DIR}/seeds/{agentId}/seed via SeedManager
 
-  // External Proof Server Configuration
+  // Network Endpoints - defaults from TESTNET_CONFIG
+  PROOF_SERVER: z.string().url().default(`http://127.0.0.1:${DEFAULT_PROOF_SERVER_PORT}`),
+  INDEXER: z.string().url().default(TESTNET_CONFIG.INDEXER),
+  INDEXER_WS: z.string().url().default(TESTNET_CONFIG.INDEXER_WS),
+  MN_NODE: z.string().url().default(TESTNET_CONFIG.MN_NODE),
+
+  // External Proof Server Configuration (legacy flag, endpoints now have defaults)
   USE_EXTERNAL_PROOF_SERVER: z.boolean().default(false),
-  PROOF_SERVER: z.string().url().optional(),
-  INDEXER: z.string().url().optional(),
-  INDEXER_WS: z.string().url().optional(),
-  MN_NODE: z.string().url().optional(),
 
   // Contract Configuration
   DAO_CONTRACT_ADDRESS: z.string().optional(),
@@ -96,6 +119,7 @@ export function loadConfig(envPath?: string): AppConfig {
   const rawConfig = {
     AGENT_ID: process.env.AGENT_ID,
     NETWORK_ID: process.env.NETWORK_ID as typeof SUPPORTED_NETWORK_IDS[number] | undefined,
+    BASE_STORAGE_DIR: process.env.BASE_STORAGE_DIR,
     WALLET_FILENAME: process.env.WALLET_FILENAME,
     WALLET_BACKUP_FOLDER: process.env.WALLET_BACKUP_FOLDER,
     USE_EXTERNAL_PROOF_SERVER: process.env.USE_EXTERNAL_PROOF_SERVER === 'true',
@@ -113,20 +137,21 @@ export function loadConfig(envPath?: string): AppConfig {
       : undefined,
     ENABLE_API: process.env.ENABLE_API !== 'false',
     ENABLE_MCP: process.env.ENABLE_MCP !== 'false',
-    LOG_LEVEL: process.env.LOG_LEVEL as typeof LOG_LEVELS[number] | undefined,
+    LOG_LEVEL: process.env.LOG_LEVEL && process.env.LOG_LEVEL !== ''
+      ? process.env.LOG_LEVEL as typeof LOG_LEVELS[number]
+      : undefined,
   };
 
   try {
     const config = ConfigSchema.parse(rawConfig);
 
-    // Additional validation: if using external proof server, require all endpoints
-    if (config.USE_EXTERNAL_PROOF_SERVER) {
-      if (!config.PROOF_SERVER || !config.INDEXER || !config.INDEXER_WS || !config.MN_NODE) {
-        throw new Error(
-          'When USE_EXTERNAL_PROOF_SERVER is true, PROOF_SERVER, INDEXER, INDEXER_WS, and MN_NODE must all be provided'
-        );
-      }
-    }
+    // Resolve relative paths from project root (not process.cwd())
+    // This ensures paths work correctly regardless of where the process is started
+    config.BASE_STORAGE_DIR = resolveProjectPath(config.BASE_STORAGE_DIR);
+    config.WALLET_BACKUP_FOLDER = resolveProjectPath(config.WALLET_BACKUP_FOLDER);
+
+    // All network endpoints now have defaults from TESTNET_CONFIG
+    // No additional validation needed - Zod defaults handle everything
 
     return config;
   } catch (error) {

@@ -9,7 +9,7 @@
  */
 
 // Servers
-export { MCPServer } from './server.js';
+export { MCPServer } from './mcp-server.js';
 export { startHttpServer, type HttpServerConfig } from './http-server.js';
 
 // Session Management

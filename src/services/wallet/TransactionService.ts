@@ -13,10 +13,10 @@
 
 import type { Wallet } from '@midnight-ntwrk/wallet-api';
 import type { Resource } from '@midnight-ntwrk/wallet';
-import { createLogger } from '../../lib/logger/index.js';
-import { TRANSACTION_POLLING_CONFIG } from '../../lib/config/constants.js';
-import { AuditService } from '../audit/AuditService.js';
-import type { WalletService } from './WalletService.js';
+import { createLogger } from '@lib/logger/index.js';
+import { TRANSACTION_POLLING_CONFIG } from '@lib/config/constants.js';
+import { AuditService } from '@services/audit/AuditService.js';
+import type { WalletService } from '@services/wallet/WalletService.js';
 import type { Logger } from 'pino';
 
 /**

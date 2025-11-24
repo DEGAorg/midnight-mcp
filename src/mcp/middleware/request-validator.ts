@@ -6,8 +6,8 @@
  */
 
 import type { Request, Response } from 'express';
-import { SeedManager } from '../../lib/utils/seed-manager.js';
-import { createLogger } from '../../lib/logger/index.js';
+import { SeedManager } from '@lib/utils/seed-manager.js';
+import { createLogger } from '@lib/logger/index.js';
 
 const logger = createLogger('mcp-request-validator');
 

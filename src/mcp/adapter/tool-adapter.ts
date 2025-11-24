@@ -37,7 +37,13 @@ export async function createToolAdapter(services: ServiceDependencies): Promise<
       return tools.map((tool) => ({
         name: tool.name,
         description: tool.description,
-        inputSchema: tool.inputSchema
+        // MCP requires JSON Schema with type: "object"
+        // Zod .shape only gives properties, so we wrap it
+        inputSchema: {
+          type: 'object' as const,
+          properties: tool.inputSchema,
+          required: Object.keys(tool.inputSchema)
+        }
       }));
     },
 

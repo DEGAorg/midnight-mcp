@@ -19,16 +19,16 @@
  * This replaces the god-class WalletManager pattern with clean service coordination.
  */
 
-import { createLogger } from '../lib/logger/index.js';
-import { WalletService, type WalletConfig } from './wallet/WalletService.js';
-import { TransactionService } from './wallet/TransactionService.js';
-import { TokenService } from './wallet/TokenService.js';
-import { DaoService, type DaoServiceConfig } from './contract/dao/DaoService.js';
-import { MarketplaceService, type MarketplaceServiceConfig } from './contract/marketplace/MarketplaceService.js';
-import { AuditService } from './audit/AuditService.js';
-import { RecoveryService, type RecoveryOptions } from './recovery/RecoveryService.js';
-import { TokenRegistryDatabase } from '../lib/database/token-registry-db.js';
-import { FileManager, FileType } from '../lib/utils/file-manager.js';
+import { createLogger } from '@lib/logger/index.js';
+import { WalletService, type WalletConfig } from '@services/wallet/WalletService.js';
+import { TransactionService } from '@services/wallet/TransactionService.js';
+import { TokenService } from '@services/wallet/TokenService.js';
+import { DaoService, type DaoServiceConfig } from '@services/contract/dao/DaoService.js';
+import { MarketplaceService, type MarketplaceServiceConfig } from '@services/contract/marketplace/MarketplaceService.js';
+import { AuditService } from '@services/audit/AuditService.js';
+import { RecoveryService, type RecoveryOptions } from '@services/recovery/RecoveryService.js';
+import { TokenRegistryDatabase } from '@lib/database/token-registry-db.js';
+import { FileManager, FileType } from '@lib/utils/file-manager.js';
 import type { Logger } from 'pino';
 
 /**

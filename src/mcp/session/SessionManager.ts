@@ -29,10 +29,10 @@ import type { Resource } from '@midnight-ntwrk/wallet';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import path from 'path';
 
-import { createLogger } from '../../lib/logger/index.js';
-import { WalletOrchestrator } from '../../services/WalletOrchestrator.js';
-import { FileManager, FileType } from '../../lib/utils/file-manager.js';
-import { SeedManager } from '../../lib/utils/seed-manager.js';
+import { createLogger } from '@lib/logger/index.js';
+import { WalletOrchestrator } from '@services/WalletOrchestrator.js';
+import { FileManager, FileType } from '@lib/utils/file-manager.js';
+import { SeedManager } from '@lib/utils/seed-manager.js';
 import type { Logger } from 'pino';
 import type {
   Session,

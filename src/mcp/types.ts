@@ -2,11 +2,11 @@
  * MCP Types - Shared type definitions for MCP server
  */
 
-import type { WalletService } from '../services/wallet/WalletService.js';
-import type { TransactionService } from '../services/wallet/TransactionService.js';
-import type { TokenService } from '../services/wallet/TokenService.js';
-import type { DaoService } from '../services/contract/dao/DaoService.js';
-import type { MarketplaceService } from '../services/contract/marketplace/MarketplaceService.js';
+import type { WalletService } from '@services/wallet/WalletService.js';
+import type { TransactionService } from '@services/wallet/TransactionService.js';
+import type { TokenService } from '@services/wallet/TokenService.js';
+import type { DaoService } from '@services/contract/dao/DaoService.js';
+import type { MarketplaceService } from '@services/contract/marketplace/MarketplaceService.js';
 
 /**
  * MCP Tool Response

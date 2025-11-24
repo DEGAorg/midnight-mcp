@@ -1,429 +1,198 @@
-/* istanbul ignore file */
+/**
+ * Wallet Controller
+ *
+ * Handles HTTP requests for wallet status, balance, and transaction operations.
+ */
 
-import { Request, Response, NextFunction } from 'express';
-import { WalletServiceMCP } from '../mcp/index.js';
-import { createLogger } from '../lib/logger/index.js';
+import type { Request, Response, NextFunction } from 'express';
+import type { WalletOrchestrator } from '@services/WalletOrchestrator.js';
+import { createLogger } from '@lib/logger/index.js';
+import { config } from '@lib/config/env.js';
+import { successResponse } from '../routes/index.js';
+import { ApiError } from '../middleware/index.js';
+import type { Logger } from 'pino';
 
 export class WalletController {
-  private logger = createLogger('wallet-controller');
+  private logger: Logger;
+  private orchestrator: WalletOrchestrator;
 
-  constructor(private readonly walletService: WalletServiceMCP) {}
-
-  async getStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const status = this.walletService.getWalletStatus();
-      res.json(status);
-    } catch (error) {
-      this.logger.error('Error getting wallet status:', error);
-      next(error);
-    }
+  constructor(orchestrator: WalletOrchestrator) {
+    this.orchestrator = orchestrator;
+    this.logger = createLogger('wallet-controller');
   }
 
-  async getAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get comprehensive wallet status
+   */
+  getStatus = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const address = this.walletService.getAddress();
-      res.json({ address });
+      const walletService = this.orchestrator.getWalletService();
+      const syncProgress = walletService.getSyncProgress();
+
+      res.json(successResponse({
+        ready: walletService.isReady(),
+        address: walletService.isReady() ? walletService.getAddress() : null,
+        balances: {
+          native: walletService.getBalance().toString(),
+          pending: walletService.getPendingBalance().toString(),
+        },
+        syncProgress: {
+          synced: syncProgress.synced,
+          percentage: syncProgress.syncPercentage,
+          applyGap: syncProgress.applyGap.toString(),
+          sourceGap: syncProgress.sourceGap.toString(),
+        },
+      }));
     } catch (error) {
-      this.logger.error('Error getting wallet address:', error);
+      this.logger.error({ err: error }, 'Error getting wallet status');
       next(error);
     }
-  }
+  };
 
-  // ==================== TOKEN OPERATIONS ====================
-
-  async registerToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get wallet address
+   */
+  getAddress = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name, symbol, contractAddress, domainSeparator, description, decimals } = req.body;
-      if (!name || !symbol || !contractAddress) {
-        res.status(400).json({
-          error: 'Missing required parameters: name, symbol, and contractAddress'
-        });
-        return;
-      }
-
-      const result = this.walletService.registerToken(
-        name, 
-        symbol, 
-        contractAddress, 
-        domainSeparator || 'custom_token', 
-        description,
-        decimals
-      );
-
-      if (result.success) {
-        res.json(result);
-      } else {
-        res.status(400).json(result);
-      }
+      const walletService = this.orchestrator.getWalletService();
+      res.json(successResponse({ address: walletService.getAddress() }));
     } catch (error) {
-      this.logger.error('Error registering token:', error);
+      this.logger.error({ err: error }, 'Error getting wallet address');
       next(error);
     }
-  }
+  };
 
-  async getTokenBalance(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get wallet balance
+   */
+  getBalance = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { tokenName } = req.params;
-      if (!tokenName) {
-        res.status(400).json({
-          error: 'Missing required parameter: tokenName'
-        });
-        return;
-      }
-
-      const balance = this.walletService.getTokenBalance(tokenName);
-      res.json({ tokenName, balance });
+      const walletService = this.orchestrator.getWalletService();
+      res.json(successResponse({
+        balance: walletService.getBalance().toString(),
+        pendingBalance: walletService.getPendingBalance().toString(),
+      }));
     } catch (error) {
-      this.logger.error('Error getting token balance:', error);
+      this.logger.error({ err: error }, 'Error getting wallet balance');
       next(error);
     }
-  }
+  };
 
-  async sendToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get wallet configuration
+   */
+  getWalletConfig = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { tokenName, toAddress, amount } = req.body;
-      if (!tokenName || !toAddress || !amount) {
-        res.status(400).json({
-          error: 'Missing required parameters: tokenName, toAddress, and amount'
-        });
-        return;
-      }
-
-      const result = await this.walletService.sendToken(tokenName, toAddress, amount);
-      res.json(result);
+      res.json(successResponse({
+        indexer: config.INDEXER!,
+        mnNode: config.MN_NODE!,
+        proofServer: config.PROOF_SERVER!,
+        networkId: config.NETWORK_ID!,
+      }));
     } catch (error) {
-      this.logger.error('Error sending token:', error);
+      this.logger.error({ err: error }, 'Error getting wallet config');
       next(error);
     }
-  }
+  };
 
-  async listTokens(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get all transactions
+   */
+  getTransactions = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const tokens = this.walletService.listWalletTokens();
-      res.json({ tokens });
+      const transactionService = this.orchestrator.getTransactionService();
+      const transactions = transactionService.getAllTransactions();
+      res.json(successResponse({ transactions }));
     } catch (error) {
-      this.logger.error('Error listing tokens:', error);
+      this.logger.error({ err: error }, 'Error getting transactions');
       next(error);
     }
-  }
+  };
 
-  async registerTokensBatch(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get pending transactions
+   */
+  getPendingTransactions = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { tokens } = req.body;
-      if (!tokens || !Array.isArray(tokens)) {
-        res.status(400).json({
-          error: 'Missing or invalid parameter: tokens (must be an array)'
-        });
-        return;
-      }
-
-      const result = this.walletService.registerTokensBatch(tokens);
-      res.json(result);
+      const transactionService = this.orchestrator.getTransactionService();
+      const transactions = transactionService.getPendingTransactions();
+      res.json(successResponse({ transactions }));
     } catch (error) {
-      this.logger.error('Error batch registering tokens:', error);
+      this.logger.error({ err: error }, 'Error getting pending transactions');
       next(error);
     }
-  }
+  };
 
-  async registerTokensFromEnv(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { envValue } = req.body;
-      if (!envValue) {
-        res.status(400).json({
-          error: 'Missing required parameter: envValue'
-        });
-        return;
-      }
-
-      const result = this.walletService.registerTokensFromEnvString(envValue);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error registering tokens from env string:', error);
-      next(error);
-    }
-  }
-
-  async getTokenEnvConfigTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const template = this.walletService.getTokenEnvConfigTemplate();
-      res.json({ template });
-    } catch (error) {
-      this.logger.error('Error getting token env config template:', error);
-      next(error);
-    }
-  }
-
-  async getTokenRegistryStats(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const stats = this.walletService.getTokenRegistryStats();
-      res.json(stats);
-    } catch (error) {
-      this.logger.error('Error getting token registry stats:', error);
-      next(error);
-    }
-  }
-
-  async getBalance(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const balance = this.walletService.getBalance();
-      res.json(balance);
-    } catch (error) {
-      this.logger.error('Error getting wallet balance:', error);
-      next(error);
-    }
-  }
-
-  async sendFunds(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { destinationAddress, amount } = req.body;
-      if (!destinationAddress || !amount) {
-        res.status(400).json({
-          error: 'Missing required parameters: destinationAddress and amount'
-        });
-        return;
-      }
-      const result = await this.walletService.sendFunds(destinationAddress, amount);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error sending funds:', error);
-      next(error);
-    }
-  }
-
-  async send(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { destinationAddress, amount, token } = req.body;
-      if (!destinationAddress || !amount) {
-        res.status(400).json({
-          error: 'Missing required parameters: destinationAddress and amount'
-        });
-        return;
-      }
-
-      // Determine if this is a native token or shielded token
-      const isNativeToken = !token || 
-        token.toLowerCase() === 'native' || 
-        token.toLowerCase() === 'tdust' || 
-        token.toLowerCase() === 'dust';
-
-      let result;
-      if (isNativeToken) {
-        // Send native tokens
-        result = await this.walletService.sendFunds(destinationAddress, amount);
-      } else {
-        // Send shielded tokens
-        result = await this.walletService.sendToken(token, destinationAddress, amount);
-      }
-
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error sending funds/tokens:', error);
-      next(error);
-    }
-  }
-
-  async verifyTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { identifier } = req.body;
-      if (!identifier) {
-        res.status(400).json({
-          error: 'Missing required parameter: identifier'
-        });
-        return;
-      }
-      const result = this.walletService.confirmTransactionHasBeenReceived(identifier);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error verifying transaction:', error);
-      next(error);
-    }
-  }
-
-  async getTransactionStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Get transaction status by ID
+   */
+  getTransactionStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { transactionId } = req.params;
-      if (!transactionId) {
-        res.status(400).json({
-          error: 'Missing required parameter: transactionId'
-        });
-        return;
+
+      const transactionService = this.orchestrator.getTransactionService();
+      const transaction = transactionService.getTransaction(transactionId);
+
+      if (!transaction) {
+        throw ApiError.notFound(`Transaction ${transactionId} not found`);
       }
-      const status = this.walletService.getTransactionStatus(transactionId);
-      res.json(status);
+
+      res.json(successResponse(transaction));
     } catch (error) {
-      this.logger.error('Error getting transaction status:', error);
+      this.logger.error({ err: error }, 'Error getting transaction status');
       next(error);
     }
-  }
+  };
 
-  async getTransactions(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Send native tokens (tDUST/DUST)
+   */
+  sendFunds = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const transactions = this.walletService.getTransactions();
-      res.json(transactions);
+      const { destinationAddress, amount } = req.body;
+
+      const amountBigInt = BigInt(amount);
+      const tokenService = this.orchestrator.getTokenService();
+      const txId = await tokenService.sendNativeToken(destinationAddress, amountBigInt);
+
+      const transactionService = this.orchestrator.getTransactionService();
+      const transaction = transactionService.getTransaction(txId);
+
+      res.json(successResponse({
+        id: txId,
+        state: transaction?.state ?? 'pending',
+        toAddress: destinationAddress,
+        amount: amount.toString(),
+        createdAt: transaction?.timestamp ?? new Date().toISOString(),
+      }));
     } catch (error) {
-      this.logger.error('Error getting transactions:', error);
+      this.logger.error({ err: error }, 'Error sending funds');
       next(error);
     }
-  }
+  };
 
-  async getPendingTransactions(req: Request, res: Response, next: NextFunction): Promise<void> {
+  /**
+   * Verify a transaction exists
+   */
+  verifyTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const transactions = this.walletService.getPendingTransactions();
-      res.json(transactions);
+      const { identifier } = req.body;
+
+      const transactionService = this.orchestrator.getTransactionService();
+      const walletService = this.orchestrator.getWalletService();
+      const transaction = transactionService.getTransaction(identifier);
+
+      res.json(successResponse({
+        exists: !!transaction,
+        transactionAmount: transaction?.amount?.toString() ?? '0',
+        syncStatus: {
+          synced: walletService.getSyncProgress().synced,
+          percentage: walletService.getSyncProgress().syncPercentage,
+        },
+      }));
     } catch (error) {
-      this.logger.error('Error getting pending transactions:', error);
+      this.logger.error({ err: error }, 'Error verifying transaction');
       next(error);
     }
-  }
-
-  async getWalletConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const config = this.walletService.getWalletConfig();
-      res.json(config);
-    } catch (error) {
-      this.logger.error('Error getting wallet config:', error);
-      next(error);
-    }
-  }
-
-  async healthCheck(req: Request, res: Response): Promise<void> {
-    res.json({ status: 'ok' });
-  }
-
-  async registerInMarketplace(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { userId, userData } = req.body;
-      if (!userId || !userData) {
-        res.status(400).json({
-          error: 'Missing required parameters: userId and userData'
-        });
-        return;
-      }
-      const result = await this.walletService.registerInMarketplace(userId, userData);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error registering in marketplace:', error);
-      next(error);
-    }
-  }
-
-  async verifyUserInMarketplace(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { userId, verificationData } = req.body;
-      if (!userId || !verificationData || !verificationData.pubkey) {
-        res.status(400).json({
-          error: 'Missing required parameters: userId, verificationData and pubkey'
-        });
-        return;
-      }
-      const result = await this.walletService.verifyUserInMarketplace(userId, verificationData);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error verifying user in marketplace:', error);
-      next(error);
-    }
-  }
-
-  // ==================== DAO OPERATIONS ====================
-
-  async openDaoElection(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { electionId } = req.body;
-      if (!electionId) {
-        res.status(400).json({
-          error: 'Missing required parameter: electionId'
-        });
-        return;
-      }
-      const result = await this.walletService.openDaoElection(electionId);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error opening DAO election:', error);
-      next(error);
-    }
-  }
-
-  async closeDaoElection(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await this.walletService.closeDaoElection();
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error closing DAO election:', error);
-      next(error);
-    }
-  }
-
-  async castDaoVote(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { voteType } = req.body;
-      if (!voteType) {
-        res.status(400).json({
-          error: 'Missing required parameter: voteType (yes, no, or absence)'
-        });
-        return;
-      }
-      const result = await this.walletService.castDaoVote(voteType);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error casting DAO vote:', error);
-      next(error);
-    }
-  }
-
-  async fundDaoTreasury(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { amount } = req.body;
-      if (!amount) {
-        res.status(400).json({
-          error: 'Missing required parameter: amount'
-        });
-        return;
-      }
-      const result = await this.walletService.fundDaoTreasury(amount);
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error funding DAO treasury:', error);
-      next(error);
-    }
-  }
-
-  async payoutDaoProposal(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await this.walletService.payoutDaoProposal();
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error paying out DAO proposal:', error);
-      next(error);
-    }
-  }
-
-  async getDaoElectionStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await this.walletService.getDaoElectionStatus();
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error getting DAO election status:', error);
-      next(error);
-    }
-  }
-
-  async getDaoState(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await this.walletService.getDaoState();
-      res.json(result);
-    } catch (error) {
-      this.logger.error('Error getting DAO state:', error);
-      next(error);
-    }
-  }
-
-  async getDaoConfigTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const template = this.walletService.getDaoConfigTemplate();
-      res.json({ template });
-    } catch (error) {
-      this.logger.error('Error getting DAO config template:', error);
-      next(error);
-    }
-  }
-} 
+  };
+}

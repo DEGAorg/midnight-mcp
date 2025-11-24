@@ -4,7 +4,7 @@
 // }));
 
 
-jest.mock('../../src/utils/seed-manager.js');
+jest.mock('../../src/lib/utils/seed-manager.js');
 
 import { describe, it, beforeEach, afterEach, jest, expect } from '@jest/globals';
 import path from 'path';
@@ -52,11 +52,11 @@ describe('src/index.ts', () => {
     const fakeServer = { start: jest.fn(() => Promise.resolve()) as () => Promise<void> };
     const createServer = jest.fn(() => fakeServer);
 
-    jest.doMock('../../src/stdio-server.js', () => ({ createServer }));
+    jest.doMock('../../src/mcp/stdio-server.js', () => ({ createServer }));
 
     await jest.isolateModulesAsync(async () => {
       const mod = await import('../../src/index.js');
-      const server = mod.createServer();
+      const server = await mod.createServer();  // createServer is async, must await
       await server.start();
 
       expect(createServer).toHaveBeenCalled();
@@ -70,15 +70,15 @@ describe('src/index.ts', () => {
     const fakeServer = { start: jest.fn(() => Promise.reject(error)) as () => Promise<void> };
     const createServer = jest.fn(() => fakeServer);
     
-    jest.doMock('../../src/stdio-server.js', () => ({ createServer }));
+    jest.doMock('../../src/mcp/stdio-server.js', () => ({ createServer }));
     
     await jest.isolateModulesAsync(async () => {
       const mod = await import('../../src/index.js');
-      const server = mod.createServer();
-      
+      const server = await mod.createServer();  // createServer is async, must await
+
       // Act - call start which should throw
       await expect(server.start()).rejects.toThrow('fail to start');
-      
+
       // Assert
       expect(createServer).toHaveBeenCalled();
       expect(fakeServer.start).toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe('src/index.ts', () => {
     const fakeServer = { start: jest.fn(() => Promise.resolve()) as () => Promise<void> };
     const createServer = jest.fn(() => fakeServer);
     
-    jest.doMock('../../src/stdio-server.js', () => ({ createServer }));
+    jest.doMock('../../src/mcp/stdio-server.js', () => ({ createServer }));
     
     await jest.isolateModulesAsync(async () => {
       // Dynamically import runMain

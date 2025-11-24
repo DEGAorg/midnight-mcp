@@ -1,19 +1,16 @@
 /* istanbul ignore file */
 import { FileManager, FileType } from './file-manager.js';
-import path from 'path';
 
 export class SeedManager {
   private static fileManager: FileManager;
 
   /**
-   * Initialize the SeedManager with a custom storage path
+   * Initialize the SeedManager with a storage path
+   * The path should already be resolved to absolute by env.ts
    */
   static initialize(storagePath: string = '.storage'): void {
-    // Convert relative path to absolute path based on process execution directory
-    const absoluteStoragePath = path.resolve(process.cwd(), storagePath);
-
     this.fileManager = FileManager.getInstance({
-      baseDir: absoluteStoragePath,
+      baseDir: storagePath,
       dirMode: 0o700,  // More restrictive for seed directories
       fileMode: 0o600  // More restrictive for seed files
     });

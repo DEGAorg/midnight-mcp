@@ -22,18 +22,18 @@ function loadTestConfig(): TestConfig {
     // Validate required fields
     const missingFields: string[] = [];
     
-    // Check wallet addresses and pubkeys
+    // Check wallet addresses and publicKeys
     if (!config.wallets.wallet1.address) {
       missingFields.push('wallets.wallet1.address');
     }
-    if (!config.wallets.wallet1.pubkey) {
-      missingFields.push('wallets.wallet1.pubkey');
+    if (!config.wallets.wallet1.publicKey) {
+      missingFields.push('wallets.wallet1.publicKey');
     }
     if (!config.wallets.wallet2.address) {
       missingFields.push('wallets.wallet2.address');
     }
-    if (!config.wallets.wallet2.pubkey) {
-      missingFields.push('wallets.wallet2.pubkey');
+    if (!config.wallets.wallet2.publicKey) {
+      missingFields.push('wallets.wallet2.publicKey');
     }
     
     // Check transaction identifiers
@@ -202,12 +202,11 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet1.userId, 
+        .send({
+          publicKey: config.wallets.wallet1.publicKey,
           verificationData: {
-            marketplaceAddress: config.marketplace.address,
-            pubkey: config.wallets.wallet1.pubkey
-          } 
+            marketplaceAddress: config.marketplace.address
+          }
         })
         .expect(200);
 
@@ -221,12 +220,11 @@ describe('Wallet MCP Integration Tests', () => {
       // valid sender but not registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet2.userId, 
+        .send({
+          publicKey: config.wallets.wallet2.publicKey,
           verificationData: {
-            marketplaceAddress: config.marketplace.address,
-            pubkey: config.wallets.wallet2.pubkey
-          } 
+            marketplaceAddress: config.marketplace.address
+          }
         })
         .expect(200);
 
@@ -234,16 +232,15 @@ describe('Wallet MCP Integration Tests', () => {
       expect(senderResponse.body.valid).toBe(false);
     });
 
-    test('should reject invalid pubkey for registered wallet', async () => {
-      // Test with invalid pubkey for wallet1 (which should be registered)
+    test('should reject invalid publicKey for registered wallet', async () => {
+      // Test with invalid publicKey for wallet1 (which should be registered)
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet1.userId, 
+        .send({
+          publicKey: 'invalid_publickey_for_registered_wallet_1234567890abcdef',
           verificationData: {
-            marketplaceAddress: config.marketplace.address,
-            pubkey: 'invalid_pubkey_for_registered_wallet_1234567890abcdef'
-          } 
+            marketplaceAddress: config.marketplace.address
+          }
         })
         .timeout(30000)
         .expect(200);
@@ -252,34 +249,33 @@ describe('Wallet MCP Integration Tests', () => {
       expect(senderResponse.body.valid).toBe(false);
     }, 30000);
 
-    test('should reject verification without pubkey', async () => {
-      // Test without pubkey in verification data
+    test('should reject verification without publicKey', async () => {
+      // Test without publicKey
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet1.pubkey, 
+        .send({
           verificationData: {
             marketplaceAddress: config.marketplace.address
-          } 
+          }
         })
         .expect(400);
 
       expect(senderResponse.body).toHaveProperty('error');
-      expect(senderResponse.body.error).toContain('pubkey');
+      expect(senderResponse.body.error).toContain('publicKey');
     });
   });
 
   describe('Test Case 3: Sender Mismatch With Off-chain Session', () => {
     test('should detect mismatch between on-chain sender and off-chain session', async () => {
-      // Marketplace logic and off-chain session logic
+      // Marketplace logic - test with a publicKey that doesn't match session
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: '1234567890',  // invalid user id sent by off-chain session coming from the agent marketplace
+        .send({
+          publicKey: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',  // invalid publicKey
           verificationData: {
             marketplaceAddress: config.marketplace.address,
-            pubkey: config.wallets.wallet1.pubkey
-          } 
+            sessionPublicKey: config.wallets.wallet1.publicKey  // session claims different key
+          }
         })
         .expect(200);
 
@@ -293,12 +289,11 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet1.userId, 
+        .send({
+          publicKey: config.wallets.wallet1.publicKey,
           verificationData: {
-            marketplaceAddress: config.marketplace.address,
-            pubkey: config.wallets.wallet1.pubkey
-          } 
+            marketplaceAddress: config.marketplace.address
+          }
         })
         .expect(200);
 
@@ -327,12 +322,11 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet1.userId, 
+        .send({
+          publicKey: config.wallets.wallet1.publicKey,
           verificationData: {
-            marketplaceAddress: config.marketplace.address,
-            pubkey: config.wallets.wallet1.pubkey
-          } 
+            marketplaceAddress: config.marketplace.address
+          }
         })
         .expect(200);
 
@@ -358,12 +352,11 @@ describe('Wallet MCP Integration Tests', () => {
       // validate sender is registered in marketplace
       const senderResponse = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet2.userId, 
+        .send({
+          publicKey: config.wallets.wallet2.publicKey,
           verificationData: {
-            marketplaceAddress: config.marketplace.address,
-            pubkey: config.wallets.wallet2.pubkey
-          } 
+            marketplaceAddress: config.marketplace.address
+          }
         })
         .timeout(30000)
         .expect(200);
@@ -438,19 +431,18 @@ describe('Wallet MCP Integration Tests', () => {
       expect(response.body.error).toContain('Missing required parameter');
     });
 
-    test('should handle missing pubkey in marketplace verification', async () => {
+    test('should handle missing publicKey in marketplace verification', async () => {
       const response = await request(baseUrl)
         .post('/marketplace/verify')
-        .send({ 
-          userId: config.wallets.wallet1.pubkey, 
+        .send({
           verificationData: {
             marketplaceAddress: config.marketplace.address
-          } 
+          }
         })
         .expect(400);
 
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('pubkey');
+      expect(response.body.error).toContain('publicKey');
     });
   });
 

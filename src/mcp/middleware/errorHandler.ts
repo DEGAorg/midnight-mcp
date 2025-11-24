@@ -5,7 +5,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../../lib/logger/index.js';
+import { createLogger } from '@lib/logger/index.js';
 
 const logger = createLogger('mcp-error');
 

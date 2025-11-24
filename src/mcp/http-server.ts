@@ -5,22 +5,22 @@
  * Supports 100+ concurrent agents with session-based isolation via SessionManager.
  *
  * Features:
- * - McpServer with StreamableHTTPServerTransport
+ * - MCPServer with StreamableHTTPServerTransport
  * - Session-based service isolation (per agent)
  * - Health checks and Prometheus metrics
  * - Graceful shutdown
  * - CORS, logging, timeout middleware
  *
  * Architecture:
- * HTTP Request → Extract agentId → SessionManager → Services → Tool Adapter → Response
+ * HTTP Request → Extract agentId → SessionManager → MCPServer → Response
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express from 'express';
-import { createLogger } from '../lib/logger/index.js';
+import { createLogger } from '@lib/logger/index.js';
+import { loadConfig } from '@lib/config/env.js';
 import { SessionManager, type SessionManagerConfig } from './session/index.js';
-import { createToolAdapter } from './adapter/tool-adapter.js';
+import { MCPServer } from './mcp-server.js';
 import {
   corsMiddleware,
   requestLoggerMiddleware,
@@ -72,9 +72,9 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
 
   /**
    * Store for session-specific MCP servers
-   * Map<agentId, McpServer>
+   * Map<agentId, MCPServer>
    */
-  const sessionServers = new Map<string, McpServer>();
+  const sessionServers = new Map<string, MCPServer>();
 
   // Create session manager
   const sessionManager = new SessionManager(config.session);
@@ -111,43 +111,20 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
     );
 
     try {
-      // Get or create MCP server for this agent
+      // Get or create MCPServer for this agent
       let mcpServer = sessionServers.get(agentId);
 
       if (!mcpServer) {
-        logger.info({ agentId }, 'Creating new MCP server for agent');
-
-        // Create MCP server instance for this agent
-        mcpServer = new McpServer({
-          name: 'midnight-wallet-mcp',
-          version: '1.0.0'
-        });
+        logger.info({ agentId }, 'Creating new MCPServer for agent');
 
         // Get or create session services
         const services = await sessionManager.getOrCreateSession({ agentId });
 
-        // Create tool adapter with session services
-        const toolAdapter = await createToolAdapter(services);
-
-        // Register tools with MCP server using the modern SDK API
-        // Tools are registered via the adapter, which provides:
-        // - Tool listing (listOfTools)
-        // - Tool execution (toolHandler)
-        for (const tool of toolAdapter.listOfTools()) {
-          mcpServer.registerTool(
-            tool.name,
-            {
-              description: tool.description
-              // inputSchema is part of tool definition but not passed to registerTool
-            },
-            async (args: unknown) => {
-              const result = await toolAdapter.toolHandler(tool.name, args);
-              return {
-                content: result.content
-              };
-            }
-          );
-        }
+        // Create MCPServer with services (uses shared class)
+        mcpServer = new MCPServer(services, {
+          name: 'midnight-wallet-mcp',
+          version: '1.0.0'
+        });
 
         sessionServers.set(agentId, mcpServer);
 
@@ -182,8 +159,9 @@ export async function startHttpServer(config: HttpServerConfig): Promise<void> {
         void transport.close();
       });
 
-      // Connect and handle request
-      await mcpServer.connect(transport);
+      // Get underlying McpServer from our MCPServer class and connect
+      const server = mcpServer.getServer();
+      await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       logger.error(
@@ -324,5 +302,35 @@ mcp_uptime_seconds ${process.uptime().toFixed(METRIC_DECIMAL_PLACES)}
       },
       'MCP HTTP Server listening'
     );
+  });
+}
+
+/**
+ * Main entry point when run directly
+ */
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const envConfig = loadConfig();
+
+  const config: HttpServerConfig = {
+    port: parseInt(process.env.MCP_HTTP_PORT ?? '3001', 10),
+    session: {
+      maxSessions: parseInt(process.env.MAX_SESSIONS ?? '100', 10),
+      sessionTimeout: parseInt(process.env.SESSION_TIMEOUT ?? '3600000', 10), // 1 hour
+      evictionInterval: parseInt(process.env.EVICTION_INTERVAL ?? '300000', 10), // 5 minutes
+      baseConfig: {
+        indexer: envConfig.INDEXER,
+        indexerWS: envConfig.INDEXER_WS,
+        proofServer: envConfig.PROOF_SERVER,
+        node: envConfig.MN_NODE,
+        walletFilename: envConfig.WALLET_FILENAME,
+        daoContractAddress: envConfig.DAO_CONTRACT_ADDRESS,
+        marketplaceContractAddress: envConfig.MARKETPLACE_CONTRACT_ADDRESS,
+      }
+    }
+  };
+
+  startHttpServer(config).catch((error) => {
+    logger.error({ err: error }, 'Failed to start MCP HTTP server');
+    process.exit(1);
   });
 }
