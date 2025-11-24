@@ -88,11 +88,17 @@ export const walletStatusTool: ToolDefinition = {
   inputSchema: WalletStatusSchema.shape,
   execute: async (args: unknown, services: ServiceDependencies) => {
     // Compose status from available methods
+    const syncProgress = services.walletService.getSyncProgress();
     return {
       isReady: services.walletService.isReady(),
       address: services.walletService.getAddress(),
       balance: services.walletService.getBalance().toString(),
-      syncProgress: services.walletService.getSyncProgress(),
+      syncProgress: {
+        synced: syncProgress.synced,
+        applyGap: syncProgress.applyGap.toString(),
+        sourceGap: syncProgress.sourceGap.toString(),
+        syncPercentage: syncProgress.syncPercentage
+      },
       isSyncing: services.walletService.isSyncInProgress()
     };
   }
