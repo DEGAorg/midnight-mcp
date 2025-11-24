@@ -1,14 +1,23 @@
-# MCP Server Tests
+# 🧪 MCP Server Tests
 
-This directory contains comprehensive tests for the Midnight MCP server, organized into three main categories.
+This directory contains comprehensive tests for the Midnight MCP server, organized into three main categories: **Unit**, **Integration**, and **End-to-End** tests.
 
-## Test Categories
+## 📚 Test Documentation
+
+### Detailed Test Overviews
+- **[Unit Tests Overview](unit/UNIT_OVERVIEW.md)** — 429 tests across 18 suites with 100% coverage
+- **[Integration Tests Overview](integration/INTEGRATION_OVERVIEW.md)** — HTTP server with real MCP transport
+- **[E2E Tests Overview](e2e/E2E_OVERVIEW.md)** — Complete workflows with ElizaOS integration
+- **[ElizaOS Client Guide](e2e/ELIZA_CLIENT_README.md)** — ElizaOS integration setup and usage
+
+## 🏗️ Test Categories
 
 ### Unit Tests
 
 Comprehensive unit tests with mocked services for isolated component testing.
 
 **Location:** `test/unit/`
+**Documentation:** [unit/UNIT_OVERVIEW.md](unit/UNIT_OVERVIEW.md)
 
 **Coverage Targets:**
 - Line coverage: 80%+
@@ -30,6 +39,9 @@ yarn test:unit
 # Run with coverage report
 yarn test:unit:coverage
 
+# Run in watch mode
+yarn test:unit:watch
+
 # Run silently (for CI)
 yarn test:silent
 ```
@@ -39,6 +51,7 @@ yarn test:silent
 HTTP-based integration tests for multi-agent server functionality.
 
 **Location:** `test/integration/`
+**Documentation:** [integration/INTEGRATION_OVERVIEW.md](integration/INTEGRATION_OVERVIEW.md)
 
 **Test Focus:**
 - HTTP MCP server with real transport
@@ -51,6 +64,9 @@ HTTP-based integration tests for multi-agent server functionality.
 ```bash
 # Run integration tests
 yarn test:integration
+
+# Run in watch mode
+yarn test:integration:watch
 ```
 
 ### End-to-End Tests
@@ -58,6 +74,7 @@ yarn test:integration
 End-to-end tests with ElizaOS integration and complete system validation.
 
 **Location:** `test/e2e/`
+**Documentation:** [e2e/E2E_OVERVIEW.md](e2e/E2E_OVERVIEW.md)
 
 **Test Scenarios:**
 - Real wallet operations
@@ -66,10 +83,24 @@ End-to-end tests with ElizaOS integration and complete system validation.
 - ElizaOS agent integration
 - MCP protocol validation
 
+**Prerequisites:**
+- ElizaOS server running (use `yarn demo:eliza` to set up)
+- Agent configured with `yarn setup-agent -a test-agent`
+- Built project (`yarn build`)
+
 **Run Commands:**
 ```bash
 # Run all E2E tests
 yarn test:e2e
+
+# Run ElizaOS integration tests
+yarn test:e2e:eliza
+
+# Run STDIO protocol tests
+yarn test:stdio
+
+# Run in watch mode
+yarn test:e2e:watch
 
 # Run specific E2E tests
 yarn test:e2e:main
@@ -303,9 +334,20 @@ echo $BASE_STORAGE_DIR
 yarn setup-agent -a test-agent
 ```
 
-## Additional Resources
+## 📖 Additional Documentation
 
-- [Jest Documentation](https://jestjs.io/)
-- [Testing Best Practices](https://testingjavascript.com/)
-- [MCP Protocol Specification](https://modelcontextprotocol.io/)
-- [ElizaOS Documentation](https://elizaos.ai/)
+### Project Documentation
+- **[Main README](../README.md)** — Project overview and quick start
+- **[Available Commands](../README.md#-available-commands)** — All test commands documented
+- **[Scripts Documentation](../scripts/README.md)** — Utility scripts for testing setup
+- **[Documentation Index](../docs/index.md)** — Complete documentation navigation
+
+### External Resources
+- **[Jest Documentation](https://jestjs.io/)** — Testing framework
+- **[Testing Best Practices](https://testingjavascript.com/)** — Testing patterns and practices
+- **[MCP Protocol Specification](https://modelcontextprotocol.io/)** — Model Context Protocol spec
+- **[ElizaOS Documentation](https://elizaos.ai/)** — ElizaOS integration guide
+
+---
+
+*For complete testing information, see the detailed test overviews linked at the top of this document.*
