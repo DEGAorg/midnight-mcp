@@ -1,23 +1,37 @@
-# Midnight MCP Setup Guide
+# 🚀 Midnight MCP Setup Guide
 
-Complete setup and installation instructions for the Midnight MCP server.
+Complete setup and installation instructions for the Midnight MCP server. Follow this guide step-by-step to get your development environment ready.
 
-## Prerequisites
+## 📋 Prerequisites
 
-- Node.js (v18.20.5)
-- Yarn package manager
+- **Node.js** v18.20.5 or higher
+- **Yarn** package manager
 
-## Installation
+## 🏗️ Quick Start
 
-### 1. Install Dependencies
+Follow these steps in order for a complete setup:
+
+### 1. Clone and Install
 
 ```bash
+# Clone the repository
+git clone https://github.com/DEGAorg/midnight-mcp.git
+cd midnight-mcp
+
+# Install dependencies
 yarn install
 ```
 
-## Development Setup (Local)
+### 2. Build the Project
 
-For local development, set up an agent and run the development server:
+```bash
+# Build TypeScript → JavaScript (outputs to dist/)
+yarn build
+```
+
+## 🔐 Agent Setup
+
+Before running any server, you need to create an agent with wallet credentials:
 
 ### Set Up Agent
 
@@ -99,50 +113,98 @@ INDEXER_WS=ws://indexer:8080
 MN_NODE=http://midnight-node:8080
 ```
 
-### Run Development Server
+**For complete script documentation, see [scripts/README.md](../scripts/README.md).**
+
+## 🎯 Choose Your Deployment Mode
+
+The Midnight MCP server supports three deployment modes. Choose the one that fits your use case:
+
+### Option A: STDIO Mode (AI Assistants)
+
+**Use Case:** Claude Desktop, Cursor IDE, single-agent development
 
 ```bash
-# Start the development server
-yarn dev AGENT_ID=<agent-name>
+# Development mode (with hot reload)
+AGENT_ID=my-agent yarn dev
+
+# Production mode (uses compiled dist/)
+AGENT_ID=my-agent yarn start
 ```
 
-This will start the wallet express server in development mode with hot reloading.
-This is not the MCP server, but the logic server. The MCP is the stdio process run after built.
+**Configuration:** See [MCP Server Configuration](#mcp-server-configuration-for-ai-models) below.
 
-## Building for Production
+### Option B: HTTP MCP Mode (Multi-Agent Platform)
 
-### Build the Application
+**Use Case:** Multi-agent platforms, ElizaOS integration, 100+ concurrent agents
 
 ```bash
-# Build the application
-yarn build
+# Development mode (with hot reload)
+AGENT_ID=my-agent yarn dev:mcp:http
+
+# Production mode (runs on port 3001)
+AGENT_ID=my-agent yarn start:mcp:http
 ```
 
-### Run Production Server
+**Features:**
+- Session-based agent isolation via `mcp-session-id` header
+- LRU cache with automatic eviction
+- Prometheus metrics at `/metrics`
+- Health checks at `/health`
 
-The stdio-server is not an standalone process, it meant for AI usage, so after building there is no need to run it manually.
+### Option C: REST API Mode
 
-The stdio-server provides a standard input/output interface that conforms to the Model Context Protocol, allowing AI models to communicate with the Midnight network via HTTP requests to the wallet server.
+**Use Case:** Legacy systems, custom web applications, testing
 
-## MCP Server Configuration for AI Models
+```bash
+# Development mode (with hot reload)
+AGENT_ID=my-agent yarn dev:api
 
-### JSON Config
+# Production mode (runs on port 3000)
+AGENT_ID=my-agent yarn start:api
+```
+
+**Endpoints:** `/wallet/status`, `/wallet/balance`, `/wallet/send`, etc.
+
+**For detailed comparison of all modes, see [SERVER_MODES.md](SERVER_MODES.md).**
+
+## 🔧 MCP Server Configuration for AI Models
+
+### Automatic Configuration (Recommended)
+
+Generate MCP configuration automatically with NVM path detection:
+
+```bash
+yarn mcp:config
+```
+
+This will:
+1. Find Node.js >= 20 in your NVM installation
+2. Generate MCP JSON configuration with absolute paths
+3. Copy configuration to clipboard (macOS)
+4. Display configuration for manual pasting
+
+### Manual Configuration
+
+If you prefer manual setup, use this template:
 
 ```json
-"mcp": {
-    "servers": {
-      "midnight-mcp": {
-        "type": "stdio",
-        "name": "Midnight MCP",
-        "command": "bash",
-        "args": [
-          "-c",
-          "source ~/.nvm/nvm.sh && AGENT_ID=testing nvm exec 22.15.1 node /Users/apple/dev/workstuff/MIDNIGHTAI-SIM/repo/midnight-mcp/dist/index.js"
-        ]
-      }
-    }
+{
+  "midnight-mcp": {
+    "type": "stdio",
+    "name": "Midnight MCP",
+    "command": "node",
+    "args": ["/absolute/path/to/midnight-mcp/dist/mcp/stdio-server.js"],
+    "env": {
+      "AGENT_ID": "my-agent",
+      "LOG_LEVEL": "error",
+      "BASE_STORAGE_DIR": "/absolute/path/to/midnight-mcp/.storage"
+    },
+    "cwd": "/absolute/path/to/midnight-mcp"
   }
+}
 ```
+
+**Important:** Use absolute paths, not relative paths!
 
 ### Agent ID Configuration
 
@@ -191,115 +253,109 @@ AGENT_ID=<agent-name> yarn dev
 
 **NOTE:** Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.
 
-## Integrating with ElizaOS
+## 🤖 Integrating with ElizaOS
 
-### Install ElizaOS
+### Quick Start with Demo
 
-Install Node.js: Ensure you have Node.js 23.3.0+ installed on your system. You can download and install it from the official Node.js website: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
-
-Install the ElizaOS CLI: Run the following command in your terminal:
+The easiest way to get started with ElizaOS integration:
 
 ```bash
-npm install -g @elizaos/cli@beta
+# Create demo ElizaOS project with MCP configured
+yarn demo:eliza
+
+# Navigate to demo project
+cd demo-eliza-mcp-project
+
+# Start ElizaOS
+npm start
 ```
 
-This will install the ElizaOS CLI globally on your system.
+This automatically creates an ElizaOS project with:
+- MCP plugin installed
+- Character configured with Midnight MCP tools
+- Agent setup complete
 
-Verify the Installation: After the installation is complete, verify that the ElizaOS CLI is working by running the following command:
-
-```bash
-elizaos --version
-```
-
-This should display the version of the ElizaOS CLI installed on your system.
-
-To create a new Eliza project using the eliza create command, follow these steps:
-
-1. Open a Terminal: Open a terminal window on your system.
-2. Run the eliza create Command: Run the following command in the terminal:
-
-```bash
-elizaos create
-```
-
-This will launch the ElizaOS project creation wizard:
-
-3. Follow the Wizard: Follow the prompts in the wizard to configure your new Eliza project. You will be asked to provide some basic project information, such as the project name and description.
-4. Create the Project: After filling in the required information, the wizard will create a new Eliza project for you. This may take a few seconds to complete.
-5. Navigate to the Project Directory: Once the project is created, navigate to the project directory using the cd command:
-
-```bash
-cd my-project-name
-```
-
-Replace my-project-name with the actual name of your project.
-
-```bash
-elizaos start
-```
-
-This will launch the ElizaOS server and make the agent accessible via the web interface at https://localhost:3000.
-
-You now have a new Eliza project up and running!
-
-### Install the MCP Plugin for ElizaOS
-
-Inside your eliza project run:
-
-```bash
-bun add @fleek-platform/eliza-plugin-mcp
-```
-
-Now in the character.json file that you'll use to create your AI Agent add the mcp json structure shown above.
-
-All set! You're ready to use AI agents with on-chain capabilities for the Midnight blockchain.
-
-## E2E Testing with ElizaOS
-
-This project includes comprehensive End-to-End testing that validates the integration between the Midnight MCP server and ElizaOS using the [@fleek-platform/eliza-plugin-mcp](https://github.com/fleek-platform/eliza-plugin-mcp).
-
-### E2E Test Suites
-
-Run different types of E2E tests:
-
-```bash
-# End to End testing by Jest -> MCP -> Wallet -> Blockchain
-yarn test:e2e
-```
+**For manual ElizaOS setup, see [test/e2e/ELIZA_CLIENT_README.md](../test/e2e/ELIZA_CLIENT_README.md).**
 
 ### ElizaOS Integration Features
 
 The MCP server integrates with ElizaOS to provide:
 
-- **AI Agent Conversations**: Natural language interactions with blockchain tools
-- **Automatic Tool Discovery**: MCP tools are automatically available to agents
-- **Contextual Help**: Agents understand Midnight blockchain concepts
-- **Error Handling**: Graceful error handling in conversational context
-- **Real-time Updates**: Live wallet and transaction status updates
+- **AI Agent Conversations** — Natural language interactions with blockchain tools
+- **Automatic Tool Discovery** — MCP tools are automatically available to agents
+- **Contextual Help** — Agents understand Midnight blockchain concepts
+- **Error Handling** — Graceful error handling in conversational context
+- **Real-time Updates** — Live wallet and transaction status updates
 
-### Available MCP Tools for Agents
+### Available MCP Tools
 
 When integrated with ElizaOS, agents have access to these tools:
 
-- `walletStatus` - Check wallet synchronization status
-- `walletAddress` - Get wallet receiving address
-- `walletBalance` - View current balance
-- `getTransactions` - List transaction history
-- `sendFunds` - Send funds to another address
-- `verifyTransaction` - Verify transaction status
-- `getWalletConfig` - Get wallet configuration
+- `walletStatus` — Check wallet synchronization status
+- `walletAddress` — Get wallet receiving address
+- `walletBalance` — View current balance
+- `getTransaction` — Get transaction details
+- `sendNativeToken` — Send funds to another address
+- `registerToken` — Register shielded tokens
+- `sendShieldedToken` — Send shielded tokens
+- Plus DAO and Marketplace tools (when contracts are configured)
 
-### Example Agent Conversations
+**For complete API reference, see [wallet-mcp-api.md](wallet-mcp-api.md).**
 
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+# All tests
+yarn test
+
+# Unit tests only (429 tests, 100% coverage)
+yarn test:unit
+
+# Integration tests (HTTP server)
+yarn test:integration
+
+# E2E tests (with ElizaOS)
+yarn test:e2e
 ```
-User: "Hello! Can you check my wallet status?"
-Agent: "I'll check your wallet status for you! 💰 Let me connect to the Midnight network..."
 
-User: "What's my current balance?"
-Agent: "Let me check your current balance on the Midnight network. 🔍"
+**For detailed testing information, see [test/README.md](../test/README.md).**
 
-User: "Show me my recent transactions"
-Agent: "I'll fetch your recent transactions from the Midnight blockchain. ⛓️"
-```
+## 📚 Additional Documentation
 
-For detailed E2E testing documentation, see [test/e2e/README.md](../test/e2e/README.md). 
+- **[Main README](../README.md)** — Project overview and all available commands
+- **[Scripts Documentation](../scripts/README.md)** — All utility scripts with examples
+- **[Server Modes Comparison](SERVER_MODES.md)** — Detailed comparison of STDIO/HTTP/API modes
+- **[Architecture](ARCHITECTURE.md)** — Technical architecture and patterns
+- **[Deployment Guide](DEPLOYMENT.md)** — Deployment methods and examples
+- **[API Reference](wallet-mcp-api.md)** — Complete MCP tools API documentation
+- **[Test Documentation](../test/README.md)** — Testing guide and organization
+- **[Documentation Index](index.md)** — Complete documentation navigation
+
+## 🆘 Troubleshooting
+
+### "ENOENT: no such file or directory, mkdir '/.storage'"
+
+- Ensure `BASE_STORAGE_DIR` is set to **absolute path** in MCP config
+- Set `cwd` to project root in MCP config
+- Use `yarn mcp:config` to generate correct configuration
+
+### "Agent seed not found"
+
+Run `yarn setup-agent -a <agent-id>` to create agent credentials first.
+
+### "NVM not found"
+
+Install NVM or use absolute Node.js path in MCP configuration.
+
+### Wallet not syncing
+
+- Check network connectivity to indexer and RPC node
+- Verify `NETWORK_ID` matches your seed's network
+- Wait for initial sync (can take 1-2 minutes)
+- Check logs for connection errors
+
+---
+
+*For more troubleshooting, see the [Common Issues](../README.md#common-issues) section in the main README.* 
