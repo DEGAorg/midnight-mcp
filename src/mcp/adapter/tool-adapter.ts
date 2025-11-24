@@ -72,11 +72,13 @@ export async function createToolAdapter(services: ServiceDependencies): Promise<
 
         console.error(`[ToolAdapter] Tool ${name} executed successfully`);
 
-        // Return in MCP format
+        // Return in MCP format with BigInt support
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2)
+            text: JSON.stringify(result, (key, value) =>
+              typeof value === 'bigint' ? value.toString() : value
+            , 2)
           }]
         };
       } catch (error) {
