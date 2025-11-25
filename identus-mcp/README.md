@@ -34,19 +34,19 @@ Built on Hyperledger Identus SDK v7.0.0 modular architecture:
 
 ```bash
 # Install dependencies
-pnpm install
+yarn install
 
 # Development mode (uses real SDK by default)
-pnpm run dev
+yarn run dev
 
 # Build for production
-pnpm run build
+yarn run build
 
 # Run in production
-pnpm start
+yarn start
 
 # Test tools
-pnpm test
+yarn test
 ```
 
 ## Usage
@@ -136,7 +136,7 @@ The server uses the **real Hyperledger Identus SDK v7.0.0** for cryptographic DI
 
 ```bash
 # Run with real SDK
-pnpm run dev
+yarn run dev
 ```
 
 This provides:
@@ -151,7 +151,7 @@ This provides:
 
 ```bash
 # Run tool tests with real SDK
-pnpm test
+yarn test
 
 # Expected output:
 # ✅ createDID: DID created for agent-test-1
