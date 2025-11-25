@@ -1,5 +1,5 @@
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { WalletConfig } from '../../src/wallet/index.js';
+import type { WalletConfig } from '../../src/services/wallet/WalletService.js';
 import { generateMnemonic } from 'bip39';
 
 /**
@@ -10,19 +10,8 @@ export function generateTestSeed(): string {
   return generateMnemonic();
 }
 
-/**
- * Creates a test wallet configuration for a local network
- * @returns WalletConfig suitable for local network testing
- */
-export function createLocalNetworkConfig(): WalletConfig {
-  return {
-    indexer: 'http://localhost:8088/api/v1/graphql',
-    indexerWS: 'ws://localhost:8088/api/v1/graphql/ws',
-    node: 'http://localhost:9944',
-    proofServer: 'http://localhost:6300',
-    useExternalProofServer: true
-  };
-}
+
+
 
 /**
  * Function to wait for a wallet to be ready

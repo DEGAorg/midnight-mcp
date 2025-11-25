@@ -2,8 +2,8 @@
 import { program } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileManager, FileType } from '../src/utils/file-manager.js';
-import { SeedManager } from '../src/utils/seed-manager.js';
+import { FileManager, FileType } from '../src/lib/utils/file-manager.js';
+import { SeedManager } from '../src/lib/utils/seed-manager.js';
 import * as bip39 from 'bip39';
 import { randomBytes } from 'crypto';
 import chalk from 'chalk';
@@ -261,22 +261,27 @@ async function main() {
       }
     }
 
-    console.log('\n=== ElizaOS Server Configuration ===');
-    console.log(chalk.cyan('Add this configuration to your character.json file:'));
+    console.log('\n=== MCP Server Configuration ===');
+    console.log(chalk.cyan('For Cursor/Claude Desktop (STDIO), add this to your MCP settings:'));
     console.log(chalk.white(`
-"mcp": {
-    "servers": {
-      "midnight-mcp": {
-        "type": "stdio",
-        "name": "Midnight MCP",
-        "command": "bash",
-        "args": [
-          "-c",
-          "source ~/.nvm/nvm.sh && AGENT_ID=${agentId} nvm exec 22.15.1 node ${process.cwd()}/dist/stdio-server.js"
-        ]
-      }
-    }
+"midnight-mcp": {
+  "type": "stdio",
+  "name": "Midnight MCP",
+  "command": "node",
+  "args": [
+    "${process.cwd()}/dist/mcp/stdio-server.js"
+  ],
+  "env": {
+    "AGENT_ID": "${agentId}",
+    "LOG_LEVEL": "error",
+    "BASE_STORAGE_DIR": "${process.cwd()}/.storage"
+  },
+  "cwd": "${process.cwd()}"
 }`));
+
+    console.log(chalk.cyan('\nFor Claude Code (with NVM), run this command to generate config:'));
+    console.log(chalk.white(`  yarn mcp:config`));
+    console.log(chalk.cyan('Then paste the output into Claude Code MCP settings.'));
 
     console.log('\nIMPORTANT: Keep your seed secure and never share it!');
     console.log('Consider backing up your seed file securely.');

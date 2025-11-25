@@ -183,17 +183,15 @@ class ElizaMCPDemo {
             'midnight-mcp': {
               type: 'stdio',
               name: 'Midnight MCP Server',
-              command: 'tsx',
-              args: [path.resolve(__dirname, '../src/stdio-server.ts')],
+              command: 'node',
+              args: [path.resolve(__dirname, '../dist/mcp/stdio-server.js')],
               env: {
                 AGENT_ID: this.agentId,
-                NODE_ENV: 'development',
-                WALLET_SERVER_HOST: 'localhost',
-                WALLET_SERVER_PORT: '3000',
                 NETWORK_ID: 'TestNet',
-                USE_EXTERNAL_PROOF_SERVER: 'false'
+                BASE_STORAGE_DIR: path.resolve(__dirname, '../.storage'),
+                LOG_LEVEL: 'error'
               },
-              timeout: 30
+              timeout: 60
             }
           }
         }
@@ -276,14 +274,11 @@ class ElizaMCPDemo {
     const envContent = `
 # Midnight MCP Demo Configuration
 PORT=${this.port}
-NODE_ENV=development
 AGENT_ID=${this.agentId}
 
-# Midnight Network Configuration  
+# Midnight Network Configuration
 NETWORK_ID=TestNet
-WALLET_SERVER_HOST=localhost
-WALLET_SERVER_PORT=3000
-USE_EXTERNAL_PROOF_SERVER=false
+LOG_LEVEL=error
 
 # Optional: Add your API keys here
 # OPENAI_API_KEY=your_openai_api_key
@@ -305,18 +300,15 @@ USE_EXTERNAL_PROOF_SERVER=false
     console.log();
 
     console.log(chalk.yellow('🚀 To start the demo:'));
-    console.log(chalk.white('   1. Start the Midnight proof server (if not running):'));
-    console.log(chalk.gray('      docker-compose up -d'));
-    console.log();
-    console.log(chalk.white('   2. Navigate to the demo project:'));
+    console.log(chalk.white('   1. Navigate to the demo project:'));
     console.log(chalk.gray(`      cd ${this.demoProjectPath}`));
     console.log();
-    console.log(chalk.white('   3. Start the ElizaOS agent:'));
+    console.log(chalk.white('   2. Start the ElizaOS agent:'));
     console.log(chalk.gray('      npm start'));
     console.log(chalk.gray('      # or if elizaos command is not available globally:'));
     console.log(chalk.gray('      npx @elizaos/cli@beta start --character=characters/midnight-agent.json'));
     console.log();
-    console.log(chalk.white('   4. Open your browser to:'));
+    console.log(chalk.white('   3. Open your browser to:'));
     console.log(chalk.gray(`      http://localhost:${this.port}`));
     console.log();
 

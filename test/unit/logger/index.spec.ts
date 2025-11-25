@@ -1,8 +1,8 @@
 import { describe, it, beforeAll, afterAll, beforeEach, afterEach, jest, expect } from '@jest/globals';
-import { createLogger, LoggerConfig, CloudProvider } from '../../../src/logger/index';
-import { configureGlobalLogging } from '../../../src/logger/index';
-import { configureLogger, getLogger } from '../../../src/logger/index';
-import * as loggerIndex from '../../../src/logger/index';
+import { createLogger, LoggerConfig, CloudProvider } from '@lib/logger/index.js';
+import { configureGlobalLogging } from '@lib/logger/index.js';
+import { configureLogger, getLogger } from '@lib/logger/index.js';
+import * as loggerIndex from '@lib/logger/index.js';
 
 // Mock pino
 jest.mock('pino', () => {
@@ -51,6 +51,13 @@ jest.mock('pino', () => {
   });
 });
 
+// Mock @sentry/node to prevent require() failing in ESM context
+jest.mock('@sentry/node', () => ({
+  captureMessage: jest.fn(),
+  captureException: jest.fn(),
+  init: jest.fn(),
+}), { virtual: true });
+
 // Mock optional pino transport modules
 jest.mock('pino-stackdriver', () => ({
   createWriteStream: jest.fn().mockReturnValue({})
@@ -83,7 +90,7 @@ describe('Logger Module', () => {
   
   describe('createLogger', () => {
     it('should create a logger with default options', async () => {
-      const { createLogger } = await import('../../../src/logger/index');
+      const { createLogger } = await import('../../../src/lib/logger/index.js');
       const logger = createLogger('test-module');
       
       expect(logger).toBeDefined();
@@ -93,7 +100,7 @@ describe('Logger Module', () => {
     });
     
     it('should create a logger with custom log level', async () => {
-      const { createLogger } = await import('../../../src/logger/index');
+      const { createLogger } = await import('../../../src/lib/logger/index.js');
       const logger = createLogger('test-module', { level: 'info' });
       
       expect(logger).toBeDefined();
@@ -101,7 +108,7 @@ describe('Logger Module', () => {
     });
     
     it('should create a pretty-printed logger when pretty is true', async () => {
-      const { createLogger } = await import('../../../src/logger/index');
+      const { createLogger } = await import('../../../src/lib/logger/index.js');
       const logger = createLogger('test-module', { pretty: true });
       
       expect(logger).toBeDefined();
@@ -109,7 +116,7 @@ describe('Logger Module', () => {
     });
     
     it('should respect outputFile option', async () => {
-      const { createLogger } = await import('../../../src/logger/index');
+      const { createLogger } = await import('../../../src/lib/logger/index.js');
       const logger = createLogger('test-module', { 
         outputFile: './test.log'
       });
@@ -119,7 +126,7 @@ describe('Logger Module', () => {
     });
     
     it('should include standard fields in the logger', async () => {
-      const { createLogger } = await import('../../../src/logger/index');
+      const { createLogger } = await import('../../../src/lib/logger/index.js');
       const logger = createLogger('test-module', {
         standardFields: {
           application: 'test-app',
@@ -448,7 +455,7 @@ describe('Logger Module', () => {
   
   describe('configureGlobalLogging', () => {
     it('should update global logger configuration', async () => {
-      const { configureGlobalLogging, LoggerConfig } = await import('../../../src/logger/index');
+      const { configureGlobalLogging, LoggerConfig } = await import('../../../src/lib/logger/index.js');
       
       configureGlobalLogging({
         level: 'error',
@@ -494,7 +501,7 @@ describe('Logger Module', () => {
   
   describe('Cloud provider integration', () => {
     it('should configure GCP logging when specified', async () => {
-      const { createLogger, CloudProvider } = await import('../../../src/logger/index');
+      const { createLogger, CloudProvider } = await import('../../../src/lib/logger/index.js');
       
       const logger = createLogger('test-module', {
         cloud: {
@@ -514,7 +521,7 @@ describe('Logger Module', () => {
     });
     
     it('should configure AWS logging when specified', async () => {
-      const { createLogger, CloudProvider } = await import('../../../src/logger/index');
+      const { createLogger, CloudProvider } = await import('../../../src/lib/logger/index.js');
       
       const logger = createLogger('test-module', {
         cloud: {
@@ -531,7 +538,7 @@ describe('Logger Module', () => {
     });
     
     it('should configure Azure logging when specified', async () => {
-      const { createLogger, CloudProvider } = await import('../../../src/logger/index');
+      const { createLogger, CloudProvider } = await import('../../../src/lib/logger/index.js');
       
       const logger = createLogger('test-module', {
         cloud: {
@@ -553,7 +560,7 @@ describe('Logger Module', () => {
       process.env.LOG_LEVEL = 'debug';
       
       // Re-import to pick up the environment variable change
-      const { LoggerConfig } = await import('../../../src/logger/index');
+      const { LoggerConfig } = await import('../../../src/lib/logger/index.js');
       
       expect(LoggerConfig.defaultLevel).toBe('debug');
     });
@@ -562,7 +569,7 @@ describe('Logger Module', () => {
       process.env.NODE_ENV = 'staging';
       
       // Re-import to pick up the environment variable change
-      const { LoggerConfig } = await import('../../../src/logger/index');
+      const { LoggerConfig } = await import('../../../src/lib/logger/index.js');
       
       expect(LoggerConfig.standardFields.environment).toBe('staging');
     });
@@ -571,7 +578,7 @@ describe('Logger Module', () => {
       process.env.APP_VERSION = '3.0.0';
       
       // Re-import to pick up the environment variable change
-      const { LoggerConfig } = await import('../../../src/logger/index');
+      const { LoggerConfig } = await import('../../../src/lib/logger/index.js');
       
       expect(LoggerConfig.standardFields.version).toBe('3.0.0');
     });
@@ -583,7 +590,7 @@ describe('Logger Module', () => {
       delete process.env.APP_VERSION;
     
       // Re-import to pick up the environment variable change
-      const { LoggerConfig } = await import('../../../src/logger/index');
+      const { LoggerConfig } = await import('../../../src/lib/logger/index.js');
     
       expect(LoggerConfig.defaultLevel).toBe('info');
       expect(LoggerConfig.standardFields.environment).toBe('development');
@@ -607,8 +614,7 @@ describe('Logger Module', () => {
 
     it('should fallback to PinoLogger if getLogger is called before configureLogger', () => {
       // Reset the logger variable (if possible)
-      // @ts-ignore
-      import('../../../src/logger/index').then(mod => {
+      import('../../../src/lib/logger/index.js').then(mod => {
         // forcibly reset the logger variable for test
         (mod as any).logger = undefined;
         const logger = mod.getLogger();

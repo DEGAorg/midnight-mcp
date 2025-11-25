@@ -1,0 +1,111 @@
+<svg width="900" height="450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="identusGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="450" y="40" text-anchor="middle" font-size="28" font-weight="700" fill="#1f2937" font-family="Arial, sans-serif">
+    Hyperledger Identus SDK v7.0.0 Integration
+  </text>
+  <line x1="150" y1="60" x2="750" y2="60" stroke="#e5e7eb" stroke-width="2"/>
+
+  <!-- Main Card -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="100" width="800" height="320" fill="url(#identusGrad)" rx="12"/>
+
+    <!-- Header -->
+    <rect x="50" y="100" width="800" height="70" fill="#000000" opacity="0.15" rx="12"/>
+    <text x="450" y="145" text-anchor="middle" font-size="24" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">
+      identus-mcp/ - Separate MCP Server
+    </text>
+
+    <!-- Three Components -->
+    <!-- Apollo -->
+    <rect x="80" y="200" width="220" height="180" fill="#ffffff" opacity="0.2" rx="8"/>
+    <text x="190" y="230" text-anchor="middle" font-size="18" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+      Apollo Module
+    </text>
+    <text x="190" y="260" text-anchor="middle" font-size="14" fill="#ffffff" font-family="Courier, monospace">
+      apollo.ts
+    </text>
+    <line x1="100" y1="275" x2="280" y2="275" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+    <text x="190" y="300" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      Key Generation
+    </text>
+    <text x="190" y="325" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • Ed25519 (auth)
+    </text>
+    <text x="190" y="345" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • X25519 (agreement)
+    </text>
+    <text x="190" y="365" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      Real cryptographic keys
+    </text>
+
+    <!-- Castor -->
+    <rect x="340" y="200" width="220" height="180" fill="#ffffff" opacity="0.2" rx="8"/>
+    <text x="450" y="230" text-anchor="middle" font-size="18" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+      Castor Module
+    </text>
+    <text x="450" y="260" text-anchor="middle" font-size="14" fill="#ffffff" font-family="Courier, monospace">
+      castor.ts
+    </text>
+    <line x1="360" y1="275" x2="540" y2="275" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+    <text x="450" y="300" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      DID Operations
+    </text>
+    <text x="450" y="325" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • createPeerDID()
+    </text>
+    <text x="450" y="345" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • resolveDID()
+    </text>
+    <text x="450" y="365" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      W3C DID Core 1.0
+    </text>
+
+    <!-- Storage -->
+    <rect x="600" y="200" width="220" height="180" fill="#ffffff" opacity="0.2" rx="8"/>
+    <text x="710" y="230" text-anchor="middle" font-size="18" font-weight="600" fill="#ffffff" font-family="Arial, sans-serif">
+      DID Storage
+    </text>
+    <text x="710" y="260" text-anchor="middle" font-size="14" fill="#ffffff" font-family="Courier, monospace">
+      did-storage.ts
+    </text>
+    <line x1="620" y1="275" x2="800" y2="275" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+    <text x="710" y="300" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      Persistence
+    </text>
+    <text x="710" y="325" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • storage/dids.json
+    </text>
+    <text x="710" y="345" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • Private key storage
+    </text>
+    <text x="710" y="365" text-anchor="middle" font-size="12" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      • Base64 encoded
+    </text>
+  </g>
+
+  <!-- Features -->
+  <rect x="50" y="430" width="260" height="15" fill="#dcfce7" rx="4"/>
+  <text x="180" y="442" text-anchor="middle" font-size="12" font-weight="600" fill="#14532d" font-family="Arial, sans-serif">
+    ✓ Real Peer DIDs (did:peer:2.Ez6LS...)
+  </text>
+
+  <rect x="320" y="430" width="260" height="15" fill="#dcfce7" rx="4"/>
+  <text x="450" y="442" text-anchor="middle" font-size="12" font-weight="600" fill="#14532d" font-family="Arial, sans-serif">
+    ✓ 6/6 tests passing with real SDK
+  </text>
+
+  <rect x="590" y="430" width="260" height="15" fill="#dcfce7" rx="4"/>
+  <text x="720" y="442" text-anchor="middle" font-size="12" font-weight="600" fill="#14532d" font-family="Arial, sans-serif">
+    ✓ Separate identus-mcp repository
+  </text>
+</svg>

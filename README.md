@@ -1,296 +1,768 @@
 # Midnight MCP Server
 
-A Model Context Protocol (MCP) server implementation with STDIO transport for the Midnight network.
+A Model Context Protocol (MCP) server implementation for the Midnight blockchain network, providing AI models with secure wallet and smart contract capabilities.
 
 ## Overview
 
-This server implements the Model Context Protocol for integration with the Midnight cryptocurrency network. It provides a standard interface for AI models to interact with the Midnight blockchain, wallet functionality, and other network services.
+This server enables AI assistants like Claude to interact with the Midnight blockchain through a standardized protocol. It supports three deployment modes for different use cases:
 
-The architecture consists of two main components:
-1. **Wallet Server** (`server.ts`) - An Express.js HTTP server that runs the wallet logic and exposes REST API endpoints
-2. **STDIO Server** (`stdio-server.ts`) - An MCP-compliant server that acts as a proxy, forwarding tool calls to the wallet server via HTTP requests
+- **STDIO Mode** — For AI assistants (Claude Desktop, Cursor IDE)
+- **HTTP Mode** — For multi-agent platforms (100+ concurrent agents)
+- **API Mode** — For traditional REST API access
+
+### Identus DID Integration
+
+This project includes **Identus MCP** (`identus-mcp/`) — a separate MCP server for Decentralized Identifier (DID) management using Hyperledger Identus SDK v7.0.0. It provides cryptographic identity capabilities for AI agents including:
+
+- Create and resolve W3C-compliant Peer DIDs
+- Ed25519 and X25519 key pair generation
+- DID Document management
+- Verifiable credentials (future)
+
+For full documentation, setup instructions, and API details, see [identus-mcp/README.md](identus-mcp/README.md).
+
+## Architecture
+
+The system uses a service-oriented architecture with direct integration:
+
+```mermaid
+graph TB
+    subgraph "STDIO Deployment"
+        CLAUDE[AI Assistant] -->|MCP Protocol| STDIO[STDIO Server]
+        STDIO -->|Direct| ORCH1[WalletOrchestrator]
+    end
+
+    subgraph "HTTP Multi-Agent Deployment"
+        CLIENT[HTTP Clients] -->|POST /mcp| HTTP[HTTP Server]
+        HTTP -->|Session ID| SESSION[SessionManager]
+        SESSION -->|Per Agent| ORCH2[WalletOrchestrator]
+    end
+
+    subgraph "API Deployment"
+        REST[REST Clients] -->|HTTP| API[API Server]
+        API -->|Routes| ORCH3[WalletOrchestrator]
+    end
+
+    subgraph "Service Layer"
+        ORCH1 --> SERVICES[Services]
+        ORCH2 --> SERVICES
+        ORCH3 --> SERVICES
+        SERVICES --> WALLET[WalletService]
+        SERVICES --> TX[TransactionService]
+        SERVICES --> TOKEN[TokenService]
+        SERVICES --> DAO[DaoService]
+    end
+
+    subgraph "External"
+        SERVICES --> MIDNIGHT[Midnight Network]
+        SERVICES --> STORAGE[File Storage]
+    end
+
+    style CLAUDE fill:#e1f5fe
+    style CLIENT fill:#e1f5fe
+    style REST fill:#e1f5fe
+    style SERVICES fill:#f3e5f5
+    style MIDNIGHT fill:#fff3e0
+```
+
+### Server Types
+
+#### STDIO Server (`src/mcp/stdio-server.ts`)
+
+Direct integration for AI assistants using the Model Context Protocol.
+
+```typescript
+// How it works
+AI Assistant → STDIO Transport → MCP Server → Tool Adapter → Services
+```
+
+**Use Cases:**
+- Claude Desktop integration
+- Cursor IDE integration
+- Single-agent development
+
+#### HTTP Server (`src/mcp/http-server.ts`)
+
+Session-based multi-agent server with LRU cache management.
+
+```typescript
+// How it works
+HTTP Client → POST /mcp → SessionManager → MCP Server (per agent) → Services
+```
+
+**Use Cases:**
+- Multi-agent platforms
+- 100+ concurrent agents
+- Cloud deployment
+- Horizontal scaling
+
+**Key Features:**
+- Session-based agent isolation via `X-Agent-Id` header
+- LRU cache with automatic eviction
+- Prometheus metrics at `/metrics`
+- Health checks at `/health`
+
+#### API Server (`src/api/http-server.ts`)
+
+Traditional REST API for non-MCP clients.
+
+```typescript
+// How it works
+HTTP Client → Express Routes → Controllers → Services
+```
+
+**Use Cases:**
+- Legacy system integration
+- Custom web applications
+- Testing and debugging
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js (v18.20.5)
+- Node.js v18.20.5 or higher
 - Yarn package manager
-- Docker and Docker Compose (for production deployment)
 
-### Basic Setup
+### Installation & Build
+
+```bash
+# Clone the repository
+git clone https://github.com/DEGAorg/midnight-mcp.git
+cd midnight-mcp
+
+# Install dependencies
+yarn install
+
+# Build the project (compiles TypeScript to dist/)
+yarn build
+```
+
+### Agent Setup
+
+Create a new agent with wallet credentials:
+
+```bash
+# Generate a new random seed
+yarn setup-agent -a my-agent
+
+# Or import an existing hex seed (32 bytes = 64 hex characters)
+yarn setup-agent -a my-agent -s "0123456789abcdef..."
+
+# Or import a BIP39 mnemonic phrase
+yarn setup-agent -a my-agent -m "word1 word2 word3 ..."
+```
+
+The setup script will:
+1. Create `.storage/seeds/my-agent/seed` with your wallet seed
+2. Display your BIP39 mnemonic (for backup and GUI wallet import)
+3. Show MCP configuration for AI assistants
+4. Validate directory structure and permissions
+
+**Important:** The hex seed is the actual entropy used by Midnight. The BIP39 mnemonic is a human-readable backup of the same cryptographic material.
+
+### Running the Servers
+
+#### STDIO Mode (AI Assistants)
+
+For Claude Desktop or Cursor:
+
+```bash
+# Generate MCP configuration (for Claude Code with NVM)
+yarn mcp:config
+
+# Or manually configure with Node.js path
+node dist/mcp/stdio-server.js
+```
+
+**MCP Configuration Example:**
+
+```json
+{
+  "midnight-mcp": {
+    "type": "stdio",
+    "name": "Midnight MCP",
+    "command": "node",
+    "args": ["/absolute/path/to/dist/mcp/stdio-server.js"],
+    "env": {
+      "AGENT_ID": "my-agent",
+      "LOG_LEVEL": "error",
+      "BASE_STORAGE_DIR": "/absolute/path/to/.storage"
+    },
+    "cwd": "/absolute/path/to/project"
+  }
+}
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed configuration instructions.
+
+#### HTTP Mode (Multi-Agent)
+
+For platforms with multiple agents:
+
+```bash
+# Start HTTP MCP server
+yarn start:mcp:http
+```
+
+**Environment Variables:**
+
+```bash
+MCP_HTTP_PORT=3001              # Server port
+MAX_SESSIONS=100                # Maximum concurrent agents
+SESSION_TIMEOUT=3600000         # 1 hour in milliseconds
+EVICTION_INTERVAL=300000        # 5 minutes in milliseconds
+BASE_STORAGE_DIR=/path/.storage # Absolute path to storage
+```
+
+**Session Management:**
+
+The SessionManager automatically handles all session lifecycle and mapping:
+
+**How Agent IDs Work:**
+1. Client sends `X-Agent-Id` header with each request
+2. Request validator checks if agent is registered (has seed via SeedManager)
+3. SessionManager uses agent ID as the session key
+4. If session exists: returns cached WalletOrchestrator and updates last accessed time
+5. If new: creates WalletOrchestrator, loads agent's seed, initializes services
+6. All sessions tracked in internal Map<agentId, Session>
+7. Idle sessions automatically evicted (LRU) after timeout
+
+**Key Benefits:**
+- No session cookies or tokens needed
+- Agent ID directly maps to wallet/storage
+- Each agent gets isolated services and storage
+- Automatic cleanup of unused sessions
+
+**Client Usage:**
+
+```typescript
+// SessionManager handles mapping automatically via X-Agent-Id header
+const response = await fetch('http://localhost:3001/mcp', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Agent-Id': 'my-agent'  // Required: identifies which agent/session to use
+  },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    method: 'tools/list',
+    id: 1
+  })
+});
+```
+
+#### API Mode (REST API)
+
+For traditional HTTP access:
+
+```bash
+# Set agent ID
+export AGENT_ID=my-agent
+
+# Start API server
+yarn start:api
+```
+
+**Endpoints:**
+
+```bash
+GET  /health              # Health check
+GET  /wallet/status       # Wallet status
+GET  /wallet/balance      # Get balance
+POST /wallet/send         # Send transaction
+GET  /dao/elections       # List DAO elections
+POST /dao/vote            # Cast DAO vote
+```
+
+## Available Commands
+
+This project uses **Yarn** as the package manager. Below are all available commands organized by category.
+
+### Build Commands
+
+```bash
+# Build the entire project (TypeScript → JavaScript in dist/)
+yarn build
+
+# Clean build artifacts
+yarn clean
+
+# Compile TypeScript only (without cleaning)
+yarn compile
+
+# Type checking without emitting files
+yarn type-check
+```
+
+**Dev vs Production:**
+- **Dev commands** (`yarn dev`) use `tsx` to run TypeScript files directly with hot reloading
+- **Production commands** (`yarn start`) use `node` to run compiled JavaScript from `dist/`
+
+### Development Commands
+
+Run servers in development mode with hot reloading:
+
+```bash
+# Run STDIO server in dev mode (default)
+yarn dev
+# Equivalent to: tsx src/mcp/stdio-server.ts
+
+# Run STDIO server explicitly
+yarn dev:mcp:stdio
+
+# Run HTTP MCP server in dev mode
+yarn dev:mcp:http
+# Server runs on http://localhost:3001
+# Supports 100+ concurrent agents with session management
+
+# Run REST API server in dev mode
+yarn dev:api
+# Server runs on http://localhost:3000
+# Traditional REST endpoints for wallet operations
+```
+
+**When to use each:**
+- `yarn dev` (STDIO) — AI assistant integration (Claude Desktop, Cursor)
+- `yarn dev:mcp:http` — Multi-agent platforms, ElizaOS integration
+- `yarn dev:api` — Testing with REST clients, custom web apps
+
+### Production Commands
+
+Run compiled servers from `dist/` directory:
+
+```bash
+# Run STDIO server (default - for AI assistants)
+yarn start
+# Runs: node dist/mcp/stdio-server.js
+
+# Run STDIO server explicitly
+yarn start:mcp:stdio
+
+# Run HTTP MCP server (for multi-agent platforms)
+yarn start:mcp:http
+# Production-ready HTTP server with session management
+
+# Run REST API server
+yarn start:api
+# Traditional REST API for non-MCP clients
+```
+
+**Note:** Always run `yarn build` before using production commands.
+
+### Testing Commands
+
+```bash
+# Run all tests (unit + integration + e2e)
+yarn test
+
+# Run unit tests with coverage
+yarn test:unit
+# 429 tests across 18 suites, 100% coverage
+
+# Run integration tests
+yarn test:integration
+# Tests HTTP server with real transport
+
+# Run E2E tests with Jest
+yarn test:e2e
+# Full MCP protocol testing with real wallet
+
+# Run E2E tests with ElizaOS
+yarn test:e2e:eliza
+# Requires ElizaOS running on port 3001
+
+# Run STDIO protocol tests
+yarn test:stdio
+# Direct JSON-RPC protocol testing
+
+# Watch mode tests
+yarn test:watch          # All tests in watch mode
+yarn test:unit:watch     # Unit tests in watch mode
+yarn test:integration:watch # Integration tests in watch mode
+yarn test:e2e:watch      # E2E tests in watch mode
+
+# Test with coverage report
+yarn test:coverage
+# Generates coverage report in coverage/
+```
+
+**Test Documentation:** See [test/README.md](test/README.md) for detailed testing information.
+
+### Utility Scripts
+
+```bash
+# Generate a new agent with wallet seed
+yarn setup-agent -a my-agent
+# Creates .storage/seeds/my-agent/seed and displays BIP39 mnemonic
+
+# Generate BIP39 mnemonic and seed
+yarn generate-seed
+# Creates 24-word mnemonic for wallet backup
+
+# Generate MCP configuration for Claude Code
+yarn mcp:config
+# Auto-detects NVM Node.js path and generates JSON config
+
+# Run ElizaOS integration demo
+yarn demo:eliza
+# Creates demo-eliza-mcp-project/ with full setup
+```
+
+**Script Documentation:** See [scripts/README.md](scripts/README.md) for detailed script documentation and options.
+
+### Code Quality Commands
+
+```bash
+# Run ESLint
+yarn lint
+
+# Fix ESLint issues automatically
+yarn lint:fix
+
+# Type check without building
+yarn type-check
+```
+
+### Package Management
 
 ```bash
 # Install dependencies
 yarn install
 
-# Build
-yarn build
+# Upgrade interactive
+yarn upgrade-interactive
 
-# Set up a new agent
-yarn setup-agent -a <agent-name>
-
-# Or set up with a specific hex seed (32-byte entropy)
-yarn setup-agent -a <agent-name> -s "your-hex-seed-here"
-
-# Or set up with a BIP39 mnemonic phrase
-yarn setup-agent -a <agent-name> -m "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-
-# Follow the instructions in the terminal
+# Check outdated packages
+yarn outdated
 ```
 
-**Note:** The setup scripts support both hex seeds (32-byte entropy) and BIP39 mnemonic phrases. The hex seed is the actual entropy used by the Midnight wallet, while the mnemonic is a human-readable representation of the same cryptographic material.
+## Developer Workflow
 
-For detailed setup instructions, see [docs/setup-guide.md](docs/setup-guide.md).
+Here's the recommended workflow for getting started:
+
+### First Time Setup
+
+```bash
+# 1. Clone and install
+git clone https://github.com/DEGAorg/midnight-mcp.git
+cd midnight-mcp
+yarn install
+
+# 2. Build the project
+yarn build
+
+# 3. Set up an agent with wallet
+yarn setup-agent -a my-agent
+# Save the displayed BIP39 mnemonic for backup!
+
+# 4. Choose your deployment mode:
+```
+
+**Option A: AI Assistant Integration (STDIO)**
+```bash
+# Generate MCP configuration
+yarn mcp:config
+# Paste the output into Claude Desktop/Cursor MCP settings
+
+# Test with development mode
+AGENT_ID=my-agent yarn dev
+```
+
+**Option B: Multi-Agent Platform (HTTP)**
+```bash
+# Start HTTP MCP server
+AGENT_ID=my-agent yarn start:mcp:http
+
+# Server runs on http://localhost:3001
+# Send requests with X-Agent-Id header
+```
+
+**Option C: REST API**
+```bash
+# Start REST API server
+AGENT_ID=my-agent yarn start:api
+
+# Server runs on http://localhost:3000
+# Access wallet endpoints: /wallet/status, /wallet/balance, etc.
+```
+
+### Daily Development
+
+```bash
+# Start development server with hot reload
+AGENT_ID=my-agent yarn dev:mcp:http
+
+# Run tests in watch mode
+yarn test:unit:watch
+
+# Lint and fix issues
+yarn lint:fix
+
+# Build for production
+yarn build
+```
+
+### Running Tests
+
+```bash
+# Quick test run
+yarn test:unit          # Fast unit tests
+
+# Full test suite
+yarn test              # All tests
+yarn test:coverage     # With coverage report
+
+# E2E testing with ElizaOS
+yarn demo:eliza        # Set up demo project first
+cd demo-eliza-mcp-project && npm start  # Start ElizaOS
+yarn test:e2e:eliza    # Run E2E tests
+```
+
+## MCP Tools
+
+The server exposes 18 tools across 4 domains:
+
+### Wallet Tools (6)
+
+- `walletStatus` — Get wallet ready state and sync progress
+- `walletAddress` — Get Bech32m wallet address
+- `walletBalance` — Get native token balance
+- `getTransaction` — Get transaction details by hash
+- `sendNativeToken` — Send native DUST tokens
+- `listTokens` — List all registered tokens
+
+### Token Tools (4)
+
+- `getTokenBalance` — Get shielded token balance
+- `registerToken` — Register new token for tracking
+- `sendShieldedToken` — Send shielded tokens
+- `listTokens` — List all registered tokens
+
+### DAO Tools (7)
+
+- `openDaoElection` — Create new DAO election
+- `castDaoVote` — Vote in DAO election
+- `closeDaoElection` — Close election and tally votes
+- `fundDaoTreasury` — Add funds to DAO treasury
+- `getDaoConfig` — Get DAO configuration
+- `getDaoElection` — Get election details
+- `listDaoElections` — List all elections
+- `getVotingPower` — Check voting power
+
+### Marketplace Tools (3)
+
+- `getUserInfo` — Get user registration info
+- `isUserRegistered` — Check registration status
+- `isUserVerified` — Check verification status
+
+See [docs/wallet-mcp-api.md](docs/wallet-mcp-api.md) for complete API reference.
+
+## File Storage Structure
+
+The system uses agent-specific isolated storage:
+
+```
+.storage/
+├── seeds/                    # Agent wallet seeds
+│   └── {agentId}/
+│       └── seed              # 32-byte hex entropy
+├── wallet-backups/           # Wallet state backups
+│   └── {agentId}/
+│       └── wallet.json       # Serialized wallet state
+├── transaction-db/           # Transaction databases
+│   └── {agentId}/
+│       ├── transactions.db   # SQLite transaction history
+│       └── token-registry.db # Registered tokens
+└── logs/                     # Agent-specific logs
+    └── {agentId}/
+        └── *.log
+```
+
+**Security Notes:**
+- Seeds are stored in plaintext (use encryption in production)
+- File permissions: 0o644 (files), 0o755 (directories)
+- Add `.storage/` to `.gitignore`
+- Consider HSM or encrypted storage for production
+
+## Service Architecture
+
+The system uses a `WalletOrchestrator` to coordinate services:
+
+```typescript
+// Service initialization order
+WalletOrchestrator
+  ├── WalletService          // Core wallet operations
+  ├── TransactionService     // Transaction lifecycle
+  ├── TokenService           // Token registration & transfer
+  ├── AuditService           // Transaction audit trail
+  ├── RecoveryService        // Wallet recovery
+  ├── DaoService             // DAO voting (optional)
+  └── MarketplaceService     // Marketplace (optional)
+```
+
+**Benefits:**
+- Clean dependency injection
+- Correct initialization order
+- Unified lifecycle management
+- Graceful shutdown handling
 
 ## Project Structure
 
 ```
 midnight-mcp/
-├── src/                    # Source code
-│   ├── mcp/               # MCP protocol implementation
-│   ├── wallet/            # Wallet management
-│   ├── logger/            # Logging system
-│   ├── audit/             # Audit trail system
-│   └── server.ts          # Express server
-├── test/                  # Test suites
-│   ├── unit/              # Unit tests
-│   ├── integration/       # Integration tests
-│   └── e2e/               # End-to-end tests
-├── docs/                  # Documentation
-│   ├── index.md           # Documentation index
-│   ├── system-design.md   # Architecture & API flows
-│   ├── setup-guide.md     # Complete setup guide
-│   └── wallet-mcp-api.md  # API reference
-├── scripts/               # Setup and utility scripts
-├── agents/                # Agent-specific configurations
-└── docker-compose.yml     # Docker deployment
+├── src/
+│   ├── mcp/                  # MCP servers
+│   │   ├── stdio-server.ts   # STDIO mode
+│   │   ├── http-server.ts    # HTTP multi-agent mode
+│   │   ├── mcp-server.ts     # Core MCP implementation
+│   │   └── session/          # Session management
+│   ├── api/                  # REST API server
+│   │   ├── http-server.ts    # API mode
+│   │   └── routes/           # Express routes
+│   ├── lib/
+│   │   ├── services/         # Service layer
+│   │   │   ├── wallet.ts     # WalletService
+│   │   │   ├── transaction.ts# TransactionService
+│   │   │   ├── token.ts      # TokenService
+│   │   │   └── orchestrator.ts # WalletOrchestrator
+│   │   ├── utils/            # Utilities
+│   │   │   ├── file-manager.ts  # File operations
+│   │   │   └── seed-manager.ts  # Seed management
+│   │   └── config/           # Configuration
+│   └── contracts/            # Smart contracts
+│       ├── dao/              # DAO contract integration
+│       └── marketplace/      # Marketplace contract
+├── test/
+│   ├── unit/                 # Unit tests (mocked services)
+│   ├── integration/          # Integration tests
+│   └── e2e/                  # End-to-end tests
+├── scripts/
+│   ├── setup-agent.ts        # Agent setup script
+│   └── generate-mcp-config.sh # MCP config generator
+└── docs/
+    ├── ARCHITECTURE.md       # Technical architecture
+    ├── DEPLOYMENT.md         # Deployment guide
+    ├── setup-guide.md        # Setup instructions
+    ├── system-design.md      # System design
+    └── wallet-mcp-api.md     # API reference
 ```
 
-## Architecture
+## Testing
 
-The Midnight MCP server follows a layered architecture:
+```bash
+# Run all tests
+yarn test
 
-- **MCP Protocol Layer**: STDIO server implementing the Model Context Protocol
-- **HTTP Communication Layer**: HTTP client for wallet server communication
-- **Wallet Server Layer**: Express.js server with wallet logic and REST API
-- **Storage Layer**: File-based storage for seeds, transactions, and backups
-- **External Services**: Integration with Midnight blockchain services
+# Unit tests only (with coverage)
+yarn test:unit
 
-For detailed architecture diagrams and API flows, see [docs/system-design.md](docs/system-design.md).
+# Integration tests
+yarn test:integration
+
+# End-to-end tests
+yarn test:e2e
+```
+
+**Test Coverage:**
+- Unit tests: 429 tests across 18 test suites
+- Integration tests: HTTP server with real transport
+- E2E tests: ElizaOS integration with real wallet operations
+
+## Configuration
+
+Environment variables with sensible defaults:
+
+```bash
+# Required
+AGENT_ID=my-agent                    # Agent identifier
+
+# Network (defaults to TestNet)
+NETWORK_ID=TestNet                   # MainNet | TestNet | DevNet
+INDEXER=https://indexer.testnet...   # Indexer URL
+INDEXER_WS=wss://indexer.testnet...  # Indexer WebSocket
+MN_NODE=https://rpc.testnet...       # RPC node URL
+PROOF_SERVER=http://127.0.0.1:6300   # Proof server
+
+# Storage (defaults to .storage)
+BASE_STORAGE_DIR=.storage            # Storage directory
+WALLET_FILENAME=wallet               # Wallet state filename
+
+# Logging (defaults to info)
+LOG_LEVEL=info                       # error | warn | info | debug
+
+# Contracts (optional - enables services)
+DAO_CONTRACT_ADDRESS=0x...           # Enable DaoService
+MARKETPLACE_CONTRACT_ADDRESS=0x...   # Enable MarketplaceService
+
+# HTTP Server (for multi-agent mode)
+MCP_HTTP_PORT=3001                   # HTTP server port
+MAX_SESSIONS=100                     # Max concurrent agents
+SESSION_TIMEOUT=3600000              # Session timeout (ms)
+EVICTION_INTERVAL=300000             # LRU cleanup interval (ms)
+
+# API Server (for REST mode)
+API_PORT=3000                        # API server port
+```
+
+See [docs/setup-guide.md](docs/setup-guide.md) for detailed configuration options.
 
 ## Documentation
 
-For complete documentation, including setup guides, API reference, testing, and integration examples, see [docs/index.md](docs/index.md).
+### Getting Started
+- [Setup Guide](docs/setup-guide.md) — Complete installation and configuration
+- [Scripts Documentation](scripts/README.md) — All utility scripts with examples
+- [Available Commands](#available-commands) — All yarn commands documented above
+
+### Architecture & Design
+- [Architecture](docs/ARCHITECTURE.md) — Technical architecture deep-dive
+- [System Design](docs/system-design.md) — System design and flows
+- [Deployment](docs/DEPLOYMENT.md) — Deployment methods and examples
+
+### Testing
+- [Test Overview](test/README.md) — Testing guide and commands
+- [E2E Testing](test/e2e/E2E_OVERVIEW.md) — End-to-end test details
+- [Unit Tests](test/unit/UNIT_OVERVIEW.md) — Unit test coverage
+- [Integration Tests](test/integration/INTEGRATION_OVERVIEW.md) — Integration testing
+
+### API Reference
+- [MCP Tools API](docs/wallet-mcp-api.md) — Complete API documentation
+- [Documentation Index](docs/index.md) — All documentation organized
+
+## Common Issues
+
+### BigInt Serialization Error
+
+If you see `Do not know how to serialize a BigInt`:
+
+- This is handled automatically in HTTP mode via global BigInt patch
+- Issue occurs when Midnight SDK returns BigInt values
+- Solution is already applied in `src/mcp/http-server.ts`
+
+### Path Resolution Error
+
+If you see `ENOENT: no such file or directory, mkdir '/.storage'`:
+
+- Ensure `BASE_STORAGE_DIR` is set to absolute path in MCP config
+- Set `cwd` to project root in MCP config
+- Use `yarn mcp:config` to generate correct configuration
+
+### Wallet Not Syncing
+
+If wallet shows 0% sync progress:
+
+- Check network connectivity to indexer and RPC node
+- Verify `NETWORK_ID` matches your seed's network
+- Check logs for connection errors
+- Wait for initial sync (can take 1-2 minutes)
+
+### Session Eviction
+
+If HTTP sessions are evicted unexpectedly:
+
+- Increase `MAX_SESSIONS` if you need more concurrent agents
+- Increase `SESSION_TIMEOUT` if agents are idle longer
+- Check `/metrics` endpoint for eviction statistics
 
 ## License
 
-```json
-"mcp": {
-    "servers": {
-      "midnight-mcp": {
-        "type": "stdio",
-        "name": "Midnight MCP",
-        "command": "bash",
-        "args": [
-          "-c",
-          "source ~/.nvm/nvm.sh && AGENT_ID=<agent-id> nvm exec 22.15.1 node <path>/midnight-mcp/dist/stdio-server.js"
-        ]
-      }
-    }
-  }
-```
-
-### Agent ID Configuration
-
-The MCP server supports multiple agents running simultaneously through the use of agent IDs. Each agent gets its own isolated storage space for wallet data and transactions.
-
-#### Setting Agent ID
-
-You can set the agent ID in two ways:
-
-1. **Through Environment Variable** (Required):
-```json
-"args": [
-  "-c",
-  "source ~/.nvm/nvm.sh && nvm exec 22.15.1 AGENT_ID=agent-123 yarn start:mcp"
-]
-```
-
-#### Storage Structure
-
-Each agent's data is stored in an isolated directory:
-```
-storage/
-  ├── seeds/
-  │   ├── agent-123/
-  │   │   └── seed
-  │   └── agent-456/
-  │       └── seed
-  ├── wallet-backups/
-  │   ├── agent-123/
-  │   │   ├── wallet-1.json
-  │   │   └── wallet-1-transactions.db
-  │   └── agent-456/
-  │       ├── wallet-1.json
-  │       └── wallet-1-transactions.db
-  └── logs/
-      ├── agent-123/
-  │       └── wallet-app.log
-  └── agent-456/
-      └── wallet-app.log
-```
-
-For development, you can run with an agent ID:
-```bash
-AGENT_ID=agent-123 yarn dev
-```
-
-NOTE: Replace `<path>` with the absolute path to directory where you cloned the `midnight-mcp` repository.
-
-## Integrating with ElizaOS
-
-### Install ElizaOS
-
-Install Node.js: Ensure you have Node.js 23.3.0+ installed on your system. You can download and install it from the official Node.js website: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
-
-Install the ElizaOS CLI: Run the following command in your terminal:
-
-```bash
-npm install -g @elizaos/cli@beta
-```
-
-This will install the ElizaOS CLI globally on your system.
-
-Verify the Installation: After the installation is complete, verify that the ElizaOS CLI is working by running the following command:
-
-```bash
-elizaos --version
-```
-
-This should display the version of the ElizaOS CLI installed on your system.
-
-To create a new Eliza project using the eliza create command, follow these steps:
-
-1. Open a Terminal: Open a terminal window on your system.
-2. Run the eliza create Command: Run the following command in the terminal:
-
-```bash
-elizaos create
-```
-
-This will launch the ElizaOS project creation wizard:
-
-3. Follow the Wizard: Follow the prompts in the wizard to configure your new Eliza project. You will be asked to provide some basic project information, such as the project name and description.
-4. Create the Project: After filling in the required information, the wizard will create a new Eliza project for you. This may take a few seconds to complete.
-5. Navigate to the Project Directory: Once the project is created, navigate to the project directory using the cd command:
-
-```bash
-cd my-project-name
-```
-
-Replace my-project-name with the actual name of your project.
-
-```bash
-elizaos start
-```
-
-This will launch the ElizaOS server and make the agent accessible via the web interface at https://localhost:3000.
-
-You now have a new Eliza project up and running!
-
-### Install the MCP Plugin for ElizaOS
-
-Inside your eliza project run:
-
-```bash
-bun add @fleek-platform/eliza-plugin-mcp
-```
-
-Now in the character.json file that you'll use to create your AI Agent add the mcp json structure shown above.
-
-All set! You're ready to use AI agents with on-chain capabilities for the Midnight blockchain.
-
-## E2E Testing with ElizaOS
-
-This project includes comprehensive End-to-End testing that validates the integration between the Midnight MCP server and ElizaOS using the [@fleek-platform/eliza-plugin-mcp](https://github.com/fleek-platform/eliza-plugin-mcp).
-
-### Quick Demo
-
-Run the interactive demo to see ElizaOS + MCP integration in action:
-
-```bash
-yarn demo:eliza
-```
-
-This will:
-1. Check prerequisites and install ElizaOS CLI if needed
-2. Create a demo ElizaOS project with MCP integration
-3. Configure the Midnight MCP server connection
-4. Provide instructions to start the agent
-
-### E2E Test Suites
-
-Run different types of E2E tests:
-
-```bash
-# Direct MCP protocol testing
-yarn test:e2e
-
-# STDIO JSON-RPC testing
-yarn test:e2e:stdio
-
-# ElizaOS integration testing  
-yarn test:e2e:eliza
-
-# Comprehensive test suite
-yarn test:e2e:full
-
-# Interactive demo
-yarn demo:eliza
-```
-
-### ElizaOS Integration Features
-
-The MCP server integrates with ElizaOS to provide:
-
-- **AI Agent Conversations**: Natural language interactions with blockchain tools
-- **Automatic Tool Discovery**: MCP tools are automatically available to agents
-- **Contextual Help**: Agents understand Midnight blockchain concepts
-- **Error Handling**: Graceful error handling in conversational context
-- **Real-time Updates**: Live wallet and transaction status updates
-
-### Available MCP Tools for Agents
-
-When integrated with ElizaOS, agents have access to these tools, grouped by category:
-
-#### Wallet Tools
-
-- `walletStatus` - Check wallet synchronization status
-- `walletAddress` - Get wallet receiving address
-- `walletBalance` - View current balance
-- `getTransactions` - List transaction history
-- `getTransactionStatus` - Get the status of a transaction by ID
-- `sendFunds` - Send funds to another address
-- `verifyTransaction` - Verify transaction status
-- `getWalletConfig` - Get wallet configuration
-
-#### Marketplace Tools
-
-- `registerInMarketplace` - Register a user in the marketplace
-- `verifyUserInMarketplace` - Verify a user in the marketplace
-
-### Example Agent Conversations
-
-```
-User: "Hello! Can you check my wallet status?"
-Agent: "I'll check your wallet status for you! 💰 Let me connect to the Midnight network..."
-
-User: "What's my current balance?"
-Agent: "Let me check your current balance on the Midnight network. 🔍"
-
-User: "Show me my recent transactions"
-Agent: "I'll fetch your recent transactions from the Midnight blockchain. ⛓️"
-```
-
-For detailed E2E testing documentation, see [test/e2e/README.md](test/e2e/README.md).
+MIT License
