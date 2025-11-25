@@ -71,7 +71,7 @@
   <!-- AFTER: Modular -->
   <rect x="570" y="100" width="400" height="60" fill="#f0fdf4" rx="8"/>
   <text x="770" y="140" text-anchor="middle" font-size="24" font-weight="600" fill="#14532d" font-family="Arial, sans-serif">
-    After: Modular & Scalable
+    After: Modular &amp; Scalable
   </text>
 
   <g filter="url(#shadow)">
