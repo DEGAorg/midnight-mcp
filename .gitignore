@@ -3,6 +3,12 @@ node_modules/
 pnpm-lock.yaml
 package-lock.json
 .yarn/cache
+.yarn/releases/
+.yarn/plugins/
+.yarn/install-state.gz
+identus-mcp/.yarn/releases/
+identus-mcp/.yarn/plugins/
+identus-mcp/.yarn/install-state.gz
 
 # Build output
 dist/
@@ -11,6 +17,10 @@ build/
 *.js.map
 *.d.ts
 *.d.ts.map
+
+# Midnight contract build artifacts
+*.prover
+*.verifier
 
 # But keep the compiled dist for production
 !dist/.gitkeep
