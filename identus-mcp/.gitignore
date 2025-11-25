@@ -48,6 +48,7 @@ temp/
 # Storage (contains private keys!)
 storage/
 !storage/.gitkeep
+!src/storage/
 
 # OS
 Thumbs.db
