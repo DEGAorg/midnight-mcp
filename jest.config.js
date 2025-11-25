@@ -29,13 +29,20 @@ export default {
     ]
   },
   moduleNameMapper: {
-    // TypeScript path aliases
+    // TypeScript path aliases - must strip .js extension
+    '^@lib/(.*)\\.(t|j)sx?$': '<rootDir>/src/lib/$1',
     '^@lib/(.*)$': '<rootDir>/src/lib/$1',
+    '^@audit/(.*)\\.(t|j)sx?$': '<rootDir>/src/audit/$1',
     '^@audit/(.*)$': '<rootDir>/src/audit/$1',
+    '^@services/(.*)\\.(t|j)sx?$': '<rootDir>/src/services/$1',
     '^@services/(.*)$': '<rootDir>/src/services/$1',
+    '^@mcp/(.*)\\.(t|j)sx?$': '<rootDir>/src/mcp/$1',
     '^@mcp/(.*)$': '<rootDir>/src/mcp/$1',
+    '^@contracts/(.*)\\.(t|j)sx?$': '<rootDir>/src/contracts/$1',
     '^@contracts/(.*)$': '<rootDir>/src/contracts/$1',
+    '^@api/(.*)\\.(t|j)sx?$': '<rootDir>/src/api/$1',
     '^@api/(.*)$': '<rootDir>/src/api/$1',
+    '^@shared/(.*)\\.(t|j)sx?$': '<rootDir>/src/types/$1',
     '^@shared/(.*)$': '<rootDir>/src/types/$1',
     // Midnight SDK mocks
     '^@midnight-ntwrk/midnight-js-network-id$': '<rootDir>/test/unit/__mocks__/midnight-js-network-id.ts',
@@ -48,7 +55,7 @@ export default {
     '^.+/utils/file-manager$': '<rootDir>/test/unit/__mocks__/file-manager.ts',
     '^.+/wallet/db/TransactionDatabase$': '<rootDir>/test/unit/__mocks__/TransactionDatabase.ts',
     '^.+/wallet/utils$': '<rootDir>/test/unit/__mocks__/wallet-utils.ts',
-    // Strip .js extensions
+    // Strip .js extensions from relative imports
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^src/integrations/marketplace/api$': '<rootDir>/test/unit/__mocks__/marketplace-api.ts',
     '^src/integrations/marketplace/api.js$': '<rootDir>/test/unit/__mocks__/marketplace-api.ts',
