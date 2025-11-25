@@ -4,7 +4,9 @@
 
 This PR represents a complete architectural overhaul of the midnight-mcp codebase, transforming it from a monolithic single-server application into a professional, modular, multi-server system ready for production deployment with 100-500 concurrent AI agents.
 
-![Architecture Refactoring](pr-images/architecture-refactor.svg)
+![Architecture Refactoring](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/architecture-refactor.svg)
+
+![Architecture Comparison](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/architecture-comparison.svg)
 
 ## Key Achievements
 
@@ -31,7 +33,9 @@ This PR represents a complete architectural overhaul of the midnight-mcp codebas
 
 ## Visual Architecture
 
-![Three Server Types](pr-images/three-servers.svg)
+![Three Server Types](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/three-servers.svg)
+
+![New Structure](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/new-structure.svg)
 
 ## Major Changes
 
@@ -84,6 +88,10 @@ src/
 
 Built complete HTTP-based MCP server supporting 100-500 concurrent AI agents with session isolation.
 
+![Session Architecture](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/session-architecture.svg)
+
+![Multi-Agent Architecture](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/multi-agent-architecture.svg)
+
 **Features:**
 - StreamableHTTP transport implementation
 - Session-based agent isolation
@@ -107,7 +115,7 @@ Single Agent (STDIO)          Multi-Agent (HTTP)
 
 ### 3. Hyperledger Identus SDK Integration (commit: e10c86e)
 
-![Identus Integration](pr-images/identus-integration.svg)
+![Identus Integration](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/identus-integration.svg)
 
 **Real DID Operations with Identus SDK v7.0.0**
 
