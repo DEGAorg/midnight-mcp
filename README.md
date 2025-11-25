@@ -97,7 +97,7 @@ HTTP Client → POST /mcp → SessionManager → MCP Server (per agent) → Serv
 - Horizontal scaling
 
 **Key Features:**
-- Session-based agent isolation via `mcp-session-id` header
+- Session-based agent isolation via `X-Agent-Id` header
 - LRU cache with automatic eviction
 - Prometheus metrics at `/metrics`
 - Health checks at `/health`
@@ -214,15 +214,34 @@ EVICTION_INTERVAL=300000        # 5 minutes in milliseconds
 BASE_STORAGE_DIR=/path/.storage # Absolute path to storage
 ```
 
+**Session Management:**
+
+The SessionManager automatically handles all session lifecycle and mapping:
+
+**How Agent IDs Work:**
+1. Client sends `X-Agent-Id` header with each request
+2. Request validator checks if agent is registered (has seed via SeedManager)
+3. SessionManager uses agent ID as the session key
+4. If session exists: returns cached WalletOrchestrator and updates last accessed time
+5. If new: creates WalletOrchestrator, loads agent's seed, initializes services
+6. All sessions tracked in internal Map<agentId, Session>
+7. Idle sessions automatically evicted (LRU) after timeout
+
+**Key Benefits:**
+- No session cookies or tokens needed
+- Agent ID directly maps to wallet/storage
+- Each agent gets isolated services and storage
+- Automatic cleanup of unused sessions
+
 **Client Usage:**
 
 ```typescript
-// Send agentId in mcp-session-id header
+// SessionManager handles mapping automatically via X-Agent-Id header
 const response = await fetch('http://localhost:3001/mcp', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'mcp-session-id': 'my-agent'
+    'X-Agent-Id': 'my-agent'  // Required: identifies which agent/session to use
   },
   body: JSON.stringify({
     jsonrpc: '2.0',
@@ -455,7 +474,7 @@ AGENT_ID=my-agent yarn dev
 AGENT_ID=my-agent yarn start:mcp:http
 
 # Server runs on http://localhost:3001
-# Send requests with mcp-session-id header
+# Send requests with X-Agent-Id header
 ```
 
 **Option C: REST API**
