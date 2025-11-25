@@ -4,7 +4,7 @@
 
 This PR represents a **complete architectural overhaul** of the midnight-mcp codebase, transforming it from a monolithic single-server application into a professional, modular, multi-server system ready for production deployment with 100-500 concurrent AI agents.
 
-![Architecture Refactoring](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor/.github/pr-images/architecture-refactor.svg)
+![Architecture Refactoring](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/architecture-refactor.svg)
 
 ---
 
@@ -35,7 +35,7 @@ This PR represents a **complete architectural overhaul** of the midnight-mcp cod
 
 ## 📊 Visual Architecture
 
-![Three Server Types](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor/.github/pr-images/three-servers.svg)
+![Three Server Types](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/three-servers.svg)
 
 ---
 
@@ -121,7 +121,7 @@ Single Agent (STDIO)          Multi-Agent (HTTP)
 
 ### 3. **Hyperledger Identus SDK Integration** (commit: e10c86e) ⭐
 
-![Identus Integration](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor/.github/pr-images/identus-integration.svg)
+![Identus Integration](https://raw.githubusercontent.com/Blockchain-Oracle/midnight-mcp/refactor-pr/.github/pr-images/identus-integration.svg)
 
 **NEW: Real DID Operations with Identus SDK v7.0.0**
 
