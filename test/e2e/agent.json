@@ -33,20 +33,14 @@
           "midnight-mcp": {
             "type": "stdio",
             "name": "Midnight MCP",
-            "command": "bash",
+            "command": "node",
             "args": [
-              "-c",
-              "source ~/.nvm/nvm.sh && AGENT_ID=midnight-e2e-test nvm exec 22.15.1 node /home/runner/work/midnight-e2e-test/midnight-e2e-test/midnight-mcp/dist/stdio-server.js"
-            ]
-          },
-          "agent-communication": {
-            "type": "stdio",
-            "name": "Agent Communication",
-            "command": "bash",
-            "args": [
-              "-c",
-              "source ~/.nvm/nvm.sh && AGENT_ID=midnight-e2e-test nvm exec 22.15.0 node /home/runner/work/midnight-e2e-test/midnight-e2e-test/agent-communication-mcp/dist/stdio-server.js"
-            ]
+              "/path-to-file/midnight-mcp/dist/mcp/stdio-server.js"
+            ],
+            "env": {
+              "AGENT_ID": "midnight-e2e-test",
+              "LOG_LEVEL": "error"
+            }
           }
         }
       }

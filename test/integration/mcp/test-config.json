@@ -1,0 +1,84 @@
+{
+  "server": {
+    "url": "http://localhost:3000",
+    "timeout": 60000
+  },
+  "wallets": {
+    "wallet1": {
+      "address": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "description": "Registered agent wallet",
+      "publicKey": "09ee837c4b40f70161c81879493cfe393af2ad80b772a11a024753861b2fe7a2"
+    },
+    "wallet2": {
+      "address": "mn_shield-addr_undeployed10vjsvf6gkh9v2dcv8qekvdmkalgxgpa7dgfpdm0qsz97r7ktgd9qxqp4s0cmdfj5xqu3w6r72sstlj0l4l3em7s8suu0zhjxp4g6tgpap5thfysr",
+      "description": "Unregistered agent wallet",
+      "publicKey": "7b25062748b5cac5370c3833663776efd06407be6a1216ede0808be1facb434a"
+    }
+  },
+  "marketplace": {
+    "address": "0200ebc21500cac91e1afb28139ddc667974135de60e2e9566794b5c1812be670005",
+    "description": "Marketplace contract address"
+  },
+  "transactions": {
+    "validPayment": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "senderAddress": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "description": "Valid payment from registered agent (Wallet1) with correct amount"
+    },
+    "wrongAmount": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "actualAmount": "0",
+      "senderAddress": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "description": "Payment from valid sender but wrong amount"
+    },
+    "unknownSender": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "senderAddress": "mn_shield-addr_undeployed10vjsvf6gkh9v2dcv8qekvdmkalgxgpa7dgfpdm0qsz97r7ktgd9qxqp4s0cmdfj5xqu3w6r72sstlj0l4l3em7s8suu0zhjxp4g6tgpap5thfysr",
+      "description": "Payment from unregistered sender (Wallet2)"
+    },
+    "noPayment": {
+      "identifier": "non-existent-transaction-123",
+      "expectedAmount": "1",
+      "description": "No payment received (transaction does not exist)"
+    },
+    "validIdentityMatch": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "senderAddress": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "registeredIdentity": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "description": "Valid identity match between on-chain sender and registered identity"
+    },
+    "agentNotRegistered": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "senderAddress": "mn_shield-addr_undeployed10vjsvf6gkh9v2dcv8qekvdmkalgxgpa7dgfpdm0qsz97r7ktgd9qxqp4s0cmdfj5xqu3w6r72sstlj0l4l3em7s8suu0zhjxp4g6tgpap5thfysr",
+      "description": "Agent not registered in the contract (Wallet2)"
+    },
+    "senderMismatch": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "senderAddress": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "sessionIdentity": "mn_shield-addr_undeployed10vjsvf6gkh9v2dcv8qekvdmkalgxgpa7dgfpdm0qsz97r7ktgd9qxqp4s0cmdfj5xqu3w6r72sstlj0l4l3em7s8suu0zhjxp4g6tgpap5thfysr",
+      "description": "Sender mismatch between on-chain transaction and off-chain session"
+    },
+    "duplicateTransaction": {
+      "identifier": "manual-payment-required",
+      "expectedAmount": "1",
+      "senderAddress": "mn_shield-addr_undeployed1p8hgxlztgrmszcwgrpu5j0878ya09tvqkae2zxszgafcvxe0u73qxqrrntgnx2p3m5vsuf92lldsa320sgjzzw65lwaz7haxak7l9cduuy0xj8zk",
+      "description": "Duplicate transaction detection test"
+    }
+  },
+  "testAmounts": {
+    "validAmount": "1",
+    "wrongAmount": "0",
+    "zeroAmount": "0"
+  },
+  "metadata": {
+    "setupScriptVersion": "1.0.0",
+    "lastUpdated": "2025-11-24T09:23:15.361Z",
+    "description": "Configuration file for Wallet MCP integration tests. Generated from test setup script."
+  }
+}

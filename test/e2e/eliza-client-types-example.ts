@@ -35,11 +35,12 @@ async function typedElizaClientExample() {
     console.log('🤖 C3PO agent:', { name: c3poAgent.name, id: c3poAgent.id });
 
     // Get channel ID with proper typing
-    const channelId: string = await client.getAgentChannelId();
+    const channelId: string = await client.getAgentChannelId(c3poAgent.id);
     console.log('💬 Channel ID:', channelId);
 
     // Send message with typed options
     const messageOptions: SendMessageOptions = {
+      agentId: c3poAgent.id,
       clearHistory: true,
       waitForResponse: true,
       responseTimeout: 15000
@@ -66,6 +67,7 @@ async function typedElizaClientExample() {
 
     // Example of using the retry method with proper typing
     const retryResponse: SendMessageResponse = await client.sendMessageWithRetry('What is your name?', {
+      agentId: c3poAgent.id,
       clearHistory: true,
       waitForResponse: true,
       responseTimeout: 10000

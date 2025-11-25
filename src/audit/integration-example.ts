@@ -7,25 +7,25 @@
  * with wallet operations and testing scenarios.
  */
 
-import { 
-  AuditTrailService, 
-  TransactionTraceLogger, 
-  AgentDecisionLogger, 
-  TestOutcomeAuditor 
+import {
+  AuditTrailService,
+  TransactionTraceLogger,
+  AgentDecisionLogger,
+  TestOutcomeAuditor
 } from './index.js';
-import { WalletManager } from '../wallet/index.js';
-import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { AuditEventType } from './types.js';
 
 /**
  * Example class demonstrating comprehensive audit trail integration
+ *
+ * Note: This class focuses on audit trail functionality demonstration.
+ * Wallet operations are simulated for testing purposes.
  */
 export class AuditIntegrationExample {
   private auditService: AuditTrailService;
   private transactionLogger: TransactionTraceLogger;
   private agentLogger: AgentDecisionLogger;
   private testAuditor: TestOutcomeAuditor;
-  private walletManager: WalletManager;
 
   constructor() {
     // Initialize all audit trail components
@@ -33,20 +33,6 @@ export class AuditIntegrationExample {
     this.transactionLogger = new TransactionTraceLogger(this.auditService);
     this.agentLogger = new AgentDecisionLogger(this.auditService);
     this.testAuditor = new TestOutcomeAuditor(this.auditService);
-
-    // Initialize wallet manager with audit trail integration
-    this.walletManager = new WalletManager(
-      NetworkId.TestNet,
-      'test-seed-123',
-      'audit-demo-wallet',
-      { 
-        useExternalProofServer: true,
-        indexer: 'https://indexer.testnet-02.midnight.network/api/v1/graphql',
-        indexerWS: 'wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws',
-        node: 'https://rpc.testnet-02.midnight.network',
-        proofServer: 'http://127.0.0.1:6300'
-      }
-    );
   }
 
   /**
@@ -63,7 +49,7 @@ export class AuditIntegrationExample {
       status: 'running'
     });
 
-    let transactionId = `tx-${Date.now()}`;
+    const transactionId = `tx-${Date.now()}`;
 
     try {
       // Step 1: Agent decision to initiate transaction

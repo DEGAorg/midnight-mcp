@@ -1,6 +1,4 @@
-jest.mock('../../../src/integrations/marketplace/api.js', () => require('../__mocks__/marketplace-api.ts'));
-
-import * as auditIndex from '../../../src/audit/index';
+import * as auditIndex from '@audit/index.js';
 
 describe('initializeAuditServices', () => {
   it('should initialize all audit services with default options', () => {
@@ -18,9 +16,24 @@ describe('initializeAuditServices', () => {
   });
 });
 
-describe('runAuditIntegrationExample', () => {
-  it('should be exported and callable', async () => {
-    expect(typeof auditIndex.runAuditIntegrationExample).toBe('function');
-    await auditIndex.runAuditIntegrationExample();
+describe('Audit Module Exports', () => {
+  it('should export initializeAuditServices function', () => {
+    expect(typeof auditIndex.initializeAuditServices).toBe('function');
   });
-}); 
+
+  it('should export AuditTrailService class', () => {
+    expect(auditIndex.AuditTrailService).toBeDefined();
+  });
+
+  it('should export TransactionTraceLogger class', () => {
+    expect(auditIndex.TransactionTraceLogger).toBeDefined();
+  });
+
+  it('should export AgentDecisionLogger class', () => {
+    expect(auditIndex.AgentDecisionLogger).toBeDefined();
+  });
+
+  it('should export TestOutcomeAuditor class', () => {
+    expect(auditIndex.TestOutcomeAuditor).toBeDefined();
+  });
+});

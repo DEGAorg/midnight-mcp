@@ -1,4 +1,4 @@
-import { WalletServiceError, WalletServiceErrorType } from '../../../src/mcp/index';
+import { WalletServiceError, WalletServiceErrorType } from '@mcp/index';
 
 export const WalletServiceMCP = jest.fn().mockImplementation(() => {
   let isWalletReady = true;

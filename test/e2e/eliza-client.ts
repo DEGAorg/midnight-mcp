@@ -151,7 +151,7 @@ export class ElizaClient implements IElizaClient {
   async getAgents(): Promise<Agent[]> {
     const url = `${this.baseUrl}/api/agents`;
     const response = await fetch(url);
-    const parsedResponse = await response.json();
+    const parsedResponse = await response.json() as { data: { agents: Agent[] } };
     const agents = parsedResponse.data.agents;
     
     try {
@@ -200,7 +200,7 @@ export class ElizaClient implements IElizaClient {
         throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as { data: { id: string; character: Agent } };
       this.logger.info(`Agent ${agentId} retrieved successfully:`, JSON.stringify(result, null, 2));
       
       // Return the agent data with the correct structure
@@ -237,7 +237,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
-    const newAgent = await response.json();
+    const newAgent = await response.json() as { data: { id: string; character: Agent } };
     this.logger.info('C3PO agent created successfully:', JSON.stringify(newAgent, null, 2));
     // Return the agent data with the correct ID from data.id, not character.id
     return {
@@ -269,7 +269,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
-    const newAgent = await response.json();
+    const newAgent = await response.json() as { data: { id: string; character: Agent } };
     this.logger.info('Agent created successfully:', JSON.stringify(newAgent, null, 2));
     // Return the agent data with the correct ID from data.id, not character.id
     return {
@@ -293,7 +293,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { success: boolean; error?: string };
     return result;
   }
 
@@ -312,7 +312,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { panels: Array<{ id: string; name: string; url: string; type: string; metadata?: Record<string, any> }> };
     return result;
   }
 
@@ -340,7 +340,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as Array<{ id: string; agentId: string; level: 'debug' | 'info' | 'warn' | 'error'; message: string; timestamp: Date; metadata?: Record<string, any> }>;
     return result;
   }
 
@@ -368,7 +368,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as MessageChannel;
     return result;
   }
 
@@ -393,7 +393,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { success: boolean; data?: { id: string } };
     
     if (!result.success || !result.data?.id) {
       throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
@@ -426,7 +426,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { success: boolean; data?: MessageChannel };
     
     if (!result.success || !result.data?.id) {
       throw new Error(`Failed to get or create DM channel: ${JSON.stringify(result)}`);
@@ -512,7 +512,7 @@ export class ElizaClient implements IElizaClient {
         throw new Error(`HTTP ${messageResponse.status}: ${messageResponse.statusText}`);
       }
 
-      const responseData = await messageResponse.json();
+      const responseData = await messageResponse.json() as { data?: { id: string } };
 
       const messageId = responseData.data?.id;
 
@@ -699,7 +699,7 @@ export class ElizaClient implements IElizaClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { data: { messages: Message[] } };
 
     return {
       success: true,

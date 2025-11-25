@@ -34,7 +34,7 @@ import { createElizaClient, IElizaClient } from './eliza-client.js';
 describe('Eliza Integration Tests', () => {
   let elizaClient: IElizaClient;
   let logger: TestLogger;
-  let testResults: Array<{ name: string; result: TestResult }> = [];
+  const testResults: Array<{ name: string; result: TestResult }> = [];
   let agentId: string; // Store the agent ID for reuse
   let authorId: string; // Single UUID generated per test run
 
@@ -216,7 +216,7 @@ describe('Eliza Integration Tests', () => {
             passed: false,
             message: `Failed to check agent configuration: ${error}`,
             data: { agentId },
-            error: error
+            error: String(error)
           };
           testResults.push({ name: testName, result });
         }

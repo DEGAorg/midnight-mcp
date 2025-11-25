@@ -1,24 +1,32 @@
 {
-  "include": ["src/**/*.ts"],
   "compilerOptions": {
-    "outDir": "dist",
-    "declaration": true,
-    "lib": ["ESNext"],
     "target": "ES2022",
     "module": "ESNext",
+    "lib": ["ES2022"],
     "moduleResolution": "node",
-    "allowJs": true,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "strict": true,
-    "isolatedModules": true,
-    "sourceMap": true,
     "resolveJsonModule": true,
+    "allowJs": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "types": ["node", "jest"],
     "baseUrl": ".",
-    "types": ["jest", "node"],
-    "allowSyntheticDefaultImports": true
+    "paths": {
+      "@lib/*": ["src/lib/*"],
+      "@audit/*": ["src/audit/*"],
+      "@services/*": ["src/services/*"],
+      "@mcp/*": ["src/mcp/*"],
+      "@contracts/*": ["src/contracts/*"],
+      "@api/*": ["src/api/*"],
+      "@shared/*": ["src/types/*"]
+    }
   },
+  "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
-} 
+}

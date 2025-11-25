@@ -7,13 +7,13 @@
  * It runs various scenarios and shows how audit data is collected and analyzed.
  */
 
-import { 
-  AuditTrailService, 
-  TransactionTraceLogger, 
-  AgentDecisionLogger, 
-  TestOutcomeAuditor,
-  AuditIntegrationExample 
+import {
+  AuditTrailService,
+  TransactionTraceLogger,
+  AgentDecisionLogger,
+  TestOutcomeAuditor
 } from '../src/audit/index.js';
+import { AuditIntegrationExample } from '../src/audit/integration-example.js';
 import { AuditEventType, AuditSeverity } from '../src/audit/types.js';
 
 async function runAuditTrailDemo() {

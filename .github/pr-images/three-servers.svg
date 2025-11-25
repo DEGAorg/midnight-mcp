@@ -1,0 +1,139 @@
+<svg width="900" height="500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stdioGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#86efac;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="httpGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#93c5fd;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="apiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fde68a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="450" y="40" text-anchor="middle" font-size="28" font-weight="700" fill="#1f2937" font-family="Arial, sans-serif">
+    Three Independent Server Types
+  </text>
+  <line x1="150" y1="60" x2="750" y2="60" stroke="#e5e7eb" stroke-width="2"/>
+
+  <!-- MCP STDIO Server -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="100" width="240" height="340" fill="url(#stdioGrad)" rx="12"/>
+    <text x="170" y="140" text-anchor="middle" font-size="22" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">
+      MCP STDIO
+    </text>
+    <line x1="70" y1="155" x2="270" y2="155" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+
+    <text x="170" y="190" text-anchor="middle" font-size="14" fill="#ffffff" font-family="Courier, monospace">
+      stdio-server.ts
+    </text>
+
+    <circle cx="170" cy="230" r="35" fill="#ffffff" opacity="0.3"/>
+    <text x="170" y="245" text-anchor="middle" font-size="40" fill="#ffffff" font-family="Arial, sans-serif">
+      💻
+    </text>
+
+    <text x="170" y="290" text-anchor="middle" font-size="15" fill="#ffffff" font-family="Arial, sans-serif">
+      Claude Desktop
+    </text>
+    <text x="170" y="315" text-anchor="middle" font-size="14" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      Standard Input/Output
+    </text>
+
+    <rect x="70" y="340" width="200" height="80" fill="#ffffff" opacity="0.2" rx="6"/>
+    <text x="170" y="365" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Single agent
+    </text>
+    <text x="170" y="385" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Local development
+    </text>
+    <text x="170" y="405" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Direct tool access
+    </text>
+  </g>
+
+  <!-- MCP HTTP Server -->
+  <g filter="url(#shadow)">
+    <rect x="330" y="100" width="240" height="340" fill="url(#httpGrad)" rx="12"/>
+    <text x="450" y="140" text-anchor="middle" font-size="22" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">
+      MCP HTTP ⭐
+    </text>
+    <line x1="350" y1="155" x2="550" y2="155" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+
+    <text x="450" y="190" text-anchor="middle" font-size="14" fill="#ffffff" font-family="Courier, monospace">
+      mcp/http-server.ts
+    </text>
+
+    <circle cx="450" cy="230" r="35" fill="#ffffff" opacity="0.3"/>
+    <text x="450" y="245" text-anchor="middle" font-size="40" fill="#ffffff" font-family="Arial, sans-serif">
+      🌐
+    </text>
+
+    <text x="450" y="290" text-anchor="middle" font-size="15" fill="#ffffff" font-family="Arial, sans-serif">
+      Multi-Agent Sessions
+    </text>
+    <text x="450" y="315" text-anchor="middle" font-size="14" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      StreamableHTTP Transport
+    </text>
+
+    <rect x="350" y="340" width="200" height="80" fill="#ffffff" opacity="0.2" rx="6"/>
+    <text x="450" y="365" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ 100-500 agents
+    </text>
+    <text x="450" y="385" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Session isolation
+    </text>
+    <text x="450" y="405" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Production ready
+    </text>
+  </g>
+
+  <!-- REST API Server -->
+  <g filter="url(#shadow)">
+    <rect x="610" y="100" width="240" height="340" fill="url(#apiGrad)" rx="12"/>
+    <text x="730" y="140" text-anchor="middle" font-size="22" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">
+      REST API
+    </text>
+    <line x1="630" y1="155" x2="830" y2="155" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+
+    <text x="730" y="190" text-anchor="middle" font-size="14" fill="#ffffff" font-family="Courier, monospace">
+      api/server.ts
+    </text>
+
+    <circle cx="730" cy="230" r="35" fill="#ffffff" opacity="0.3"/>
+    <text x="730" y="245" text-anchor="middle" font-size="40" fill="#ffffff" font-family="Arial, sans-serif">
+      🔌
+    </text>
+
+    <text x="730" y="290" text-anchor="middle" font-size="15" fill="#ffffff" font-family="Arial, sans-serif">
+      HTTP Endpoints
+    </text>
+    <text x="730" y="315" text-anchor="middle" font-size="14" fill="#ffffff" opacity="0.9" font-family="Arial, sans-serif">
+      Express + Middleware
+    </text>
+
+    <rect x="630" y="340" width="200" height="80" fill="#ffffff" opacity="0.2" rx="6"/>
+    <text x="730" y="365" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ RESTful design
+    </text>
+    <text x="730" y="385" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Domain controllers
+    </text>
+    <text x="730" y="405" text-anchor="middle" font-size="13" fill="#ffffff" font-family="Arial, sans-serif">
+      ✓ Zod validation
+    </text>
+  </g>
+
+  <!-- npm Scripts -->
+  <rect x="50" y="460" width="800" height="30" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1" rx="4"/>
+  <text x="450" y="481" text-anchor="middle" font-size="12" font-weight="600" fill="#374151" font-family="Courier, monospace">
+    dev:mcp:stdio   dev:mcp:http   dev:api   |   start:mcp:stdio   start:mcp:http   start:api
+  </text>
+</svg>

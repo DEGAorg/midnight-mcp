@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { createLogger } from '../logger/index.js';
-import { FileManager, FileType } from '../utils/file-manager.js';
+import { createLogger } from '@lib/logger/index.js';
+import { FileManager, FileType } from '@lib/utils/file-manager.js';
 import { 
   AuditEvent, 
   AuditEventType, 

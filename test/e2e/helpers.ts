@@ -54,7 +54,7 @@ export class ElizaHttpClient {
   async getAgents(): Promise<any> {
     const url = `${this.config.baseUrl}/api/agents`;
     const response = await fetch(url);
-    const parsedResponse = await response.json();
+    const parsedResponse = await response.json() as { data: { agents: any[] } };
     const agents = parsedResponse.data.agents;
     try {
       return agents;

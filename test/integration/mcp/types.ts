@@ -6,15 +6,13 @@ export interface TestConfig {
   wallets: {
     wallet1: {
       address: string;
-      pubkey: string;
+      publicKey: string;
       description: string;
-      userId: string;
     };
     wallet2: {
       address: string;
-      pubkey: string;
+      publicKey: string;
       description: string;
-      userId: string;
     };
   };
   marketplace: {
@@ -55,7 +53,7 @@ export interface TransactionConfig {
 
 export interface WalletConfig {
   address: string;
-  pubkey: string;
+  publicKey: string;
   description: string;
 }
 

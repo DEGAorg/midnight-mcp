@@ -8,8 +8,8 @@ This folder contains all CI/CD configuration for the Midnight MCP Server project
 **Purpose**: Execute unit tests to validate changes across multiple branches
 
 **Triggers**:
-- Pull requests to: `main`, `uat`, `develop`, `feature/docker`
-- Direct push to: `main`, `uat`, `develop`, `feature/docker`
+- Pull requests to: `main`, `uat`, `develop`
+- Direct push to: `main`, `uat`, `develop`
 
 **Features**:
 - ✅ Runs linting with ESLint (continue-on-error: true)
@@ -46,7 +46,7 @@ This folder contains all CI/CD configuration for the Midnight MCP Server project
 - ✅ Complete coverage reports
 - ✅ Reports available as artifacts
 - ✅ Timeout: 30 minutes
-- ✅ Node.js 22.15.1 (Docker-based)
+- ✅ Node.js 22.15.1
 
 ### 3. E2E Tests (`e2e-tests.yml`)
 **Purpose**: End-to-end tests to validate complete system integration
@@ -211,10 +211,6 @@ yarn install
 # Verify Node.js version
 node --version
 yarn --version
-
-# Run in Docker (as in CI)
-docker build -t midnight-mcp-test .
-docker run --rm -v $(pwd):/app -w /app midnight-mcp-test sh -c "yarn install && yarn lint && yarn test:unit"
 ```
 
 ## 📈 Future Improvements

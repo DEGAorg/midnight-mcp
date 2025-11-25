@@ -4,14 +4,23 @@ Welcome to the Midnight MCP documentation. This index provides navigation to all
 
 ## 📚 Quick Navigation
 
+### Getting Started
+- **[Main README](../README.md)** - Project overview and quick start guide
+- **[Available Commands](../README.md#available-commands)** - All yarn commands (build, dev, start, test)
+- **[Setup Guide](setup-guide.md)** - Complete installation and configuration
+- **[Scripts Documentation](../scripts/README.md)** - Utility scripts with examples (setup-agent, generate-seed, etc.)
+
 ### 🏗️ System Design & Architecture
-- **[System Design](system-design.md)** - Comprehensive system architecture, API flows, and deployment diagrams
+- **[Architecture](ARCHITECTURE.md)** - Technical architecture deep-dive and patterns
+- **[System Design](system-design.md)** - System architecture, API flows, and deployment diagrams
+- **[Deployment Guide](DEPLOYMENT.md)** - Deployment methods and server modes
 - **[Wallet MCP API](wallet-mcp-api.md)** - Complete API reference for wallet operations and MCP tools
 
-### 🚀 Setup & Installation
-- **[Setup Guide](setup-guide.md)** - Complete setup instructions for development and production
-
 ### 🧪 Testing Documentation
+- **[Test Overview](../test/README.md)** - Complete testing guide and organization
+- **[E2E Testing](../test/e2e/E2E_OVERVIEW.md)** - End-to-end tests with ElizaOS integration
+- **[Unit Tests](../test/unit/UNIT_OVERVIEW.md)** - Unit test coverage (429 tests, 100% coverage)
+- **[Integration Tests](../test/integration/INTEGRATION_OVERVIEW.md)** - HTTP server integration tests
 - **[Test Scenarios](tests/test-scenarios.md)** - Overview of test scenarios and validation approaches
 - **[Test Sequence Diagrams](tests/test-sequence-diagrams.md)** - Detailed test flow diagrams and sequences
 - **[Test Cases](tests/)** - Individual test case documentation:
@@ -76,27 +85,43 @@ Welcome to the Midnight MCP documentation. This index provides navigation to all
 ## 📋 Documentation Structure
 
 ```
-docs/
-├── index.md                           # This file - Documentation navigation
-├── system-design.md                   # Architecture and API flow diagrams
-├── setup-guide.md                     # Complete setup and installation guide
-├── wallet-mcp-api.md                  # Wallet MCP API reference
-├── image.png                          # Architecture diagram
-└── tests/                             # Testing documentation
-    ├── README.md                      # Test documentation overview
-    ├── test-scenarios.md              # Test scenario descriptions
-    ├── test-sequence-diagrams.md      # Test sequence diagrams
-    ├── test-1-identity-match.md       # Identity validation test
-    ├── test-2-agent-not-registered.md # Agent registration test
-    ├── test-3-sender-mismatch.md      # Sender validation test
-    ├── test-4-valid-payment.md        # Valid payment test
-    ├── test-5-wrong-amount.md         # Amount validation test
-    ├── test-6-unknown-sender.md       # Unknown sender test
-    ├── test-7-no-payment.md           # No payment scenario test
-    ├── test-8-duplicate-transaction.md # Duplicate transaction test
-    └── diagrams/                      # Test flow diagrams
-        ├── send-funds.png             # Send funds flow diagram
-        └── wallet-status.png          # Wallet status flow diagram
+midnight-mcp/
+├── README.md                          # Main project documentation
+├── docs/                              # Documentation directory
+│   ├── index.md                       # This file - Documentation navigation
+│   ├── ARCHITECTURE.md                # Technical architecture patterns
+│   ├── DEPLOYMENT.md                  # Deployment guide and server modes
+│   ├── setup-guide.md                 # Complete setup and installation
+│   ├── system-design.md               # System architecture and API flows
+│   ├── wallet-mcp-api.md              # MCP tools API reference
+│   ├── image.png                      # Architecture diagram
+│   └── tests/                         # Test case documentation
+│       ├── README.md                  # Test documentation overview
+│       ├── test-scenarios.md          # Test scenario descriptions
+│       ├── test-sequence-diagrams.md  # Test sequence diagrams
+│       ├── test-1-identity-match.md   # Identity validation test
+│       ├── test-2-agent-not-registered.md
+│       ├── test-3-sender-mismatch.md
+│       ├── test-4-valid-payment.md
+│       ├── test-5-wrong-amount.md
+│       ├── test-6-unknown-sender.md
+│       ├── test-7-no-payment.md
+│       ├── test-8-duplicate-transaction.md
+│       └── diagrams/                  # Test flow diagrams
+│           ├── send-funds.png
+│           └── wallet-status.png
+├── scripts/                           # Utility scripts
+│   └── README.md                      # Scripts documentation
+├── test/                              # Test suites
+│   ├── README.md                      # Testing overview
+│   ├── unit/                          # Unit tests
+│   │   └── UNIT_OVERVIEW.md           # Unit test documentation
+│   ├── integration/                   # Integration tests
+│   │   └── INTEGRATION_OVERVIEW.md    # Integration test docs
+│   └── e2e/                           # End-to-end tests
+│       ├── E2E_OVERVIEW.md            # E2E test documentation
+│       └── ELIZA_CLIENT_README.md     # ElizaOS client guide
+└── src/                               # Source code (documented inline)
 ```
 
 ## 🔗 Related Documentation
@@ -109,9 +134,10 @@ docs/
 
 ### **Testing Documentation**
 - **[Test Overview](../test/README.md)** - Complete testing strategy and organization
-- **[E2E Testing](../test/e2e/README.md)** - End-to-end testing with ElizaOS integration
-- **[Integration Testing](../test/integration/README.md)** - HTTP-based integration tests
-- **[Unit Testing](../test/unit/README.md)** - Unit test coverage and organization
+- **[E2E Testing](../test/e2e/E2E_OVERVIEW.md)** - End-to-end testing with ElizaOS integration
+- **[Integration Testing](../test/integration/INTEGRATION_OVERVIEW.md)** - HTTP-based integration tests
+- **[Unit Testing](../test/unit/UNIT_OVERVIEW.md)** - Unit test coverage and organization
+- **[ElizaOS Client](../test/e2e/ELIZA_CLIENT_README.md)** - ElizaOS integration guide
 
 ### **CI/CD Documentation**
 - **[E2E Test Workflow](../.github/workflows/e2e-tests.yml)** - Automated testing pipeline
