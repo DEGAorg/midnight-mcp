@@ -55,7 +55,13 @@ Thumbs.db
 
 # Yarn 2+ (Berry) - cache files
 .yarn/cache/
+.yarn/releases/
+.yarn/plugins/
 .yarn/install-state.gz
 .yarn/unplugged/
 .yarn/build-state.yml
 .pnp.*
+
+# Midnight contract build artifacts
+*.prover
+*.verifier

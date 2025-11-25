@@ -3,6 +3,8 @@
 *.log
 *.tsbuildinfo
 *.local
+*.js.map
+*.d.ts.map
 package-lock.json
 .pnp.*
 .yarn/*
@@ -11,6 +13,18 @@ package-lock.json
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Keep Yarn Berry metadata, ignore heavy binaries
+.yarn/releases/
+.yarn/plugins/
+.yarn/install-state.gz
+identus-mcp/.yarn/releases/
+identus-mcp/.yarn/plugins/
+identus-mcp/.yarn/install-state.gz
+
+# Midnight contract build artifacts
+*.prover
+*.verifier
 
 logs
 log
@@ -48,7 +62,9 @@ coverage
 # Wallet backup folder
 wallet-backups
 
-# Storage directory - contains all runtime data
+# Storage (contains private keys!)
+storage/
+!storage/.gitkeep
 /storage/
 .storage/
 
