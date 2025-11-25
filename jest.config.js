@@ -29,15 +29,26 @@ export default {
     ]
   },
   moduleNameMapper: {
+    // TypeScript path aliases
+    '^@lib/(.*)$': '<rootDir>/src/lib/$1',
+    '^@audit/(.*)$': '<rootDir>/src/audit/$1',
+    '^@services/(.*)$': '<rootDir>/src/services/$1',
+    '^@mcp/(.*)$': '<rootDir>/src/mcp/$1',
+    '^@contracts/(.*)$': '<rootDir>/src/contracts/$1',
+    '^@api/(.*)$': '<rootDir>/src/api/$1',
+    '^@shared/(.*)$': '<rootDir>/src/types/$1',
+    // Midnight SDK mocks
     '^@midnight-ntwrk/midnight-js-network-id$': '<rootDir>/test/unit/__mocks__/midnight-js-network-id.ts',
     '^@midnight-ntwrk/ledger$': '<rootDir>/test/unit/__mocks__/@midnight-ntwrk/ledger.ts',
     '^@midnight-ntwrk/zswap$': '<rootDir>/test/unit/__mocks__/zswapMock.ts',
+    // Other mocks
     '^.+/logger$': '<rootDir>/test/unit/__mocks__/logger.ts',
     '^.+/wallet$': '<rootDir>/test/unit/__mocks__/wallet.ts',
     '^.+/controllers/wallet.controller$': '<rootDir>/test/unit/__mocks__/wallet.controller.ts',
     '^.+/utils/file-manager$': '<rootDir>/test/unit/__mocks__/file-manager.ts',
     '^.+/wallet/db/TransactionDatabase$': '<rootDir>/test/unit/__mocks__/TransactionDatabase.ts',
     '^.+/wallet/utils$': '<rootDir>/test/unit/__mocks__/wallet-utils.ts',
+    // Strip .js extensions
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^src/integrations/marketplace/api$': '<rootDir>/test/unit/__mocks__/marketplace-api.ts',
     '^src/integrations/marketplace/api.js$': '<rootDir>/test/unit/__mocks__/marketplace-api.ts',
