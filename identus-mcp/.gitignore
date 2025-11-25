@@ -45,8 +45,10 @@ tmp/
 temp/
 *.tmp
 
-# Storage (contains private keys!)
-storage/
+# Storage data (contains private keys!)
+# Allow src/storage/ (source code) but ignore root-level storage data
+/storage/
+/data/
 !storage/.gitkeep
 
 # OS
