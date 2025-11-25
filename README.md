@@ -1,4 +1,18 @@
-# Midnight MCP Server
+# Midnight MCP Server - MOCK MODE
+
+> **🧪 MOCK MODE BRANCH**
+> This is the **mock mode** branch for testing and development. All MCP tools return realistic mock data without requiring wallet initialization or network connections.
+>
+> **Use Cases:**
+> - Testing without blockchain access
+> - Development and debugging
+> - CI/CD pipeline integration
+> - Learning the MCP tool APIs
+> - Cost measurement without network dependency
+>
+> For production deployment with real blockchain integration, use the **main** or **refactor-pr** branch.
+
+---
 
 A Model Context Protocol (MCP) server implementation for the Midnight blockchain network, providing AI models with secure wallet and smart contract capabilities.
 
@@ -9,6 +23,26 @@ This server enables AI assistants like Claude to interact with the Midnight bloc
 - **STDIO Mode** — For AI assistants (Claude Desktop, Cursor IDE)
 - **HTTP Mode** — For multi-agent platforms (100+ concurrent agents)
 - **API Mode** — For traditional REST API access
+
+### Mock Mode Features
+
+This branch includes **Mock Mode** with hardcoded realistic data:
+
+- ✅ All 18 MCP tools return realistic mock data
+- ✅ No wallet initialization required
+- ✅ No network connection needed
+- ✅ Proper Midnight blockchain data formats (Bech32m addresses, transaction IDs)
+- ✅ Transaction state lifecycle simulation (INITIATED → SENT → COMPLETED/FAILED)
+- ✅ Token balances with proper decimals
+- ✅ DAO elections and voting simulation
+- ✅ Marketplace user data
+
+**Perfect for:**
+- Testing tool implementations
+- 100-agent simulation testing
+- Development without blockchain dependency
+- CI/CD integration
+- API exploration and learning
 
 ## Architecture
 
